@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { Patient } from '../types/patient'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -20,5 +21,16 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   },
 
   //gestion patient
+  getAllPatients: () => ipcRenderer.invoke('get-all-patients'),
+  addPatient: (patient: Patient) => ipcRenderer.invoke('add-patient', patient),
+  updatePatient: (patient: Patient) => ipcRenderer.invoke('update-patient', patient),
+  deletePatient: (id: number) => ipcRenderer.invoke('delete-patient', id),
+  getPatientById: (id: number) => ipcRenderer.invoke('get-patient-by-id', id),
+  searchPatient: (query: string) => ipcRenderer.invoke('search-patient', query),
+  countPatients: () => ipcRenderer.invoke('count-patients'),
+
+
+  //gestion documents
+
 
 })

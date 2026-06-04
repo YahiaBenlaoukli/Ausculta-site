@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route } from 'react-router-dom'
 
 import Layout from './components/Layout/Layout'
 import Dashboard from './pages/Dashboard/Dashboard.tsx'
+import Patients from './pages/Patients/Patients.tsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/patients" element={<Patients />} />
         </Routes>
       </Layout>
     </HashRouter>

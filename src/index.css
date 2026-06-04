@@ -1,4 +1,4 @@
-@import "tailwindcss";@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap');
+@import "tailwindcss";
 
 @font-face {
   font-family: 'MADE Okine Sans';
@@ -108,4 +108,39 @@ body {
     radial-gradient(ellipse 60% 50% at 50% 0%, rgba(30, 42, 86, 0.06) 0%, transparent 70%),
     radial-gradient(ellipse 40% 40% at 80% 80%, rgba(233, 30, 140, 0.04) 0%, transparent 60%);
   pointer-events: none;
+}
+
+/* ---- Shared keyframes ---- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }

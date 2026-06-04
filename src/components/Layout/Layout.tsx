@@ -27,7 +27,7 @@ export default function Layout({ children }: LayoutProps) {
         <main
           id="layout-content"
           className={`
-            flex-1 min-h-screen
+            flex-1 min-w-0 min-h-screen overflow-x-hidden
             transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
             ${collapsed ? 'ml-[62px]' : 'ml-[250px]'}
           `}

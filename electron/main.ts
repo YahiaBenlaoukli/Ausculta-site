@@ -1,10 +1,9 @@
-import { app, BrowserWindow } from 'electron'
-import { createRequire } from 'node:module'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initializeDatabase } from './db/db'
+import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, searchPatients, countPatients } from './services/patient'
 
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // The built directory structure
@@ -68,5 +67,12 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   initializeDatabase();
+  ipcMain.handle('add-patient', async (_event, patient) => await addPatient(patient));
+  ipcMain.handle('get-patient', async (_event, id) => await getPatient(id));
+  ipcMain.handle('get-all-patients', async () => await getAllPatients());
+  ipcMain.handle('update-patient', async (_event, patient) => await updatePatient(patient));
+  ipcMain.handle('delete-patient', async (_event, id) => await deletePatient(id));
+  ipcMain.handle('search-patients', async (_event, query) => await searchPatients(query));
+  ipcMain.handle('count-patients', async () => await countPatients());
   createWindow();
 })

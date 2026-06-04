@@ -1,7 +1,21 @@
 import { getDatabase } from "../db/db";
 import type { Patient } from "../../types/patient";
 
-export async function createPatient(patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> {
+/* Maps a snake_case DB row to the camelCase Patient type */
+function mapRow(row: any): Patient {
+    return {
+        id: row.id,
+        fullName: row.full_name,
+        dateOfBirth: row.date_of_birth,
+        address: row.address,
+        phoneNumber: row.phone_number,
+        ssn: row.ssn,
+        bloodType: row.blood_type,
+        createdAt: row.created_at,
+    };
+}
+
+export async function addPatient(patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
@@ -20,14 +34,14 @@ export async function createPatient(patient: Omit<Patient, 'id' | 'createdAt'>):
     }
 }
 
-export function getPatient(id: number): Patient {
+export async function getPatient(id: number): Promise<Patient> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
         SELECT * FROM patients WHERE id = ?
     `);
         const result = stmt.get(id);
-        return result as Patient;
+        return mapRow(result);
     } catch (error) {
         console.log(error);
         throw error as Error;
@@ -35,27 +49,27 @@ export function getPatient(id: number): Patient {
 
 }
 
-export function getAllPatients(): Patient[] {
+export async function getAllPatients(): Promise<Patient[]> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
         SELECT * FROM patients
     `);
         const result = stmt.all();
-        return result as Patient[];
+        return result.map(mapRow);
     } catch (error) {
         console.log(error);
         throw error as Error;
     }
 }
 
-export function updatePatient(patient: Patient): Patient {
+export async function updatePatient(patient: Patient): Promise<Patient> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
         UPDATE patients SET full_name = ?, date_of_birth = ?, address = ?, phone_number = ?, ssn = ?, blood_type = ? WHERE id = ?
     `);
-        const result = stmt.run(patient.fullName, patient.dateOfBirth, patient.address, patient.phoneNumber, patient.ssn, patient.bloodType, patient.id);
+        stmt.run(patient.fullName, patient.dateOfBirth, patient.address, patient.phoneNumber, patient.ssn, patient.bloodType, patient.id);
         return patient;
     } catch (error) {
         console.log(error);
@@ -63,7 +77,7 @@ export function updatePatient(patient: Patient): Patient {
     }
 }
 
-export function deletePatient(id: number): void {
+export async function deletePatient(id: number): Promise<void> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
@@ -76,28 +90,28 @@ export function deletePatient(id: number): void {
     }
 }
 
-export function searchPatients(query: string): Patient[] {
+export async function searchPatients(query: string): Promise<Patient[]> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
         SELECT * FROM patients WHERE full_name LIKE ? OR ssn LIKE ?
     `);
         const result = stmt.all(`%${query}%`, `%${query}%`);
-        return result as Patient[];
+        return result.map(mapRow);
     } catch (error) {
         console.log(error);
         throw error as Error;
     }
 }
 
-export function countPatients(): number {
+export async function countPatients(): Promise<number> {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
-        SELECT COUNT(*) FROM patients
+        SELECT COUNT(*) as count FROM patients
     `);
-        const result = stmt.get();
-        return result['COUNT(*)'] as number;
+        const result: any = stmt.get();
+        return result.count as number;
     } catch (error) {
         console.log(error);
         throw error as Error;

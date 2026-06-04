@@ -12,7 +12,7 @@ if (!fs.existsSync(recordsFolder)) {
 
 
 
-export async function uploadDocument(document: Omit<PatientDocument, 'id' | 'uploadDate'>): PatientDocument {
+export async function uploadDocument(document: Omit<PatientDocument, 'id' | 'uploadDate'>): Promise<PatientDocument> {
 
     const patientFolder = path.join(recordsFolder, document.patientId.toString());
 

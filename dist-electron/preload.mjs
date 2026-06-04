@@ -16,6 +16,14 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   invoke(...args) {
     const [channel, ...omit] = args;
     return electron.ipcRenderer.invoke(channel, ...omit);
-  }
+  },
   //gestion patient
+  getAllPatients: () => electron.ipcRenderer.invoke("get-all-patients"),
+  addPatient: (patient) => electron.ipcRenderer.invoke("add-patient", patient),
+  updatePatient: (patient) => electron.ipcRenderer.invoke("update-patient", patient),
+  deletePatient: (id) => electron.ipcRenderer.invoke("delete-patient", id),
+  getPatientById: (id) => electron.ipcRenderer.invoke("get-patient-by-id", id),
+  searchPatient: (query) => electron.ipcRenderer.invoke("search-patient", query),
+  countPatients: () => electron.ipcRenderer.invoke("count-patients")
+  //gestion documents
 });
