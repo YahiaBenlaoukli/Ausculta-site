@@ -1,0 +1,106 @@
+{
+  "sidebar": {
+    "sections": {
+      "main": "الرئيسية",
+      "manage": "الإدارة",
+      "system": "النظام"
+    },
+    "nav": {
+      "dashboard": "لوحة القيادة",
+      "patients": "المرضى",
+      "appointments": "المواعيد",
+      "documents": "المستندات",
+      "prescriptions": "الوصفات الطبية",
+      "statistics": "الإحصائيات",
+      "settings": "الإعدادات"
+    },
+    "user": {
+      "role": "طبيب عام"
+    },
+    "actions": {
+      "collapse": "تصغير",
+      "expand": "توسيع القائمة"
+    }
+  },
+  "dashboard": {
+    "title": "لوحة القيادة",
+    "welcome": "مرحباً بك في عيادتك الطبية.",
+    "stats": {
+      "today_patients": "مرضى اليوم",
+      "appointments": "المواعيد",
+      "documents": "المستندات",
+      "prescriptions": "الوصفات الطبية"
+    },
+    "upcoming": {
+      "title": "المواعيد القادمة",
+      "empty": "سيظهر جدول مواعيدك القادمة هنا."
+    }
+  },
+  "patients": {
+    "title": "المرضى",
+    "subtitle": "إدارة قائمة المرضى ومعلوماتهم.",
+    "add": "إضافة مريض",
+    "toolbar": {
+      "view_table": "جدول",
+      "filter": "تصفية",
+      "filter_blood_type": "فصيلة الدم",
+      "filter_all": "الكل",
+      "sort": "فرز",
+      "search_placeholder": "البحث عن مريض...",
+      "selected": "تم تحديد {{count}}",
+      "selected_plural": "تم تحديد {{count}}"
+    },
+    "table": {
+      "full_name": "الاسم الكامل",
+      "phone": "رقم الهاتف",
+      "ssn": "رقم الضمان الاجتماعي",
+      "dob": "تاريخ الميلاد",
+      "address": "العنوان",
+      "blood_type": "فصيلة الدم",
+      "added": "تاريخ الإضافة",
+      "empty": "لم يتم العثور على أي مريض",
+      "empty_hint": "حاول تعديل معايير البحث الخاصة بك.",
+      "actions": {
+        "edit": "تعديل",
+        "delete": "حذف",
+        "more": "المزيد"
+      }
+    },
+    "pagination": {
+      "info": "صفحة {{current}} من {{total}}"
+    },
+    "modal": {
+      "title": "مريض جديد",
+      "subtitle": "يرجى ملء معلومات المريض.",
+      "full_name": "الاسم الكامل *",
+      "full_name_placeholder": "مثال: محمد بن لاوكلي",
+      "dob": "تاريخ الميلاد",
+      "blood_type": "فصيلة الدم",
+      "blood_type_unspecified": "— غير محدد —",
+      "phone": "الهاتف",
+      "phone_placeholder": "0X XX XX XX XX",
+      "ssn": "رقم الضمان الاجتماعي",
+      "ssn_placeholder": "X XX XX XX XXX XXX XX",
+      "address": "العنوان",
+      "address_placeholder": "الشارع، المدينة، الرمز البريدي",
+      "cancel": "إلغاء",
+      "save": "حفظ"
+    },
+    "selected_bar": {
+      "delete": "حذف",
+      "deselect": "إلغاء التحديد"
+    }
+  },
+  "patient_details": {
+    "back": "العودة للجدول",
+    "title": "تفاصيل المريض للمعرف: {{id}}"
+  },
+  "time": {
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "days": "قبل {{count}} أيام",
+    "weeks": "قبل {{count}} أسابيع",
+    "months": "قبل {{count}} أشهر",
+    "years": "قبل {{count}} سنوات"
+  }
+}

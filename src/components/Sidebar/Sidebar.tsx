@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useLayout } from '../Layout/Layout'
+import { useTranslation } from 'react-i18next'
 
 /* ─── Inline SVG Icons ─── */
 const icons = {
@@ -85,14 +86,12 @@ const navItems: NavItem[] = [
   { id: 'settings', label: 'Paramètres', icon: icons.settings, path: '/settings', section: 'system' },
 ]
 
-const sectionLabels: Record<string, string> = {
-  main: 'Principal',
-  manage: 'Gestion',
-  system: 'Système',
-}
-
 /* ─── NavItem Component ─── */
 function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
+  const translatedLabel = t(`sidebar.nav.${item.id}`)
+
   return (
     <Link
       to={item.path}
@@ -106,9 +105,9 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
         }
       `}
     >
-      {/* Active left-bar indicator */}
+      {/* Active side-bar indicator */}
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-pink to-pink-light rounded-r" />
+        <span className={`absolute ${isRtl ? 'right-0 rounded-l' : 'left-0 rounded-r'} top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-pink to-pink-light`} />
       )}
 
       {/* Icon */}
@@ -119,28 +118,28 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
       {/* Label */}
       {!collapsed && (
         <span className="text-sm font-medium whitespace-nowrap overflow-hidden">
-          {item.label}
+          {translatedLabel}
         </span>
       )}
 
       {/* Badge (expanded) */}
       {!collapsed && item.badge && (
-        <span className="ml-auto bg-gradient-to-r from-pink to-pink-light text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center shadow-[0_2px_8px_rgba(233,30,140,0.3)]">
+        <span className={`${isRtl ? 'mr-auto ml-0' : 'ml-auto mr-0'} bg-gradient-to-r from-pink to-pink-light text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center shadow-[0_2px_8px_rgba(233,30,140,0.3)]`}>
           {item.badge}
         </span>
       )}
 
       {/* Badge dot (collapsed) */}
       {collapsed && item.badge && (
-        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink rounded-full shadow-[0_0_6px_rgba(233,30,140,0.5)]" />
+        <span className={`absolute top-1.5 ${isRtl ? 'left-1.5' : 'right-1.5'} w-2 h-2 bg-pink rounded-full shadow-[0_0_6px_rgba(233,30,140,0.5)]`} />
       )}
 
       {/* Tooltip (collapsed) */}
       {collapsed && (
-        <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap bg-navy text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]">
-          {item.label}
+        <span className={`pointer-events-none absolute ${isRtl ? 'right-full mr-3' : 'left-full ml-3'} whitespace-nowrap bg-navy text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]`}>
+          {translatedLabel}
           {item.badge && (
-            <span className="ml-1.5 bg-pink/20 text-pink-light text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            <span className={`${isRtl ? 'mr-1.5 ml-0' : 'ml-1.5 mr-0'} bg-pink/20 text-pink-light text-[10px] font-bold px-1.5 py-0.5 rounded-full`}>
               {item.badge}
             </span>
           )}
@@ -154,6 +153,9 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
 export default function Sidebar() {
   const { collapsed, setCollapsed } = useLayout()
   const location = useLocation()
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
+  const activeLang = i18n.language?.startsWith('ar') ? 'ar' : i18n.language?.startsWith('en') ? 'en' : 'fr';
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -163,7 +165,7 @@ export default function Sidebar() {
   const sections = ['main', 'manage', 'system'] as const
   const grouped = sections.map(s => ({
     key: s,
-    label: sectionLabels[s],
+    label: t(`sidebar.sections.${s}`),
     items: navItems.filter(i => i.section === s),
   }))
 
@@ -171,7 +173,7 @@ export default function Sidebar() {
     <nav
       id="sidebar"
       className={`
-        fixed left-0 top-0 h-screen z-50
+        fixed ${isRtl ? 'right-0' : 'left-0'} top-0 h-screen z-50
         bg-gradient-to-b from-navy to-navy-dark
         flex flex-col
         shadow-[4px_0_24px_rgba(20,29,61,0.18)]
@@ -201,7 +203,7 @@ export default function Sidebar() {
       {/* ── Navigation Items ── */}
       <div className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-0.5 py-4 ${collapsed ? 'px-2 items-center' : 'px-3'}`}>
         {grouped.map(section => (
-          <div key={section.key} className="mb-1">
+          <div key={section.key} className="mb-1 w-full">
             {/* Section label (expanded) */}
             {!collapsed && (
               <div className="text-[10px] font-semibold uppercase tracking-[1.2px] text-white/25 px-3.5 pt-3 pb-2">
@@ -212,7 +214,7 @@ export default function Sidebar() {
             {collapsed && section.key !== 'main' && (
               <div className="w-6 h-px bg-white/10 mx-auto my-2" />
             )}
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-0.5 w-full">
               {section.items.map(item => (
                 <SidebarNavItem
                   key={item.id}
@@ -228,6 +230,40 @@ export default function Sidebar() {
 
       {/* ── Footer ── */}
       <div className={`border-t border-white/[0.07] flex-shrink-0 ${collapsed ? 'px-2 py-4' : 'px-3 py-4'}`}>
+        {/* Language selector */}
+        {!collapsed ? (
+          <div className="flex items-center justify-between mb-3 px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.07]">
+            <span className="text-[11px] text-white/50 font-medium">Langue / اللغة</span>
+            <select
+              value={activeLang}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              className="bg-navy-dark text-white/80 text-xs font-semibold py-1 px-2.5 rounded-lg border border-white/10 focus:outline-none focus:ring-1 focus:ring-pink/50 cursor-pointer"
+            >
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="ar">العربية</option>
+            </select>
+          </div>
+        ) : (
+          <div className="relative group flex justify-center mb-3">
+            <button
+              className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Language"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+            </button>
+            <div className={`absolute bottom-0 ${isRtl ? 'right-full mr-3' : 'left-full ml-3'} bg-navy border border-white/10 rounded-xl shadow-lg py-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 z-50 min-w-[100px]`}>
+              <button onClick={() => i18n.changeLanguage('fr')} className={`w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 ${activeLang === 'fr' ? 'text-pink font-bold' : ''}`}>Français</button>
+              <button onClick={() => i18n.changeLanguage('en')} className={`w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 ${activeLang === 'en' ? 'text-pink font-bold' : ''}`}>English</button>
+              <button onClick={() => i18n.changeLanguage('ar')} className={`w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 ${activeLang === 'ar' ? 'text-pink font-bold' : ''}`}>العربية</button>
+            </div>
+          </div>
+        )}
+
         {/* User card */}
         <div className={`flex items-center rounded-xl bg-white/[0.04] overflow-hidden mb-2.5 ${collapsed ? 'w-11 h-11 justify-center' : 'gap-3 px-3.5 py-2.5'}`}>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-light to-navy flex items-center justify-center flex-shrink-0 text-sm font-bold text-pink-light border-2 border-pink/20">
@@ -236,7 +272,7 @@ export default function Sidebar() {
           {!collapsed && (
             <div className="overflow-hidden whitespace-nowrap">
               <div className="text-[13px] font-semibold text-white leading-tight">Dr. Martin</div>
-              <div className="text-[11px] text-white/35">Médecin Généraliste</div>
+              <div className="text-[11px] text-white/35">{t('sidebar.user.role')}</div>
             </div>
           )}
         </div>
@@ -245,7 +281,7 @@ export default function Sidebar() {
         <button
           id="sidebar-toggle"
           onClick={() => setCollapsed(c => !c)}
-          aria-label={collapsed ? 'Étendre le menu' : 'Réduire le menu'}
+          aria-label={collapsed ? t('sidebar.actions.expand') : t('sidebar.actions.collapse')}
           className={`
             group relative flex items-center justify-center w-full rounded-xl
             bg-white/5 text-white/45
@@ -254,15 +290,15 @@ export default function Sidebar() {
             ${collapsed ? 'h-11' : 'gap-2.5 px-3.5 py-2.5'}
           `}
         >
-          <span className={`flex-shrink-0 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`}>
+          <span className={`flex-shrink-0 transition-transform duration-300 ${collapsed ? (isRtl ? '' : 'rotate-180') : (isRtl ? 'rotate-180' : '')}`}>
             {icons.chevronLeft}
           </span>
           {!collapsed && (
-            <span className="text-[13px] font-medium whitespace-nowrap">Réduire</span>
+            <span className="text-[13px] font-medium whitespace-nowrap">{t('sidebar.actions.collapse')}</span>
           )}
           {collapsed && (
-            <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap bg-navy text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]">
-              Étendre le menu
+            <span className={`pointer-events-none absolute ${isRtl ? 'right-full mr-3' : 'left-full ml-3'} whitespace-nowrap bg-navy text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]`}>
+              {t('sidebar.actions.expand')}
             </span>
           )}
         </button>

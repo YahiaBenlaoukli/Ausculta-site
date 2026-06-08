@@ -1,0 +1,106 @@
+{
+  "sidebar": {
+    "sections": {
+      "main": "Main",
+      "manage": "Management",
+      "system": "System"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "patients": "Patients",
+      "appointments": "Appointments",
+      "documents": "Documents",
+      "prescriptions": "Prescriptions",
+      "statistics": "Statistics",
+      "settings": "Settings"
+    },
+    "user": {
+      "role": "General Practitioner"
+    },
+    "actions": {
+      "collapse": "Collapse",
+      "expand": "Expand menu"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to your medical clinic.",
+    "stats": {
+      "today_patients": "Today's Patients",
+      "appointments": "Appointments",
+      "documents": "Documents",
+      "prescriptions": "Prescriptions"
+    },
+    "upcoming": {
+      "title": "Upcoming Appointments",
+      "empty": "The calendar of your upcoming appointments will appear here."
+    }
+  },
+  "patients": {
+    "title": "Patients",
+    "subtitle": "Manage your patients list and their information.",
+    "add": "Add Patient",
+    "toolbar": {
+      "view_table": "Table",
+      "filter": "Filter",
+      "filter_blood_type": "Blood type",
+      "filter_all": "All",
+      "sort": "Sort",
+      "search_placeholder": "Search patient...",
+      "selected": "{{count}} selected",
+      "selected_plural": "{{count}} selected"
+    },
+    "table": {
+      "full_name": "Full Name",
+      "phone": "Phone Number",
+      "ssn": "SSN",
+      "dob": "Date of Birth",
+      "address": "Address",
+      "blood_type": "Blood Type",
+      "added": "Added",
+      "empty": "No patient found",
+      "empty_hint": "Try modifying your search criteria.",
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "more": "More"
+      }
+    },
+    "pagination": {
+      "info": "Page {{current}} of {{total}}"
+    },
+    "modal": {
+      "title": "New Patient",
+      "subtitle": "Fill in the patient's information.",
+      "full_name": "Full Name *",
+      "full_name_placeholder": "e.g. John Doe",
+      "dob": "Date of Birth",
+      "blood_type": "Blood Type",
+      "blood_type_unspecified": "— Unspecified —",
+      "phone": "Phone",
+      "phone_placeholder": "0X XX XX XX XX",
+      "ssn": "Social Security Number",
+      "ssn_placeholder": "X XX XX XX XXX XXX XX",
+      "address": "Address",
+      "address_placeholder": "Street, city, postal code",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "selected_bar": {
+      "delete": "Delete",
+      "deselect": "Deselect"
+    }
+  },
+  "patient_details": {
+    "back": "Back to Table",
+    "title": "Patient Details for ID: {{id}}"
+  },
+  "time": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "days": "{{count}} days ago",
+    "weeks": "{{count}} wk. ago",
+    "months": "{{count}} mo. ago",
+    "years": "{{count}} yr. ago"
+  }
+}

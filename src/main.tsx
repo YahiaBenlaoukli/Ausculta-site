@@ -3,9 +3,10 @@ import ReactDOM from 'react-dom/client'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 
 import Layout from './components/Layout/Layout'
-import Dashboard from './pages/Dashboard/Dashboard.tsx'
-import Patients from './pages/Patients/Patients.tsx'
-import PatientDetails from './pages/PatientDetails/PatientDetails.tsx'
+import Dashboard from './pages/Dashboard/Dashboard'
+import Patients from './pages/Patients/Patients'
+import PatientDetails from './pages/PatientDetails/PatientDetails'
+import './services/i18n';
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

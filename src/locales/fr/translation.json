@@ -1,0 +1,106 @@
+{
+  "sidebar": {
+    "sections": {
+      "main": "Principal",
+      "manage": "Gestion",
+      "system": "Système"
+    },
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "patients": "Patients",
+      "appointments": "Rendez-vous",
+      "documents": "Documents",
+      "prescriptions": "Ordonnances",
+      "statistics": "Statistiques",
+      "settings": "Paramètres"
+    },
+    "user": {
+      "role": "Médecin Généraliste"
+    },
+    "actions": {
+      "collapse": "Réduire",
+      "expand": "Étendre le menu"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue dans votre cabinet médical.",
+    "stats": {
+      "today_patients": "Patients du jour",
+      "appointments": "Rendez-vous",
+      "documents": "Documents",
+      "prescriptions": "Ordonnances"
+    },
+    "upcoming": {
+      "title": "Rendez-vous à venir",
+      "empty": "Le calendrier de vos prochains rendez-vous apparaîtra ici."
+    }
+  },
+  "patients": {
+    "title": "Patients",
+    "subtitle": "Gérez la liste de vos patients et leurs informations.",
+    "add": "Ajouter",
+    "toolbar": {
+      "view_table": "Table",
+      "filter": "Filtrer",
+      "filter_blood_type": "Groupe sanguin",
+      "filter_all": "Tous",
+      "sort": "Tri",
+      "search_placeholder": "Rechercher un patient...",
+      "selected": "{{count}} sélectionné",
+      "selected_plural": "{{count}} sélectionnés"
+    },
+    "table": {
+      "full_name": "Nom complet",
+      "phone": "Téléphone",
+      "ssn": "N° Sécu",
+      "dob": "Date de naissance",
+      "address": "Adresse",
+      "blood_type": "Gr. Sanguin",
+      "added": "Ajouté",
+      "empty": "Aucun patient trouvé",
+      "empty_hint": "Essayez de modifier vos critères de recherche.",
+      "actions": {
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "more": "Plus"
+      }
+    },
+    "pagination": {
+      "info": "Page {{current}} sur {{total}}"
+    },
+    "modal": {
+      "title": "Nouveau patient",
+      "subtitle": "Remplissez les informations du patient.",
+      "full_name": "Nom complet *",
+      "full_name_placeholder": "ex: Mohammed Benlaoukli",
+      "dob": "Date de naissance",
+      "blood_type": "Groupe sanguin",
+      "blood_type_unspecified": "— Non spécifié —",
+      "phone": "Téléphone",
+      "phone_placeholder": "0X XX XX XX XX",
+      "ssn": "N° Sécurité sociale",
+      "ssn_placeholder": "X XX XX XX XXX XXX XX",
+      "address": "Adresse",
+      "address_placeholder": "Rue, ville, code postal",
+      "cancel": "Annuler",
+      "save": "Enregistrer"
+    },
+    "selected_bar": {
+      "delete": "Supprimer",
+      "deselect": "Désélectionner"
+    }
+  },
+  "patient_details": {
+    "back": "Retour au tableau",
+    "title": "Détails du patient pour l'ID : {{id}}"
+  },
+  "time": {
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "days": "{{count}} jours",
+    "weeks": "{{count}} sem.",
+    "months": "{{count}} mois",
+    "years": "{{count}} an(s)"
+  }
+}
