@@ -66,8 +66,7 @@ function formatDate(dateStr: string) {
 /*                       PRESCRIPTIONS PAGE                           */
 /* ═══════════════════════════════════════════════════════════════════ */
 export default function Prescriptions() {
-    // For now, we use userId = 1 as placeholder (no auth system wired yet)
-    const CURRENT_USER_ID = 1;
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
     const [step, setStep] = useState<Step>('loading');
     const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
@@ -78,15 +77,34 @@ export default function Prescriptions() {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
-    /* ── Load initial data ── */
+    /* ── Load auth + initial data ── */
     useEffect(() => {
-        loadData();
+        (async () => {
+            try {
+                const auth = await (window as any).ipcRenderer.checkAuth();
+                if (auth?.status === 'success' && auth.user?.id) {
+                    setCurrentUserId(auth.user.id);
+                } else {
+                    // Not logged in — redirect
+                    window.location.hash = '/';
+                    return;
+                }
+            } catch {
+                window.location.hash = '/';
+            }
+        })();
     }, []);
 
-    const loadData = async () => {
+    useEffect(() => {
+        if (currentUserId !== null) {
+            loadData(currentUserId);
+        }
+    }, [currentUserId]);
+
+    const loadData = async (userId: number) => {
         try {
             // Check if doctor profile exists
-            const profileResult = await window.ipcRenderer.invoke('get-doctor-profile', CURRENT_USER_ID);
+            const profileResult = await window.ipcRenderer.invoke('get-doctor-profile', userId);
 
             if (profileResult.status === 'success' && profileResult.data) {
                 setDoctorProfile(profileResult.data);
@@ -119,7 +137,7 @@ export default function Prescriptions() {
         try {
             const result = await window.ipcRenderer.invoke(
                 'create-doctor-profile',
-                CURRENT_USER_ID,
+                currentUserId,
                 form.fullName,
                 form.speciality,
                 form.phoneNumber,
@@ -159,7 +177,7 @@ export default function Prescriptions() {
         try {
             const result = await window.ipcRenderer.invoke(
                 'add-prescription',
-                CURRENT_USER_ID,
+                currentUserId,
                 form.patientId,
                 form.medicineName,
                 form.dosage,

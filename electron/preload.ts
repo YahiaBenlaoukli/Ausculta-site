@@ -49,5 +49,11 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   searchPrescription: (query: string) => ipcRenderer.invoke('search-prescription', query),
   countPrescriptions: () => ipcRenderer.invoke('count-prescriptions'),
 
+  //gestion authentification
+  createUser: (user: { fullName: string; password: string; role: string }) => ipcRenderer.invoke('create-user', user),
+  login: (phoneNumber: string, password: string, stayLogged: boolean) => ipcRenderer.invoke('login', phoneNumber, password, stayLogged),
+  checkAuth: () => ipcRenderer.invoke('check-auth'),
+  logout: () => ipcRenderer.invoke('logout'),
+
 
 })

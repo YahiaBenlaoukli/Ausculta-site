@@ -5,6 +5,7 @@ import { initializeDatabase } from './db/db'
 import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, searchPatients, countPatients } from './services/patient'
 import { uploadDocument, getDocumentsByPatientId, deleteDocument, openDocument } from './services/documents'
 import { addPrescription, getPrescriptionById, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, setPrescriptionPdf } from './services/prescription'
+import { createUser, login, checkAuth, logout } from './services/auth'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -93,5 +94,10 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-prescription', async (_event, id) => await deletePrescription(id));
   ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
   ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
+  //gestion authentification
+  ipcMain.handle('create-user', async (_event, user) => await createUser(user));
+  ipcMain.handle('login', async (_event, phoneNumber, password, stayLogged) => login(phoneNumber, password, stayLogged));
+  ipcMain.handle('check-auth', async () => checkAuth());
+  ipcMain.handle('logout', async () => logout());
   createWindow();
 })

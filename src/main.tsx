@@ -7,20 +7,21 @@ import Dashboard from './pages/Dashboard/Dashboard'
 import Patients from './pages/Patients/Patients'
 import PatientDetails from './pages/PatientDetails/PatientDetails'
 import Prescriptions from './pages/Prescriptions/Prescriptions'
+import Authentification from './pages/Authentification/Authentification'
 import './services/i18n';
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <HashRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/patients" element={<Patients />} />
-          <Route path="/patients/:id" element={<PatientDetails />} />
-          <Route path="/prescriptions" element={<Prescriptions />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/" element={<Authentification />} />
+
+        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+        <Route path="/patients" element={<Layout><Patients /></Layout>} />
+        <Route path="/patients/:id" element={<Layout><PatientDetails /></Layout>} />
+        <Route path="/prescriptions" element={<Layout><Prescriptions /></Layout>} />
+      </Routes>
     </HashRouter>
   </React.StrictMode>,
 )

@@ -141,5 +141,48 @@
     "weeks": "{{count}} sem.",
     "months": "{{count}} mois",
     "years": "{{count}} an(s)"
+  },
+  "auth": {
+    "tagline": "Gestion de cabinet médical — simplement moderne",
+    "login": {
+      "greeting": "Bon retour 👋",
+      "subtitle": "Connectez-vous pour accéder à votre espace",
+      "full_name": "Nom complet",
+      "full_name_placeholder": "Dr. Nom Prénom",
+      "password": "Mot de passe",
+      "password_placeholder": "••••••••",
+      "stay_logged": "Rester connecté",
+      "submit": "Se connecter",
+      "loading": "Connexion...",
+      "no_account": "Pas encore de compte ?",
+      "register_link": "Créer un compte",
+      "error_invalid": "Nom d'utilisateur ou mot de passe incorrect",
+      "error_connection": "Erreur de connexion"
+    },
+    "register": {
+      "greeting": "Bienvenue 🩺",
+      "subtitle": "Créez votre compte pour commencer",
+      "full_name": "Nom complet",
+      "full_name_placeholder": "Dr. Nom Prénom",
+      "password": "Mot de passe",
+      "password_placeholder": "Min. 6 caractères",
+      "confirm_password": "Confirmer le mot de passe",
+      "confirm_password_placeholder": "Retapez le mot de passe",
+      "role": "Rôle",
+      "role_doctor": "Médecin",
+      "role_assistant": "Assistant(e)",
+      "role_admin": "Administrateur",
+      "submit": "Créer le compte",
+      "loading": "Création...",
+      "has_account": "Déjà un compte ?",
+      "login_link": "Se connecter",
+      "error_passwords_mismatch": "Les mots de passe ne correspondent pas",
+      "error_password_short": "Le mot de passe doit contenir au moins 6 caractères",
+      "error_creation": "Erreur lors de la création du compte",
+      "success": "Compte créé avec succès !"
+    },
+    "show_password": "Afficher le mot de passe",
+    "hide_password": "Masquer le mot de passe",
+    "footer": "Ausculta © {{year}} — Cabinet médical"
   }
 }

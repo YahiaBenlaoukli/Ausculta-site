@@ -13,7 +13,14 @@ export function initializeDatabase(): Database.Database {
 
   if (version === 0) {
     db.exec(`
-      CREATE TABLE IF NOT EXISTS patients (
+      CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_name TEXT NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS patients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
     date_of_birth TEXT NOT NULL,

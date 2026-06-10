@@ -41,5 +41,10 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   updatePrescription: (prescription) => electron.ipcRenderer.invoke("update-prescription", prescription),
   deletePrescription: (id) => electron.ipcRenderer.invoke("delete-prescription", id),
   searchPrescription: (query) => electron.ipcRenderer.invoke("search-prescription", query),
-  countPrescriptions: () => electron.ipcRenderer.invoke("count-prescriptions")
+  countPrescriptions: () => electron.ipcRenderer.invoke("count-prescriptions"),
+  //gestion authentification
+  createUser: (user) => electron.ipcRenderer.invoke("create-user", user),
+  login: (phoneNumber, password, stayLogged) => electron.ipcRenderer.invoke("login", phoneNumber, password, stayLogged),
+  checkAuth: () => electron.ipcRenderer.invoke("check-auth"),
+  logout: () => electron.ipcRenderer.invoke("logout")
 });

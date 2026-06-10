@@ -141,5 +141,48 @@
     "weeks": "{{count}} wk. ago",
     "months": "{{count}} mo. ago",
     "years": "{{count}} yr. ago"
+  },
+  "auth": {
+    "tagline": "Medical clinic management — simply modern",
+    "login": {
+      "greeting": "Welcome back 👋",
+      "subtitle": "Sign in to access your workspace",
+      "full_name": "Full name",
+      "full_name_placeholder": "Dr. First Last",
+      "password": "Password",
+      "password_placeholder": "••••••••",
+      "stay_logged": "Stay logged in",
+      "submit": "Sign in",
+      "loading": "Signing in...",
+      "no_account": "Don't have an account?",
+      "register_link": "Create account",
+      "error_invalid": "Invalid username or password",
+      "error_connection": "Connection error"
+    },
+    "register": {
+      "greeting": "Welcome 🩺",
+      "subtitle": "Create your account to get started",
+      "full_name": "Full name",
+      "full_name_placeholder": "Dr. First Last",
+      "password": "Password",
+      "password_placeholder": "Min. 6 characters",
+      "confirm_password": "Confirm password",
+      "confirm_password_placeholder": "Re-enter password",
+      "role": "Role",
+      "role_doctor": "Doctor",
+      "role_assistant": "Assistant",
+      "role_admin": "Administrator",
+      "submit": "Create account",
+      "loading": "Creating...",
+      "has_account": "Already have an account?",
+      "login_link": "Sign in",
+      "error_passwords_mismatch": "Passwords do not match",
+      "error_password_short": "Password must be at least 6 characters",
+      "error_creation": "Error creating account",
+      "success": "Account created successfully!"
+    },
+    "show_password": "Show password",
+    "hide_password": "Hide password",
+    "footer": "Ausculta © {{year}} — Medical clinic"
   }
 }

@@ -141,5 +141,48 @@
     "weeks": "قبل {{count}} أسابيع",
     "months": "قبل {{count}} أشهر",
     "years": "قبل {{count}} سنوات"
+  },
+  "auth": {
+    "tagline": "إدارة العيادة الطبية — ببساطة عصرية",
+    "login": {
+      "greeting": "مرحباً بعودتك 👋",
+      "subtitle": "سجّل الدخول للوصول إلى مساحتك",
+      "full_name": "الاسم الكامل",
+      "full_name_placeholder": "د. الاسم الكامل",
+      "password": "كلمة المرور",
+      "password_placeholder": "••••••••",
+      "stay_logged": "البقاء متصلاً",
+      "submit": "تسجيل الدخول",
+      "loading": "جاري الدخول...",
+      "no_account": "ليس لديك حساب؟",
+      "register_link": "إنشاء حساب",
+      "error_invalid": "اسم المستخدم أو كلمة المرور غير صحيحة",
+      "error_connection": "خطأ في الاتصال"
+    },
+    "register": {
+      "greeting": "مرحباً 🩺",
+      "subtitle": "أنشئ حسابك للبدء",
+      "full_name": "الاسم الكامل",
+      "full_name_placeholder": "د. الاسم الكامل",
+      "password": "كلمة المرور",
+      "password_placeholder": "٦ أحرف على الأقل",
+      "confirm_password": "تأكيد كلمة المرور",
+      "confirm_password_placeholder": "أعد إدخال كلمة المرور",
+      "role": "الدور",
+      "role_doctor": "طبيب",
+      "role_assistant": "مساعد(ة)",
+      "role_admin": "مدير",
+      "submit": "إنشاء الحساب",
+      "loading": "جاري الإنشاء...",
+      "has_account": "لديك حساب بالفعل؟",
+      "login_link": "تسجيل الدخول",
+      "error_passwords_mismatch": "كلمتا المرور غير متطابقتين",
+      "error_password_short": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
+      "error_creation": "خطأ أثناء إنشاء الحساب",
+      "success": "تم إنشاء الحساب بنجاح!"
+    },
+    "show_password": "إظهار كلمة المرور",
+    "hide_password": "إخفاء كلمة المرور",
+    "footer": "Ausculta © {{year}} — العيادة الطبية"
   }
 }
