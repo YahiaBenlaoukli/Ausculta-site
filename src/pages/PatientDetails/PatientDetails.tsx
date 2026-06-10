@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Patient } from '../../../types/patient';
+import type { Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
 
 function getInitials(name: string) {

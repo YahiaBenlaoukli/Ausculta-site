@@ -4,6 +4,7 @@ import path from 'node:path'
 import { initializeDatabase } from './db/db'
 import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, searchPatients, countPatients } from './services/patient'
 import { uploadDocument, getDocumentsByPatientId, deleteDocument, openDocument } from './services/documents'
+import { addPrescription, getPrescriptionById, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, setPrescriptionPdf } from './services/prescription'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -80,5 +81,17 @@ app.whenReady().then(() => {
   ipcMain.handle('upload-document', async (_event, document) => await uploadDocument(document));
   ipcMain.handle('delete-document', async (_event, id) => deleteDocument(id));
   ipcMain.handle('open-document', async (_event, path) => await openDocument(path));
+  //gestion profil médecin
+  ipcMain.handle('create-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address));
+  ipcMain.handle('get-doctor-profile', async (_event, userId) => getDoctorProfileByUserId(userId));
+  ipcMain.handle('set-prescription-pdf', async (_event, doctorId, pdfPath) => await setPrescriptionPdf(doctorId, pdfPath));
+  //gestion des prescriptions
+  ipcMain.handle('add-prescription', async (_event, userId, patientId, medicineName, dosage, frequency, duration) => await addPrescription(userId, patientId, medicineName, dosage, frequency, duration));
+  ipcMain.handle('get-prescription-by-id', async (_event, id) => await getPrescriptionById(id));
+  ipcMain.handle('get-all-prescriptions', async () => await getAllPrescriptions());
+  ipcMain.handle('update-prescription', async (_event, prescription) => await updatePrescription(prescription));
+  ipcMain.handle('delete-prescription', async (_event, id) => await deletePrescription(id));
+  ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
+  ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
   createWindow();
 })
