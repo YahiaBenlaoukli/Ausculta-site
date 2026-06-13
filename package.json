@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.10.0",
     "dotenv": "^17.4.2",
     "i18next": "^26.3.1",

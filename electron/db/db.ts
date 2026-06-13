@@ -42,6 +42,7 @@ export function initializeDatabase(): Database.Database {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
+    email TEXT,
     phone_number TEXT,
     address TEXT,
     speciality TEXT,
@@ -64,7 +65,13 @@ export function initializeDatabase(): Database.Database {
   `);
 
   if (version === 0) {
-    db.pragma('user_version = 1');
+    db.pragma('user_version = 2');
+  }
+
+  // Migration: v1 → v2 — add email column to doctor_profile
+  if (version === 1) {
+    db.exec(`ALTER TABLE doctor_profile ADD COLUMN email TEXT`);
+    db.pragma('user_version = 2');
   }
 
   return db;

@@ -31,7 +31,7 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   deleteDocument: (id) => electron.ipcRenderer.invoke("delete-document", id),
   openDocument: (path) => electron.ipcRenderer.invoke("open-document", path),
   //gestion profil médecin
-  createDoctorProfile: (userId, fullName, speciality, phoneNumber, address) => electron.ipcRenderer.invoke("create-doctor-profile", userId, fullName, speciality, phoneNumber, address),
+  createDoctorProfile: (userId, fullName, speciality, phoneNumber, address, email) => electron.ipcRenderer.invoke("create-doctor-profile", userId, fullName, speciality, phoneNumber, address, email),
   getDoctorProfile: (userId) => electron.ipcRenderer.invoke("get-doctor-profile", userId),
   setPrescriptionPdf: (doctorId, pdfPath) => electron.ipcRenderer.invoke("set-prescription-pdf", doctorId, pdfPath),
   //gestion des prescriptions

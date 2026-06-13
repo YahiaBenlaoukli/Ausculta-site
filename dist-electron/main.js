@@ -11,6 +11,7 @@ import require$$1 from "crypto";
 import require$$0$1 from "fs";
 import require$$1$1 from "path";
 import require$$2 from "os";
+import bcrypt from "bcrypt";
 let db;
 function initializeDatabase() {
   const dbPath = path$1.join(app.getPath("userData"), "cabinet-medicale.db");
@@ -48,6 +49,7 @@ function initializeDatabase() {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
+    email TEXT,
     phone_number TEXT,
     address TEXT,
     speciality TEXT,
@@ -69,7 +71,11 @@ function initializeDatabase() {
     );
   `);
   if (version === 0) {
-    db.pragma("user_version = 1");
+    db.pragma("user_version = 2");
+  }
+  if (version === 1) {
+    db.exec(`ALTER TABLE doctor_profile ADD COLUMN email TEXT`);
+    db.pragma("user_version = 2");
   }
   return db;
 }
@@ -4956,10 +4962,10 @@ var assign = common.assign;
 var deflate = deflate$4;
 var inflate = inflate$4;
 var constants$2 = constants$3;
-var pako = {};
-assign(pako, deflate, inflate, constants$2);
-var pako_1 = pako;
-const pako$1 = /* @__PURE__ */ getDefaultExportFromCjs(pako_1);
+var pako$1 = {};
+assign(pako$1, deflate, inflate, constants$2);
+var pako_1 = pako$1;
+const pako = /* @__PURE__ */ getDefaultExportFromCjs(pako_1);
 var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 var lookup = new Uint8Array(256);
 for (var i = 0; i < chars.length; i++) {
@@ -5000,7 +5006,7 @@ var arrayToString = function(array) {
   return str;
 };
 var decompressJson = function(compressedJson) {
-  return arrayToString(pako$1.inflate(decodeFromBase64(compressedJson)));
+  return arrayToString(pako.inflate(decodeFromBase64(compressedJson)));
 };
 var padStart = function(value, length, padChar) {
   var padding = "";
@@ -5761,7 +5767,7 @@ var MissingKeywordError = (
     return MissingKeywordError2;
   }(PDFParsingError)
 );
-var CharCodes;
+var CharCodes$1;
 (function(CharCodes2) {
   CharCodes2[CharCodes2["Null"] = 0] = "Null";
   CharCodes2[CharCodes2["Backspace"] = 8] = "Backspace";
@@ -5821,8 +5827,8 @@ var CharCodes;
   CharCodes2[CharCodes2["LeftCurly"] = 123] = "LeftCurly";
   CharCodes2[CharCodes2["RightCurly"] = 125] = "RightCurly";
   CharCodes2[CharCodes2["Tilde"] = 126] = "Tilde";
-})(CharCodes || (CharCodes = {}));
-const CharCodes$1 = CharCodes;
+})(CharCodes$1 || (CharCodes$1 = {}));
+const CharCodes = CharCodes$1;
 var PDFHeader = (
   /** @class */
   function() {
@@ -5839,16 +5845,16 @@ var PDFHeader = (
     };
     PDFHeader2.prototype.copyBytesInto = function(buffer, offset) {
       var initialOffset = offset;
-      buffer[offset++] = CharCodes$1.Percent;
-      buffer[offset++] = CharCodes$1.P;
-      buffer[offset++] = CharCodes$1.D;
-      buffer[offset++] = CharCodes$1.F;
-      buffer[offset++] = CharCodes$1.Dash;
+      buffer[offset++] = CharCodes.Percent;
+      buffer[offset++] = CharCodes.P;
+      buffer[offset++] = CharCodes.D;
+      buffer[offset++] = CharCodes.F;
+      buffer[offset++] = CharCodes.Dash;
       offset += copyStringIntoBuffer(this.major, buffer, offset);
-      buffer[offset++] = CharCodes$1.Period;
+      buffer[offset++] = CharCodes.Period;
       offset += copyStringIntoBuffer(this.minor, buffer, offset);
-      buffer[offset++] = CharCodes$1.Newline;
-      buffer[offset++] = CharCodes$1.Percent;
+      buffer[offset++] = CharCodes.Newline;
+      buffer[offset++] = CharCodes.Percent;
       buffer[offset++] = 129;
       buffer[offset++] = 129;
       buffer[offset++] = 129;
@@ -6005,13 +6011,13 @@ var PDFArray = (
     };
     PDFArray2.prototype.copyBytesInto = function(buffer, offset) {
       var initialOffset = offset;
-      buffer[offset++] = CharCodes$1.LeftSquareBracket;
-      buffer[offset++] = CharCodes$1.Space;
+      buffer[offset++] = CharCodes.LeftSquareBracket;
+      buffer[offset++] = CharCodes.Space;
       for (var idx = 0, len = this.size(); idx < len; idx++) {
         offset += this.get(idx).copyBytesInto(buffer, offset);
-        buffer[offset++] = CharCodes$1.Space;
+        buffer[offset++] = CharCodes.Space;
       }
-      buffer[offset++] = CharCodes$1.RightSquareBracket;
+      buffer[offset++] = CharCodes.RightSquareBracket;
       return offset - initialOffset;
     };
     PDFArray2.prototype.scalePDFNumbers = function(x, y2) {
@@ -6056,17 +6062,17 @@ var PDFBool = (
     };
     PDFBool2.prototype.copyBytesInto = function(buffer, offset) {
       if (this.value) {
-        buffer[offset++] = CharCodes$1.t;
-        buffer[offset++] = CharCodes$1.r;
-        buffer[offset++] = CharCodes$1.u;
-        buffer[offset++] = CharCodes$1.e;
+        buffer[offset++] = CharCodes.t;
+        buffer[offset++] = CharCodes.r;
+        buffer[offset++] = CharCodes.u;
+        buffer[offset++] = CharCodes.e;
         return 4;
       } else {
-        buffer[offset++] = CharCodes$1.f;
-        buffer[offset++] = CharCodes$1.a;
-        buffer[offset++] = CharCodes$1.l;
-        buffer[offset++] = CharCodes$1.s;
-        buffer[offset++] = CharCodes$1.e;
+        buffer[offset++] = CharCodes.f;
+        buffer[offset++] = CharCodes.a;
+        buffer[offset++] = CharCodes.l;
+        buffer[offset++] = CharCodes.s;
+        buffer[offset++] = CharCodes.e;
         return 5;
       }
     };
@@ -6076,35 +6082,35 @@ var PDFBool = (
   }(PDFObject)
 );
 var IsDelimiter = new Uint8Array(256);
-IsDelimiter[CharCodes$1.LeftParen] = 1;
-IsDelimiter[CharCodes$1.RightParen] = 1;
-IsDelimiter[CharCodes$1.LessThan] = 1;
-IsDelimiter[CharCodes$1.GreaterThan] = 1;
-IsDelimiter[CharCodes$1.LeftSquareBracket] = 1;
-IsDelimiter[CharCodes$1.RightSquareBracket] = 1;
-IsDelimiter[CharCodes$1.LeftCurly] = 1;
-IsDelimiter[CharCodes$1.RightCurly] = 1;
-IsDelimiter[CharCodes$1.ForwardSlash] = 1;
-IsDelimiter[CharCodes$1.Percent] = 1;
+IsDelimiter[CharCodes.LeftParen] = 1;
+IsDelimiter[CharCodes.RightParen] = 1;
+IsDelimiter[CharCodes.LessThan] = 1;
+IsDelimiter[CharCodes.GreaterThan] = 1;
+IsDelimiter[CharCodes.LeftSquareBracket] = 1;
+IsDelimiter[CharCodes.RightSquareBracket] = 1;
+IsDelimiter[CharCodes.LeftCurly] = 1;
+IsDelimiter[CharCodes.RightCurly] = 1;
+IsDelimiter[CharCodes.ForwardSlash] = 1;
+IsDelimiter[CharCodes.Percent] = 1;
 var IsWhitespace = new Uint8Array(256);
-IsWhitespace[CharCodes$1.Null] = 1;
-IsWhitespace[CharCodes$1.Tab] = 1;
-IsWhitespace[CharCodes$1.Newline] = 1;
-IsWhitespace[CharCodes$1.FormFeed] = 1;
-IsWhitespace[CharCodes$1.CarriageReturn] = 1;
-IsWhitespace[CharCodes$1.Space] = 1;
+IsWhitespace[CharCodes.Null] = 1;
+IsWhitespace[CharCodes.Tab] = 1;
+IsWhitespace[CharCodes.Newline] = 1;
+IsWhitespace[CharCodes.FormFeed] = 1;
+IsWhitespace[CharCodes.CarriageReturn] = 1;
+IsWhitespace[CharCodes.Space] = 1;
 var IsIrregular = new Uint8Array(256);
 for (var idx$1 = 0, len$1 = 256; idx$1 < len$1; idx$1++) {
   IsIrregular[idx$1] = IsWhitespace[idx$1] || IsDelimiter[idx$1] ? 1 : 0;
 }
-IsIrregular[CharCodes$1.Hash] = 1;
+IsIrregular[CharCodes.Hash] = 1;
 var decodeName = function(name) {
   return name.replace(/#([\dABCDEF]{2})/g, function(_, hex) {
     return charFromHexCode(hex);
   });
 };
 var isRegularChar = function(charCode) {
-  return charCode >= CharCodes$1.ExclamationPoint && charCode <= CharCodes$1.Tilde && !IsIrregular[charCode];
+  return charCode >= CharCodes.ExclamationPoint && charCode <= CharCodes.Tilde && !IsIrregular[charCode];
 };
 var ENFORCER$1 = {};
 var pool$1 = /* @__PURE__ */ new Map();
@@ -6140,12 +6146,12 @@ var PDFName = (
         var byte = toCharCode(char);
         var nextChar = this.encodedName[idx + 1];
         if (!escaped) {
-          if (byte === CharCodes$1.Hash)
+          if (byte === CharCodes.Hash)
             escaped = true;
           else
             pushByte(byte);
         } else {
-          if (byte >= CharCodes$1.Zero && byte <= CharCodes$1.Nine || byte >= CharCodes$1.a && byte <= CharCodes$1.f || byte >= CharCodes$1.A && byte <= CharCodes$1.F) {
+          if (byte >= CharCodes.Zero && byte <= CharCodes.Nine || byte >= CharCodes.a && byte <= CharCodes.f || byte >= CharCodes.A && byte <= CharCodes.F) {
             hex += char;
             if (hex.length === 2 || !(nextChar >= "0" && nextChar <= "9" || nextChar >= "a" && nextChar <= "f" || nextChar >= "A" && nextChar <= "F")) {
               pushByte(parseInt(hex, 16));
@@ -6218,7 +6224,7 @@ var PDFName = (
     return PDFName2;
   }(PDFObject)
 );
-var PDFNull = (
+var PDFNull$1 = (
   /** @class */
   function(_super) {
     __extends(PDFNull2, _super);
@@ -6238,16 +6244,16 @@ var PDFNull = (
       return 4;
     };
     PDFNull2.prototype.copyBytesInto = function(buffer, offset) {
-      buffer[offset++] = CharCodes$1.n;
-      buffer[offset++] = CharCodes$1.u;
-      buffer[offset++] = CharCodes$1.l;
-      buffer[offset++] = CharCodes$1.l;
+      buffer[offset++] = CharCodes.n;
+      buffer[offset++] = CharCodes.u;
+      buffer[offset++] = CharCodes.l;
+      buffer[offset++] = CharCodes.l;
       return 4;
     };
     return PDFNull2;
   }(PDFObject)
 );
-const PDFNull$1 = new PDFNull();
+const PDFNull = new PDFNull$1();
 var PDFDict = (
   /** @class */
   function(_super) {
@@ -6275,13 +6281,13 @@ var PDFDict = (
         preservePDFNull = false;
       }
       var value = this.dict.get(key);
-      if (value === PDFNull$1 && !preservePDFNull)
+      if (value === PDFNull && !preservePDFNull)
         return void 0;
       return value;
     };
     PDFDict2.prototype.has = function(key) {
       var value = this.dict.get(key);
-      return value !== void 0 && value !== PDFNull$1;
+      return value !== void 0 && value !== PDFNull;
     };
     PDFDict2.prototype.lookupMaybe = function(key) {
       var _a;
@@ -6289,9 +6295,9 @@ var PDFDict = (
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
-      var preservePDFNull = types.includes(PDFNull$1);
+      var preservePDFNull = types.includes(PDFNull);
       var value = (_a = this.context).lookupMaybe.apply(_a, __spreadArrays([this.get(key, preservePDFNull)], types));
-      if (value === PDFNull$1 && !preservePDFNull)
+      if (value === PDFNull && !preservePDFNull)
         return void 0;
       return value;
     };
@@ -6301,9 +6307,9 @@ var PDFDict = (
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
-      var preservePDFNull = types.includes(PDFNull$1);
+      var preservePDFNull = types.includes(PDFNull);
       var value = (_a = this.context).lookup.apply(_a, __spreadArrays([this.get(key, preservePDFNull)], types));
-      if (value === PDFNull$1 && !preservePDFNull)
+      if (value === PDFNull && !preservePDFNull)
         return void 0;
       return value;
     };
@@ -6354,19 +6360,19 @@ var PDFDict = (
     };
     PDFDict2.prototype.copyBytesInto = function(buffer, offset) {
       var initialOffset = offset;
-      buffer[offset++] = CharCodes$1.LessThan;
-      buffer[offset++] = CharCodes$1.LessThan;
-      buffer[offset++] = CharCodes$1.Newline;
+      buffer[offset++] = CharCodes.LessThan;
+      buffer[offset++] = CharCodes.LessThan;
+      buffer[offset++] = CharCodes.Newline;
       var entries = this.entries();
       for (var idx = 0, len = entries.length; idx < len; idx++) {
         var _a = entries[idx], key = _a[0], value = _a[1];
         offset += key.copyBytesInto(buffer, offset);
-        buffer[offset++] = CharCodes$1.Space;
+        buffer[offset++] = CharCodes.Space;
         offset += value.copyBytesInto(buffer, offset);
-        buffer[offset++] = CharCodes$1.Newline;
+        buffer[offset++] = CharCodes.Newline;
       }
-      buffer[offset++] = CharCodes$1.GreaterThan;
-      buffer[offset++] = CharCodes$1.GreaterThan;
+      buffer[offset++] = CharCodes.GreaterThan;
+      buffer[offset++] = CharCodes.GreaterThan;
       return offset - initialOffset;
     };
     PDFDict2.withContext = function(context) {
@@ -6419,28 +6425,28 @@ var PDFStream = (
       this.updateDict();
       var initialOffset = offset;
       offset += this.dict.copyBytesInto(buffer, offset);
-      buffer[offset++] = CharCodes$1.Newline;
-      buffer[offset++] = CharCodes$1.s;
-      buffer[offset++] = CharCodes$1.t;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.e;
-      buffer[offset++] = CharCodes$1.a;
-      buffer[offset++] = CharCodes$1.m;
-      buffer[offset++] = CharCodes$1.Newline;
+      buffer[offset++] = CharCodes.Newline;
+      buffer[offset++] = CharCodes.s;
+      buffer[offset++] = CharCodes.t;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.e;
+      buffer[offset++] = CharCodes.a;
+      buffer[offset++] = CharCodes.m;
+      buffer[offset++] = CharCodes.Newline;
       var contents = this.getContents();
       for (var idx = 0, len = contents.length; idx < len; idx++) {
         buffer[offset++] = contents[idx];
       }
-      buffer[offset++] = CharCodes$1.Newline;
-      buffer[offset++] = CharCodes$1.e;
-      buffer[offset++] = CharCodes$1.n;
-      buffer[offset++] = CharCodes$1.d;
-      buffer[offset++] = CharCodes$1.s;
-      buffer[offset++] = CharCodes$1.t;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.e;
-      buffer[offset++] = CharCodes$1.a;
-      buffer[offset++] = CharCodes$1.m;
+      buffer[offset++] = CharCodes.Newline;
+      buffer[offset++] = CharCodes.e;
+      buffer[offset++] = CharCodes.n;
+      buffer[offset++] = CharCodes.d;
+      buffer[offset++] = CharCodes.s;
+      buffer[offset++] = CharCodes.t;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.e;
+      buffer[offset++] = CharCodes.a;
+      buffer[offset++] = CharCodes.m;
       return offset - initialOffset;
     };
     return PDFStream2;
@@ -6561,7 +6567,7 @@ var PDFOperator = (
         } else {
           offset += copyStringIntoBuffer(arg, buffer, offset);
         }
-        buffer[offset++] = CharCodes$1.Space;
+        buffer[offset++] = CharCodes.Space;
       }
       offset += copyStringIntoBuffer(this.name, buffer, offset);
       return offset - initialOffset;
@@ -6657,7 +6663,7 @@ var PDFFlateStream = (
       var _this = _super.call(this, dict) || this;
       _this.computeContents = function() {
         var unencodedContents = _this.getUnencodedContents();
-        return _this.encode ? pako$1.deflate(unencodedContents) : unencodedContents;
+        return _this.encode ? pako.deflate(unencodedContents) : unencodedContents;
       };
       _this.encode = encode;
       if (encode)
@@ -6717,7 +6723,7 @@ var PDFContentStream = (
       var offset = 0;
       for (var idx = 0, len = this.operators.length; idx < len; idx++) {
         offset += this.operators[idx].copyBytesInto(buffer, offset);
-        buffer[offset++] = CharCodes$1.Newline;
+        buffer[offset++] = CharCodes.Newline;
       }
       return buffer;
     };
@@ -6791,14 +6797,14 @@ var PDFContext = (
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
-      var preservePDFNull = types.includes(PDFNull$1);
+      var preservePDFNull = types.includes(PDFNull);
       var result = ref instanceof PDFRef ? this.indirectObjects.get(ref) : ref;
-      if (!result || result === PDFNull$1 && !preservePDFNull)
+      if (!result || result === PDFNull && !preservePDFNull)
         return void 0;
       for (var idx = 0, len = types.length; idx < len; idx++) {
         var type = types[idx];
-        if (type === PDFNull$1) {
-          if (result === PDFNull$1)
+        if (type === PDFNull) {
+          if (result === PDFNull)
             return result;
         } else {
           if (result instanceof type)
@@ -6817,8 +6823,8 @@ var PDFContext = (
         return result;
       for (var idx = 0, len = types.length; idx < len; idx++) {
         var type = types[idx];
-        if (type === PDFNull$1) {
-          if (result === PDFNull$1)
+        if (type === PDFNull) {
+          if (result === PDFNull)
             return result;
         } else {
           if (result instanceof type)
@@ -6844,7 +6850,7 @@ var PDFContext = (
       if (literal instanceof PDFObject) {
         return literal;
       } else if (literal === null || literal === void 0) {
-        return PDFNull$1;
+        return PDFNull;
       } else if (typeof literal === "string") {
         return PDFName.of(literal);
       } else if (typeof literal === "number") {
@@ -6879,7 +6885,7 @@ var PDFContext = (
       if (dict === void 0) {
         dict = {};
       }
-      return this.stream(pako$1.deflate(typedArrayFor(contents)), __assign(__assign({}, dict), { Filter: "FlateDecode" }));
+      return this.stream(pako.deflate(typedArrayFor(contents)), __assign(__assign({}, dict), { Filter: "FlateDecode" }));
     };
     PDFContext2.prototype.contentStream = function(operators, dict) {
       if (dict === void 0) {
@@ -7251,11 +7257,11 @@ var PDFCrossRefSection = (
     };
     PDFCrossRefSection2.prototype.copyBytesInto = function(buffer, offset) {
       var initialOffset = offset;
-      buffer[offset++] = CharCodes$1.x;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.e;
-      buffer[offset++] = CharCodes$1.f;
-      buffer[offset++] = CharCodes$1.Newline;
+      buffer[offset++] = CharCodes.x;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.e;
+      buffer[offset++] = CharCodes.f;
+      buffer[offset++] = CharCodes.Newline;
       offset += this.copySubsectionsIntoBuffer(this.subsections, buffer, offset);
       return offset - initialOffset;
     };
@@ -7266,10 +7272,10 @@ var PDFCrossRefSection = (
         var subsection = this.subsections[idx];
         var firstObjectNumber = String(subsection[0].ref.objectNumber);
         offset += copyStringIntoBuffer(firstObjectNumber, buffer, offset);
-        buffer[offset++] = CharCodes$1.Space;
+        buffer[offset++] = CharCodes.Space;
         var rangeLength = String(subsection.length);
         offset += copyStringIntoBuffer(rangeLength, buffer, offset);
-        buffer[offset++] = CharCodes$1.Newline;
+        buffer[offset++] = CharCodes.Newline;
         offset += this.copyEntriesIntoBuffer(subsection, buffer, offset);
       }
       return offset - initialOffset;
@@ -7280,13 +7286,13 @@ var PDFCrossRefSection = (
         var entry = entries[idx];
         var entryOffset = padStart$1(String(entry.offset), 10, "0");
         offset += copyStringIntoBuffer(entryOffset, buffer, offset);
-        buffer[offset++] = CharCodes$1.Space;
+        buffer[offset++] = CharCodes.Space;
         var entryGen = padStart$1(String(entry.ref.generationNumber), 5, "0");
         offset += copyStringIntoBuffer(entryGen, buffer, offset);
-        buffer[offset++] = CharCodes$1.Space;
-        buffer[offset++] = entry.deleted ? CharCodes$1.f : CharCodes$1.n;
-        buffer[offset++] = CharCodes$1.Space;
-        buffer[offset++] = CharCodes$1.Newline;
+        buffer[offset++] = CharCodes.Space;
+        buffer[offset++] = entry.deleted ? CharCodes.f : CharCodes.n;
+        buffer[offset++] = CharCodes.Space;
+        buffer[offset++] = CharCodes.Newline;
       }
       return 20 * length;
     };
@@ -7335,23 +7341,23 @@ var PDFTrailer = (
     };
     PDFTrailer2.prototype.copyBytesInto = function(buffer, offset) {
       var initialOffset = offset;
-      buffer[offset++] = CharCodes$1.s;
-      buffer[offset++] = CharCodes$1.t;
-      buffer[offset++] = CharCodes$1.a;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.t;
-      buffer[offset++] = CharCodes$1.x;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.e;
-      buffer[offset++] = CharCodes$1.f;
-      buffer[offset++] = CharCodes$1.Newline;
+      buffer[offset++] = CharCodes.s;
+      buffer[offset++] = CharCodes.t;
+      buffer[offset++] = CharCodes.a;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.t;
+      buffer[offset++] = CharCodes.x;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.e;
+      buffer[offset++] = CharCodes.f;
+      buffer[offset++] = CharCodes.Newline;
       offset += copyStringIntoBuffer(this.lastXRefOffset, buffer, offset);
-      buffer[offset++] = CharCodes$1.Newline;
-      buffer[offset++] = CharCodes$1.Percent;
-      buffer[offset++] = CharCodes$1.Percent;
-      buffer[offset++] = CharCodes$1.E;
-      buffer[offset++] = CharCodes$1.O;
-      buffer[offset++] = CharCodes$1.F;
+      buffer[offset++] = CharCodes.Newline;
+      buffer[offset++] = CharCodes.Percent;
+      buffer[offset++] = CharCodes.Percent;
+      buffer[offset++] = CharCodes.E;
+      buffer[offset++] = CharCodes.O;
+      buffer[offset++] = CharCodes.F;
       return offset - initialOffset;
     };
     PDFTrailer2.forLastCrossRefSectionOffset = function(offset) {
@@ -7374,14 +7380,14 @@ var PDFTrailerDict = (
     };
     PDFTrailerDict2.prototype.copyBytesInto = function(buffer, offset) {
       var initialOffset = offset;
-      buffer[offset++] = CharCodes$1.t;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.a;
-      buffer[offset++] = CharCodes$1.i;
-      buffer[offset++] = CharCodes$1.l;
-      buffer[offset++] = CharCodes$1.e;
-      buffer[offset++] = CharCodes$1.r;
-      buffer[offset++] = CharCodes$1.Newline;
+      buffer[offset++] = CharCodes.t;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.a;
+      buffer[offset++] = CharCodes.i;
+      buffer[offset++] = CharCodes.l;
+      buffer[offset++] = CharCodes.e;
+      buffer[offset++] = CharCodes.r;
+      buffer[offset++] = CharCodes.Newline;
       offset += this.dict.copyBytesInto(buffer, offset);
       return offset - initialOffset;
     };
@@ -7428,7 +7434,7 @@ var PDFObjectStream = (
       for (var idx = 0, len = this.objects.length; idx < len; idx++) {
         var _a = this.objects[idx], object = _a[1];
         offset += object.copyBytesInto(buffer, offset);
-        buffer[offset++] = CharCodes$1.Newline;
+        buffer[offset++] = CharCodes.Newline;
       }
       return buffer;
     };
@@ -7487,8 +7493,8 @@ var PDFWriter = (
               offset = 0;
               buffer = new Uint8Array(size);
               offset += header.copyBytesInto(buffer, offset);
-              buffer[offset++] = CharCodes$1.Newline;
-              buffer[offset++] = CharCodes$1.Newline;
+              buffer[offset++] = CharCodes.Newline;
+              buffer[offset++] = CharCodes.Newline;
               idx = 0, len = indirectObjects.length;
               _c.label = 2;
             case 2:
@@ -7496,24 +7502,24 @@ var PDFWriter = (
               _b = indirectObjects[idx], ref = _b[0], object = _b[1];
               objectNumber = String(ref.objectNumber);
               offset += copyStringIntoBuffer(objectNumber, buffer, offset);
-              buffer[offset++] = CharCodes$1.Space;
+              buffer[offset++] = CharCodes.Space;
               generationNumber = String(ref.generationNumber);
               offset += copyStringIntoBuffer(generationNumber, buffer, offset);
-              buffer[offset++] = CharCodes$1.Space;
-              buffer[offset++] = CharCodes$1.o;
-              buffer[offset++] = CharCodes$1.b;
-              buffer[offset++] = CharCodes$1.j;
-              buffer[offset++] = CharCodes$1.Newline;
+              buffer[offset++] = CharCodes.Space;
+              buffer[offset++] = CharCodes.o;
+              buffer[offset++] = CharCodes.b;
+              buffer[offset++] = CharCodes.j;
+              buffer[offset++] = CharCodes.Newline;
               offset += object.copyBytesInto(buffer, offset);
-              buffer[offset++] = CharCodes$1.Newline;
-              buffer[offset++] = CharCodes$1.e;
-              buffer[offset++] = CharCodes$1.n;
-              buffer[offset++] = CharCodes$1.d;
-              buffer[offset++] = CharCodes$1.o;
-              buffer[offset++] = CharCodes$1.b;
-              buffer[offset++] = CharCodes$1.j;
-              buffer[offset++] = CharCodes$1.Newline;
-              buffer[offset++] = CharCodes$1.Newline;
+              buffer[offset++] = CharCodes.Newline;
+              buffer[offset++] = CharCodes.e;
+              buffer[offset++] = CharCodes.n;
+              buffer[offset++] = CharCodes.d;
+              buffer[offset++] = CharCodes.o;
+              buffer[offset++] = CharCodes.b;
+              buffer[offset++] = CharCodes.j;
+              buffer[offset++] = CharCodes.Newline;
+              buffer[offset++] = CharCodes.Newline;
               n = object instanceof PDFObjectStream ? object.getObjectsCount() : 1;
               if (!this.shouldWaitForTick(n)) return [3, 4];
               return [4, waitForTick()];
@@ -7526,12 +7532,12 @@ var PDFWriter = (
             case 5:
               if (xref) {
                 offset += xref.copyBytesInto(buffer, offset);
-                buffer[offset++] = CharCodes$1.Newline;
+                buffer[offset++] = CharCodes.Newline;
               }
               if (trailerDict) {
                 offset += trailerDict.copyBytesInto(buffer, offset);
-                buffer[offset++] = CharCodes$1.Newline;
-                buffer[offset++] = CharCodes$1.Newline;
+                buffer[offset++] = CharCodes.Newline;
+                buffer[offset++] = CharCodes.Newline;
               }
               offset += trailer.copyBytesInto(buffer, offset);
               return [2, buffer];
@@ -7957,9 +7963,9 @@ var PDFHexString = (
       return this.value.length + 2;
     };
     PDFHexString2.prototype.copyBytesInto = function(buffer, offset) {
-      buffer[offset++] = CharCodes$1.LessThan;
+      buffer[offset++] = CharCodes.LessThan;
       offset += copyStringIntoBuffer(this.value, buffer, offset);
-      buffer[offset++] = CharCodes$1.GreaterThan;
+      buffer[offset++] = CharCodes.GreaterThan;
       return this.value.length + 2;
     };
     PDFHexString2.of = function(value) {
@@ -8151,32 +8157,32 @@ var PDFString = (
         var byte = toCharCode(char);
         var nextChar = this.value[idx + 1];
         if (!escaped) {
-          if (byte === CharCodes$1.BackSlash)
+          if (byte === CharCodes.BackSlash)
             escaped = true;
           else
             pushByte(byte);
         } else {
-          if (byte === CharCodes$1.Newline)
+          if (byte === CharCodes.Newline)
             pushByte();
-          else if (byte === CharCodes$1.CarriageReturn)
+          else if (byte === CharCodes.CarriageReturn)
             pushByte();
-          else if (byte === CharCodes$1.n)
-            pushByte(CharCodes$1.Newline);
-          else if (byte === CharCodes$1.r)
-            pushByte(CharCodes$1.CarriageReturn);
-          else if (byte === CharCodes$1.t)
-            pushByte(CharCodes$1.Tab);
-          else if (byte === CharCodes$1.b)
-            pushByte(CharCodes$1.Backspace);
-          else if (byte === CharCodes$1.f)
-            pushByte(CharCodes$1.FormFeed);
-          else if (byte === CharCodes$1.LeftParen)
-            pushByte(CharCodes$1.LeftParen);
-          else if (byte === CharCodes$1.RightParen)
-            pushByte(CharCodes$1.RightParen);
-          else if (byte === CharCodes$1.Backspace)
-            pushByte(CharCodes$1.BackSlash);
-          else if (byte >= CharCodes$1.Zero && byte <= CharCodes$1.Seven) {
+          else if (byte === CharCodes.n)
+            pushByte(CharCodes.Newline);
+          else if (byte === CharCodes.r)
+            pushByte(CharCodes.CarriageReturn);
+          else if (byte === CharCodes.t)
+            pushByte(CharCodes.Tab);
+          else if (byte === CharCodes.b)
+            pushByte(CharCodes.Backspace);
+          else if (byte === CharCodes.f)
+            pushByte(CharCodes.FormFeed);
+          else if (byte === CharCodes.LeftParen)
+            pushByte(CharCodes.LeftParen);
+          else if (byte === CharCodes.RightParen)
+            pushByte(CharCodes.RightParen);
+          else if (byte === CharCodes.Backspace)
+            pushByte(CharCodes.BackSlash);
+          else if (byte >= CharCodes.Zero && byte <= CharCodes.Seven) {
             octal += char;
             if (octal.length === 3 || !(nextChar >= "0" && nextChar <= "7")) {
               pushByte(parseInt(octal, 8));
@@ -8215,9 +8221,9 @@ var PDFString = (
       return this.value.length + 2;
     };
     PDFString2.prototype.copyBytesInto = function(buffer, offset) {
-      buffer[offset++] = CharCodes$1.LeftParen;
+      buffer[offset++] = CharCodes.LeftParen;
       offset += copyStringIntoBuffer(this.value, buffer, offset);
-      buffer[offset++] = CharCodes$1.RightParen;
+      buffer[offset++] = CharCodes.RightParen;
       return this.value.length + 2;
     };
     PDFString2.of = function(value) {
@@ -9778,7 +9784,7 @@ UPNG.encode._filterZero = function(img, h2, bpp, bpl, data, filter, levelZero) {
   else if (h2 * bpl > 5e5 || bpp == 1) ftry = [0];
   var opts;
   if (levelZero) opts = { level: 0 };
-  var CMPR = levelZero && UZIP != null ? UZIP : pako$1;
+  var CMPR = levelZero && UZIP != null ? UZIP : pako;
   for (var i = 0; i < ftry.length; i++) {
     for (var y2 = 0; y2 < h2; y2++) UPNG.encode._filterLine(data, img, y2, bpl, bpp, ftry[i]);
     fls.push(CMPR["deflate"](data, opts));
@@ -11655,7 +11661,7 @@ var PDFPageEmbedder = (
       });
     };
     PDFPageEmbedder2.prototype.decodeContents = function(contents) {
-      var newline = Uint8Array.of(CharCodes$1.Newline);
+      var newline = Uint8Array.of(CharCodes.Newline);
       var decodedContents = [];
       for (var idx = 0, len = contents.size(); idx < len; idx++) {
         var stream2 = contents.lookup(idx, PDFStream);
@@ -13300,25 +13306,25 @@ var PDFPageTree = (
   }(PDFDict)
 );
 var IsDigit = new Uint8Array(256);
-IsDigit[CharCodes$1.Zero] = 1;
-IsDigit[CharCodes$1.One] = 1;
-IsDigit[CharCodes$1.Two] = 1;
-IsDigit[CharCodes$1.Three] = 1;
-IsDigit[CharCodes$1.Four] = 1;
-IsDigit[CharCodes$1.Five] = 1;
-IsDigit[CharCodes$1.Six] = 1;
-IsDigit[CharCodes$1.Seven] = 1;
-IsDigit[CharCodes$1.Eight] = 1;
-IsDigit[CharCodes$1.Nine] = 1;
+IsDigit[CharCodes.Zero] = 1;
+IsDigit[CharCodes.One] = 1;
+IsDigit[CharCodes.Two] = 1;
+IsDigit[CharCodes.Three] = 1;
+IsDigit[CharCodes.Four] = 1;
+IsDigit[CharCodes.Five] = 1;
+IsDigit[CharCodes.Six] = 1;
+IsDigit[CharCodes.Seven] = 1;
+IsDigit[CharCodes.Eight] = 1;
+IsDigit[CharCodes.Nine] = 1;
 var IsNumericPrefix = new Uint8Array(256);
-IsNumericPrefix[CharCodes$1.Period] = 1;
-IsNumericPrefix[CharCodes$1.Plus] = 1;
-IsNumericPrefix[CharCodes$1.Minus] = 1;
+IsNumericPrefix[CharCodes.Period] = 1;
+IsNumericPrefix[CharCodes.Plus] = 1;
+IsNumericPrefix[CharCodes.Minus] = 1;
 var IsNumeric = new Uint8Array(256);
 for (var idx = 0, len = 256; idx < len; idx++) {
   IsNumeric[idx] = IsDigit[idx] || IsNumericPrefix[idx] ? 1 : 0;
 }
-var Newline$1 = CharCodes$1.Newline, CarriageReturn$1 = CharCodes$1.CarriageReturn;
+var Newline$1 = CharCodes.Newline, CarriageReturn$1 = CharCodes.CarriageReturn;
 var BaseParser = (
   /** @class */
   function() {
@@ -13350,7 +13356,7 @@ var BaseParser = (
         if (!IsNumeric[byte])
           break;
         value += charFromCode(this.bytes.next());
-        if (byte === CharCodes$1.Period)
+        if (byte === CharCodes.Period)
           break;
       }
       while (!this.bytes.done()) {
@@ -13389,7 +13395,7 @@ var BaseParser = (
       }
     };
     BaseParser2.prototype.skipComment = function() {
-      if (this.bytes.peek() !== CharCodes$1.Percent)
+      if (this.bytes.peek() !== CharCodes.Percent)
         return false;
       while (!this.bytes.done()) {
         var byte = this.bytes.peek();
@@ -13432,7 +13438,7 @@ var ByteStream = (
     };
     ByteStream2.prototype.next = function() {
       var byte = this.bytes[this.idx++];
-      if (byte === CharCodes$1.Newline) {
+      if (byte === CharCodes.Newline) {
         this.line += 1;
         this.column = 0;
       } else {
@@ -13476,74 +13482,74 @@ var ByteStream = (
     return ByteStream2;
   }()
 );
-var Space = CharCodes$1.Space, CarriageReturn = CharCodes$1.CarriageReturn, Newline = CharCodes$1.Newline;
+var Space = CharCodes.Space, CarriageReturn = CharCodes.CarriageReturn, Newline = CharCodes.Newline;
 var stream = [
-  CharCodes$1.s,
-  CharCodes$1.t,
-  CharCodes$1.r,
-  CharCodes$1.e,
-  CharCodes$1.a,
-  CharCodes$1.m
+  CharCodes.s,
+  CharCodes.t,
+  CharCodes.r,
+  CharCodes.e,
+  CharCodes.a,
+  CharCodes.m
 ];
 var endstream = [
-  CharCodes$1.e,
-  CharCodes$1.n,
-  CharCodes$1.d,
-  CharCodes$1.s,
-  CharCodes$1.t,
-  CharCodes$1.r,
-  CharCodes$1.e,
-  CharCodes$1.a,
-  CharCodes$1.m
+  CharCodes.e,
+  CharCodes.n,
+  CharCodes.d,
+  CharCodes.s,
+  CharCodes.t,
+  CharCodes.r,
+  CharCodes.e,
+  CharCodes.a,
+  CharCodes.m
 ];
 var Keywords = {
   header: [
-    CharCodes$1.Percent,
-    CharCodes$1.P,
-    CharCodes$1.D,
-    CharCodes$1.F,
-    CharCodes$1.Dash
+    CharCodes.Percent,
+    CharCodes.P,
+    CharCodes.D,
+    CharCodes.F,
+    CharCodes.Dash
   ],
   eof: [
-    CharCodes$1.Percent,
-    CharCodes$1.Percent,
-    CharCodes$1.E,
-    CharCodes$1.O,
-    CharCodes$1.F
+    CharCodes.Percent,
+    CharCodes.Percent,
+    CharCodes.E,
+    CharCodes.O,
+    CharCodes.F
   ],
-  obj: [CharCodes$1.o, CharCodes$1.b, CharCodes$1.j],
+  obj: [CharCodes.o, CharCodes.b, CharCodes.j],
   endobj: [
-    CharCodes$1.e,
-    CharCodes$1.n,
-    CharCodes$1.d,
-    CharCodes$1.o,
-    CharCodes$1.b,
-    CharCodes$1.j
+    CharCodes.e,
+    CharCodes.n,
+    CharCodes.d,
+    CharCodes.o,
+    CharCodes.b,
+    CharCodes.j
   ],
-  xref: [CharCodes$1.x, CharCodes$1.r, CharCodes$1.e, CharCodes$1.f],
+  xref: [CharCodes.x, CharCodes.r, CharCodes.e, CharCodes.f],
   trailer: [
-    CharCodes$1.t,
-    CharCodes$1.r,
-    CharCodes$1.a,
-    CharCodes$1.i,
-    CharCodes$1.l,
-    CharCodes$1.e,
-    CharCodes$1.r
+    CharCodes.t,
+    CharCodes.r,
+    CharCodes.a,
+    CharCodes.i,
+    CharCodes.l,
+    CharCodes.e,
+    CharCodes.r
   ],
   startxref: [
-    CharCodes$1.s,
-    CharCodes$1.t,
-    CharCodes$1.a,
-    CharCodes$1.r,
-    CharCodes$1.t,
-    CharCodes$1.x,
-    CharCodes$1.r,
-    CharCodes$1.e,
-    CharCodes$1.f
+    CharCodes.s,
+    CharCodes.t,
+    CharCodes.a,
+    CharCodes.r,
+    CharCodes.t,
+    CharCodes.x,
+    CharCodes.r,
+    CharCodes.e,
+    CharCodes.f
   ],
-  true: [CharCodes$1.t, CharCodes$1.r, CharCodes$1.u, CharCodes$1.e],
-  false: [CharCodes$1.f, CharCodes$1.a, CharCodes$1.l, CharCodes$1.s, CharCodes$1.e],
-  null: [CharCodes$1.n, CharCodes$1.u, CharCodes$1.l, CharCodes$1.l],
+  true: [CharCodes.t, CharCodes.r, CharCodes.u, CharCodes.e],
+  false: [CharCodes.f, CharCodes.a, CharCodes.l, CharCodes.s, CharCodes.e],
+  null: [CharCodes.n, CharCodes.u, CharCodes.l, CharCodes.l],
   stream,
   streamEOF1: __spreadArrays(stream, [Space, CarriageReturn, Newline]),
   streamEOF2: __spreadArrays(stream, [CarriageReturn, Newline]),
@@ -13573,18 +13579,18 @@ var PDFObjectParser = (
       if (this.matchKeyword(Keywords.false))
         return PDFBool.False;
       if (this.matchKeyword(Keywords.null))
-        return PDFNull$1;
+        return PDFNull;
       var byte = this.bytes.peek();
-      if (byte === CharCodes$1.LessThan && this.bytes.peekAhead(1) === CharCodes$1.LessThan) {
+      if (byte === CharCodes.LessThan && this.bytes.peekAhead(1) === CharCodes.LessThan) {
         return this.parseDictOrStream();
       }
-      if (byte === CharCodes$1.LessThan)
+      if (byte === CharCodes.LessThan)
         return this.parseHexString();
-      if (byte === CharCodes$1.LeftParen)
+      if (byte === CharCodes.LeftParen)
         return this.parseString();
-      if (byte === CharCodes$1.ForwardSlash)
+      if (byte === CharCodes.ForwardSlash)
         return this.parseName();
-      if (byte === CharCodes$1.LeftSquareBracket)
+      if (byte === CharCodes.LeftSquareBracket)
         return this.parseArray();
       if (IsNumeric[byte])
         return this.parseNumberOrRef();
@@ -13597,8 +13603,8 @@ var PDFObjectParser = (
       if (IsDigit[this.bytes.peek()]) {
         var secondNum = this.parseRawNumber();
         this.skipWhitespaceAndComments();
-        if (this.bytes.peek() === CharCodes$1.R) {
-          this.bytes.assertNext(CharCodes$1.R);
+        if (this.bytes.peek() === CharCodes.R) {
+          this.bytes.assertNext(CharCodes.R);
           return PDFRef.of(firstNum, secondNum);
         }
       }
@@ -13607,11 +13613,11 @@ var PDFObjectParser = (
     };
     PDFObjectParser2.prototype.parseHexString = function() {
       var value = "";
-      this.bytes.assertNext(CharCodes$1.LessThan);
-      while (!this.bytes.done() && this.bytes.peek() !== CharCodes$1.GreaterThan) {
+      this.bytes.assertNext(CharCodes.LessThan);
+      while (!this.bytes.done() && this.bytes.peek() !== CharCodes.GreaterThan) {
         value += charFromCode(this.bytes.next());
       }
-      this.bytes.assertNext(CharCodes$1.GreaterThan);
+      this.bytes.assertNext(CharCodes.GreaterThan);
       return PDFHexString.of(value);
     };
     PDFObjectParser2.prototype.parseString = function() {
@@ -13622,12 +13628,12 @@ var PDFObjectParser = (
         var byte = this.bytes.next();
         value += charFromCode(byte);
         if (!isEscaped) {
-          if (byte === CharCodes$1.LeftParen)
+          if (byte === CharCodes.LeftParen)
             nestingLvl += 1;
-          if (byte === CharCodes$1.RightParen)
+          if (byte === CharCodes.RightParen)
             nestingLvl -= 1;
         }
-        if (byte === CharCodes$1.BackSlash) {
+        if (byte === CharCodes.BackSlash) {
           isEscaped = !isEscaped;
         } else if (isEscaped) {
           isEscaped = false;
@@ -13639,7 +13645,7 @@ var PDFObjectParser = (
       throw new UnbalancedParenthesisError(this.bytes.position());
     };
     PDFObjectParser2.prototype.parseName = function() {
-      this.bytes.assertNext(CharCodes$1.ForwardSlash);
+      this.bytes.assertNext(CharCodes.ForwardSlash);
       var name = "";
       while (!this.bytes.done()) {
         var byte = this.bytes.peek();
@@ -13651,31 +13657,31 @@ var PDFObjectParser = (
       return PDFName.of(name);
     };
     PDFObjectParser2.prototype.parseArray = function() {
-      this.bytes.assertNext(CharCodes$1.LeftSquareBracket);
+      this.bytes.assertNext(CharCodes.LeftSquareBracket);
       this.skipWhitespaceAndComments();
       var pdfArray = PDFArray.withContext(this.context);
-      while (this.bytes.peek() !== CharCodes$1.RightSquareBracket) {
+      while (this.bytes.peek() !== CharCodes.RightSquareBracket) {
         var element = this.parseObject();
         pdfArray.push(element);
         this.skipWhitespaceAndComments();
       }
-      this.bytes.assertNext(CharCodes$1.RightSquareBracket);
+      this.bytes.assertNext(CharCodes.RightSquareBracket);
       return pdfArray;
     };
     PDFObjectParser2.prototype.parseDict = function() {
-      this.bytes.assertNext(CharCodes$1.LessThan);
-      this.bytes.assertNext(CharCodes$1.LessThan);
+      this.bytes.assertNext(CharCodes.LessThan);
+      this.bytes.assertNext(CharCodes.LessThan);
       this.skipWhitespaceAndComments();
       var dict = /* @__PURE__ */ new Map();
-      while (!this.bytes.done() && this.bytes.peek() !== CharCodes$1.GreaterThan && this.bytes.peekAhead(1) !== CharCodes$1.GreaterThan) {
+      while (!this.bytes.done() && this.bytes.peek() !== CharCodes.GreaterThan && this.bytes.peekAhead(1) !== CharCodes.GreaterThan) {
         var key = this.parseName();
         var value = this.parseObject();
         dict.set(key, value);
         this.skipWhitespaceAndComments();
       }
       this.skipWhitespaceAndComments();
-      this.bytes.assertNext(CharCodes$1.GreaterThan);
-      this.bytes.assertNext(CharCodes$1.GreaterThan);
+      this.bytes.assertNext(CharCodes.GreaterThan);
+      this.bytes.assertNext(CharCodes.GreaterThan);
       var Type = dict.get(PDFName.of("Type"));
       if (Type === PDFName.of("Catalog")) {
         return PDFCatalog.fromMapWithContext(dict, this.context);
@@ -13967,7 +13973,7 @@ var PDFParser = (
       while (!this.bytes.done()) {
         if (this.matchKeyword(Keywords.header)) {
           var major2 = this.parseRawInt();
-          this.bytes.assertNext(CharCodes$1.Period);
+          this.bytes.assertNext(CharCodes.Period);
           var minor2 = this.parseRawInt();
           var header = PDFHeader.forVersion(major2, minor2);
           this.skipBinaryHeaderComment();
@@ -14108,9 +14114,9 @@ var PDFParser = (
         var secondInt = this.parseRawInt();
         this.skipWhitespaceAndComments();
         var byte = this.bytes.peek();
-        if (byte === CharCodes$1.n || byte === CharCodes$1.f) {
+        if (byte === CharCodes.n || byte === CharCodes.f) {
           var ref = PDFRef.of(objectNumber, secondInt);
-          if (this.bytes.next() === CharCodes$1.n) {
+          if (this.bytes.next() === CharCodes.n) {
             xref.addEntry(ref, firstInt);
           } else {
             xref.addDeletedEntry(ref, firstInt);
@@ -14175,7 +14181,7 @@ var PDFParser = (
       while (!this.bytes.done()) {
         var initialOffset = this.bytes.offset();
         var byte = this.bytes.peek();
-        var isAlphaNumeric = byte >= CharCodes$1.Space && byte <= CharCodes$1.Tilde;
+        var isAlphaNumeric = byte >= CharCodes.Space && byte <= CharCodes.Tilde;
         if (isAlphaNumeric) {
           if (this.matchKeyword(Keywords.xref) || this.matchKeyword(Keywords.trailer) || this.matchKeyword(Keywords.startxref) || this.matchIndirectObjectHeader()) {
             this.bytes.moveTo(initialOffset);
@@ -19284,6 +19290,7 @@ function mapRowToDoctorProfile(row) {
     id: row.id,
     userId: row.user_id,
     fullName: row.full_name,
+    email: row.email,
     phoneNumber: row.phone_number,
     address: row.address,
     speciality: row.speciality,
@@ -19291,19 +19298,20 @@ function mapRowToDoctorProfile(row) {
     pdfPath: row.pdf_path
   };
 }
-async function createDoctorProfile(userId, fullName, speciality, phoneNumber, address) {
+async function createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email) {
   try {
     console.log("creating doctor profile in db");
     const db2 = getDatabase();
     const stmt = db2.prepare(`
-            INSERT INTO doctor_profile (user_id, full_name, phone_number, address, speciality, has_completed_profile)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO doctor_profile (user_id, full_name, email, phone_number, address, speciality, has_completed_profile)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
-    const result = stmt.run(userId, fullName, phoneNumber, address, speciality, 1);
+    const result = stmt.run(userId, fullName, email, phoneNumber, address, speciality, 1);
     const doctor = {
       id: result.lastInsertRowid,
       userId,
       fullName,
+      email,
       phoneNumber,
       address,
       speciality,
@@ -19366,6 +19374,10 @@ function addPrescription(userId, patientId, medicineName, dosage, frequency, dur
     return { status: "fail", message: error2.message };
   }
 }
+function getCenteredX(text, font, fontSize, pageWidth) {
+  const textWidth = font.widthOfTextAtSize(text, fontSize);
+  return (pageWidth - textWidth) / 2;
+}
 async function fillTemplate(doctor) {
   try {
     const existingPdfBytes = await fs$2.readFile(TEMPLATE_PATH);
@@ -19373,32 +19385,41 @@ async function fillTemplate(doctor) {
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const { width, height } = firstPage.getSize();
-    firstPage.drawText(doctor.fullName, {
-      x: 175,
-      y: height - 55,
+    const fullNameText = `Dr: ${doctor.fullName}`;
+    firstPage.drawText(fullNameText, {
+      x: getCenteredX(fullNameText, helveticaFontBold, 20, width),
+      y: height - 54,
       size: 20,
-      font: helveticaFont,
+      font: helveticaFontBold,
       color: rgb(0, 0, 0)
     });
     firstPage.drawText(doctor.speciality, {
-      x: 360,
-      y: height - 55,
+      x: getCenteredX(doctor.speciality, helveticaFontBold, 13, width),
+      y: height - 78,
       size: 13,
-      font: helveticaFont,
+      font: helveticaFontBold,
       color: rgb(0, 0, 0)
     });
     firstPage.drawText(doctor.phoneNumber, {
-      x: 100,
-      y: height - 85,
-      size: 13,
+      x: 91,
+      y: height - 127,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    });
+    firstPage.drawText(doctor.email, {
+      x: 240,
+      y: height - 127,
+      size: 10,
       font: helveticaFont,
       color: rgb(0, 0, 0)
     });
     firstPage.drawText(doctor.address, {
-      x: 430,
-      y: height - 85,
-      size: 13,
+      x: 412,
+      y: height - 127,
+      size: 10,
       font: helveticaFont,
       color: rgb(0, 0, 0)
     });
@@ -23171,11 +23192,19 @@ const TOKEN_PATH = path$1.join(app.getPath("userData"), "token.enc");
 async function createUser(user) {
   try {
     const db2 = getDatabase();
-    const stmt = db2.prepare(`
+    const stmt1 = db2.prepare(`
+            SELECT * FROM users WHERE full_name = ?
+        `);
+    const result1 = stmt1.get(user.fullName);
+    if (result1) {
+      return { status: "fail", message: "Nom d'utilisateur déjà existant" };
+    }
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+    const stmt2 = db2.prepare(`
             INSERT INTO users (full_name, password, role)
             VALUES (?, ?, ?)
         `);
-    const result = stmt.run(user.fullName, user.password, user.role);
+    const result = stmt2.run(user.fullName, hashedPassword, user.role);
     return {
       status: "success",
       data: {
@@ -23188,14 +23217,19 @@ async function createUser(user) {
     return { status: "fail", message: error2.message };
   }
 }
-function login(fullName, password, stayLogged) {
+async function login(fullName, password, stayLogged) {
   try {
     const db2 = getDatabase();
     const stmt = db2.prepare(`
-            SELECT * FROM users WHERE full_name = ? AND password = ?
+            SELECT * FROM users WHERE full_name = ?
         `);
-    const result = stmt.get(fullName, password);
+    const result = stmt.get(fullName);
     if (!result) {
+      return { status: "fail", message: "Nom d'utilisateur ou mot de passe incorrect" };
+    }
+    const hashedPassword = result.password;
+    const isValid = await bcrypt.compare(password, hashedPassword);
+    if (!isValid) {
       return { status: "fail", message: "Nom d'utilisateur ou mot de passe incorrect" };
     }
     const payload = {
@@ -23319,7 +23353,7 @@ app.whenReady().then(() => {
   ipcMain.handle("upload-document", async (_event, document) => await uploadDocument(document));
   ipcMain.handle("delete-document", async (_event, id) => deleteDocument(id));
   ipcMain.handle("open-document", async (_event, path2) => await openDocument(path2));
-  ipcMain.handle("create-doctor-profile", async (_event, userId, fullName, speciality, phoneNumber, address) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address));
+  ipcMain.handle("create-doctor-profile", async (_event, userId, fullName, speciality, phoneNumber, address, email) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle("get-doctor-profile", async (_event, userId) => getDoctorProfileByUserId(userId));
   ipcMain.handle("set-prescription-pdf", async (_event, doctorId, pdfPath) => await setPrescriptionPdf(doctorId));
   ipcMain.handle("add-prescription", async (_event, userId, patientId, medicineName, dosage, frequency, duration) => await addPrescription(userId, patientId, medicineName, dosage, frequency, duration));

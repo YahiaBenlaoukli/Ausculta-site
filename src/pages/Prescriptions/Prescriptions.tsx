@@ -133,16 +133,17 @@ export default function Prescriptions() {
     };
 
     /* ── Create doctor profile ── */
-    const handleCreateProfile = async (form: { fullName: string; speciality: string; phoneNumber: string; address: string }) => {
+    const handleCreateProfile = async (form: { fullName: string; speciality: string; phoneNumber: string; address: string; email: string }) => {
         try {
-            console.log("creating doctor profile", currentUserId, form.fullName, form.speciality, form.phoneNumber, form.address)
+            console.log("creating doctor profile", currentUserId, form.fullName, form.speciality, form.phoneNumber, form.address, form.email)
             const result = await window.ipcRenderer.invoke(
                 'create-doctor-profile',
                 currentUserId,
                 form.fullName,
                 form.speciality,
                 form.phoneNumber,
-                form.address
+                form.address,
+                form.email
             );
             if (result.status === 'success') {
                 setDoctorProfile(result.data);
@@ -311,7 +312,11 @@ export default function Prescriptions() {
                                     <p className="text-xs text-navy/40">{doctorProfile.speciality}</p>
                                 </div>
                             </div>
-                            <div className="border-t border-navy/[0.06] pt-2 grid grid-cols-2 gap-2">
+                            <div className="border-t border-navy/[0.06] pt-2 grid grid-cols-3 gap-2">
+                                <div>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">Email</span>
+                                    <p className="text-xs text-navy/60">{doctorProfile.email}</p>
+                                </div>
                                 <div>
                                     <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">Téléphone</span>
                                     <p className="text-xs text-navy/60">{doctorProfile.phoneNumber}</p>
@@ -362,11 +367,24 @@ export default function Prescriptions() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-navy">Dr. {doctorProfile.fullName}</p>
-                                <p className="text-xs text-navy/40">{doctorProfile.speciality} • {doctorProfile.phoneNumber}</p>
+                                <p className="text-xs text-navy/40">{doctorProfile.speciality} • {doctorProfile.email} • {doctorProfile.phoneNumber}</p>
                             </div>
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold">
-                                {icons.check}
-                                <span>PDF configuré</span>
+                            <div className="flex items-center gap-2">
+                                {doctorProfile.pdfPath && (
+                                    <button
+                                        onClick={() => (window as any).ipcRenderer.openDocument(doctorProfile.pdfPath)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-navy/[0.04] text-navy/60 text-xs font-semibold hover:bg-navy/[0.08] hover:text-navy transition-all duration-200 cursor-pointer"
+                                    >
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                        <span>Voir l'ordonnance</span>
+                                    </button>
+                                )}
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold">
+                                    {icons.check}
+                                    <span>PDF configuré</span>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -499,13 +517,14 @@ function CreateProfileModal({
     onSave,
 }: {
     onClose: () => void;
-    onSave: (form: { fullName: string; speciality: string; phoneNumber: string; address: string }) => void;
+    onSave: (form: { fullName: string; speciality: string; phoneNumber: string; address: string; email: string }) => void;
 }) {
     const [form, setForm] = useState({
         fullName: '',
         speciality: '',
         phoneNumber: '',
         address: '',
+        email: '',
     });
     const [phoneError, setPhoneError] = useState('');
 
@@ -571,6 +590,17 @@ function CreateProfileModal({
                             value={form.fullName}
                             onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
                             placeholder="Dr. Mohammed Benali"
+                            className={inputClass}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">Email</label>
+                        <input
+                            type="email"
+                            value={form.email}
+                            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                            placeholder="dr.benali@example.com"
                             className={inputClass}
                         />
                     </div>

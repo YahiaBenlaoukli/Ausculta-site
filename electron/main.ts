@@ -83,7 +83,7 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-document', async (_event, id) => deleteDocument(id));
   ipcMain.handle('open-document', async (_event, path) => await openDocument(path));
   //gestion profil médecin
-  ipcMain.handle('create-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address));
+  ipcMain.handle('create-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address, email) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle('get-doctor-profile', async (_event, userId) => getDoctorProfileByUserId(userId));
   ipcMain.handle('set-prescription-pdf', async (_event, doctorId, pdfPath) => await setPrescriptionPdf(doctorId, pdfPath));
   //gestion des prescriptions

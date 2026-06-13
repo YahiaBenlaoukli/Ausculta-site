@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
+import bcrypt from "bcrypt";
 
 // Load .env from the electron directory (__dirname equivalent for ESM)
 const __authDirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,11 +18,19 @@ const TOKEN_PATH = path.join(app.getPath("userData"), "token.enc");
 export async function createUser(user: Omit<User, "id" | "createdAt" | "updatedAt">) {
     try {
         const db = getDatabase();
-        const stmt = db.prepare(`
+        const stmt1 = db.prepare(`
+            SELECT * FROM users WHERE full_name = ?
+        `);
+        const result1 = stmt1.get(user.fullName) as Record<string, unknown> | undefined;
+        if (result1) {
+            return { status: "fail", message: "Nom d'utilisateur déjà existant" };
+        }
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+        const stmt2 = db.prepare(`
             INSERT INTO users (full_name, password, role)
             VALUES (?, ?, ?)
         `);
-        const result = stmt.run(user.fullName, user.password, user.role);
+        const result = stmt2.run(user.fullName, hashedPassword, user.role);
         return {
             status: "success",
             data: {
@@ -35,14 +44,19 @@ export async function createUser(user: Omit<User, "id" | "createdAt" | "updatedA
     }
 }
 
-export function login(fullName: string, password: string, stayLogged: boolean) {
+export async function login(fullName: string, password: string, stayLogged: boolean) {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
-            SELECT * FROM users WHERE full_name = ? AND password = ?
+            SELECT * FROM users WHERE full_name = ?
         `);
-        const result = stmt.get(fullName, password) as Record<string, unknown> | undefined;
+        const result = stmt.get(fullName) as Record<string, unknown> | undefined;
         if (!result) {
+            return { status: "fail", message: "Nom d'utilisateur ou mot de passe incorrect" };
+        }
+        const hashedPassword = result.password as string;
+        const isValid = await bcrypt.compare(password, hashedPassword);
+        if (!isValid) {
             return { status: "fail", message: "Nom d'utilisateur ou mot de passe incorrect" };
         }
 

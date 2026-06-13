@@ -16,6 +16,7 @@ function mapRowToDoctorProfile(row: Record<string, unknown>): DoctorProfile {
         id: row.id as number,
         userId: row.user_id as number,
         fullName: row.full_name as string,
+        email: row.email as string,
         phoneNumber: row.phone_number as string,
         address: row.address as string,
         speciality: row.speciality as string,
@@ -24,20 +25,21 @@ function mapRowToDoctorProfile(row: Record<string, unknown>): DoctorProfile {
     };
 }
 
-export async function createDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string) {
+export async function createDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) {
     try {
         console.log("creating doctor profile in db");
         const db = getDatabase();
         const stmt = db.prepare(`
-            INSERT INTO doctor_profile (user_id, full_name, phone_number, address, speciality, has_completed_profile)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO doctor_profile (user_id, full_name, email, phone_number, address, speciality, has_completed_profile)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
-        const result = stmt.run(userId, fullName, phoneNumber, address, speciality, 1);
+        const result = stmt.run(userId, fullName, email, phoneNumber, address, speciality, 1);
 
         const doctor: DoctorProfile = {
             id: result.lastInsertRowid as number,
             userId,
             fullName,
+            email,
             phoneNumber,
             address,
             speciality,
@@ -114,6 +116,11 @@ export function addPrescription(userId: number, patientId: number, medicineName:
     }
 }
 
+function getCenteredX(text: string, font: import("pdf-lib").PDFFont, fontSize: number, pageWidth: number): number {
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+    return (pageWidth - textWidth) / 2;
+}
+
 async function fillTemplate(
     doctor: DoctorProfile
 ): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
@@ -124,33 +131,42 @@ async function fillTemplate(
         const pages = pdfDoc.getPages();
         const firstPage = pages[0];
         const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const helveticaFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const { width, height } = firstPage.getSize();
 
-        firstPage.drawText(doctor.fullName, {
-            x: 175,
-            y: height - 55,
+        const fullNameText = `Dr: ${doctor.fullName}`;
+        firstPage.drawText(fullNameText, {
+            x: getCenteredX(fullNameText, helveticaFontBold, 20, width),
+            y: height - 54,
             size: 20,
-            font: helveticaFont,
+            font: helveticaFontBold,
             color: rgb(0, 0, 0),
         });
         firstPage.drawText(doctor.speciality, {
-            x: 360,
-            y: height - 55,
+            x: getCenteredX(doctor.speciality, helveticaFontBold, 13, width),
+            y: height - 78,
             size: 13,
-            font: helveticaFont,
+            font: helveticaFontBold,
             color: rgb(0, 0, 0),
         });
         firstPage.drawText(doctor.phoneNumber, {
-            x: 100,
-            y: height - 85,
-            size: 13,
+            x: 91,
+            y: height - 127,
+            size: 10,
             font: helveticaFont,
             color: rgb(0, 0, 0),
         });
+        firstPage.drawText(doctor.email, {
+            x: 240,
+            y: height - 127,
+            size: 10,
+            font: helveticaFont,
+            color: rgb(0, 0, 0)
+        })
         firstPage.drawText(doctor.address, {
-            x: 430,
-            y: height - 85,
-            size: 13,
+            x: 412,
+            y: height - 127,
+            size: 10,
             font: helveticaFont,
             color: rgb(0, 0, 0),
         });

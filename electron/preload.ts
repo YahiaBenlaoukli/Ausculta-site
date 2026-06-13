@@ -37,7 +37,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   deleteDocument: (id: number) => ipcRenderer.invoke('delete-document', id),
   openDocument: (path: string) => ipcRenderer.invoke('open-document', path),
   //gestion profil médecin
-  createDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string) => ipcRenderer.invoke('create-doctor-profile', userId, fullName, speciality, phoneNumber, address),
+  createDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('create-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
   getDoctorProfile: (userId: number) => ipcRenderer.invoke('get-doctor-profile', userId),
   setPrescriptionPdf: (doctorId: number, pdfPath: string) => ipcRenderer.invoke('set-prescription-pdf', doctorId, pdfPath),
   //gestion des prescriptions

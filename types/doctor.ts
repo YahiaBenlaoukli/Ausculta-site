@@ -2,6 +2,7 @@ export type DoctorProfile = {
     id: number;
     userId: number;
     fullName: string;
+    email: string;
     phoneNumber: string;
     address: string;
     speciality: string;
