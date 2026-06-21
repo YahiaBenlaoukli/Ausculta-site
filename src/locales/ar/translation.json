@@ -184,8 +184,42 @@
       "error_creation": "خطأ أثناء إنشاء الحساب",
       "success": "تم إنشاء الحساب بنجاح!"
     },
-    "show_password": "إظهار كلمة المرور",
+    "show_password": "عرض كلمة المرور",
     "hide_password": "إخفاء كلمة المرور",
     "footer": "Ausculta © {{year}} — العيادة الطبية"
+  },
+  "appointments": {
+    "title": "المواعيد",
+    "subtitle": "إدارة تقويم المواعيد والحجوزات لعيادتك.",
+    "planning_day": "جدول اليوم",
+    "loading": "جاري التحميل...",
+    "new_appointment": "موعد جديد",
+    "new_appointment_subtitle": "يرجى ملء معلومات الموعد.",
+    "date_label": "تاريخ الموعد",
+    "slot_label": "الوقت",
+    "patient_label": "المريض",
+    "patient_search_placeholder": "البحث عن مريض بالاسم...",
+    "patient_not_found": "لم يتم العثور على أي مريض",
+    "reason_label": "سبب الموعد",
+    "reason_placeholder": "مثال: فحص عام، متابعة ضغط الدم...",
+    "duration_label": "المدة المقدرة",
+    "duration_minutes": "{{count}} دقيقة",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "success_message": "تم تسجيل الموعد بنجاح",
+    "confirm_delete": "هل تريد حذف هذا الموعد نهائياً؟",
+    "modifier": "تعديل",
+    "status": {
+      "scheduled": "مجدول",
+      "completed": "مكتمل",
+      "cancelled": "ملغى",
+      "no_show": "غائب"
+    },
+    "actions": {
+      "complete": "إكمال",
+      "cancel": "إلغاء",
+      "delete": "حذف"
+    },
+    "book_button": "حجز موعد"
   }
 }

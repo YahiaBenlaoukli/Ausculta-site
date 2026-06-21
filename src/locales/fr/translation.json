@@ -187,5 +187,39 @@
     "show_password": "Afficher le mot de passe",
     "hide_password": "Masquer le mot de passe",
     "footer": "Ausculta © {{year}} — Cabinet médical"
+  },
+  "appointments": {
+    "title": "Rendez-vous",
+    "subtitle": "Gérez le calendrier et les réservations de votre cabinet.",
+    "planning_day": "Planning de la journée",
+    "loading": "Chargement...",
+    "new_appointment": "Nouveau rendez-vous",
+    "new_appointment_subtitle": "Remplissez les informations du rendez-vous.",
+    "date_label": "Date du RDV",
+    "slot_label": "Créneau",
+    "patient_label": "Patient",
+    "patient_search_placeholder": "Rechercher un patient par son nom...",
+    "patient_not_found": "Aucun patient trouvé",
+    "reason_label": "Motif du rendez-vous",
+    "reason_placeholder": "Ex: Consultation générale, Suivi de tension...",
+    "duration_label": "Durée estimée",
+    "duration_minutes": "{{count}} minutes",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "success_message": "Rendez-vous enregistré avec succès",
+    "confirm_delete": "Voulez-vous supprimer définitivement ce rendez-vous ?",
+    "modifier": "Modifier",
+    "status": {
+      "scheduled": "Prévu",
+      "completed": "Complété",
+      "cancelled": "Annulé",
+      "no_show": "Absent"
+    },
+    "actions": {
+      "complete": "Complété",
+      "cancel": "Annuler",
+      "delete": "Supprimer"
+    },
+    "book_button": "Prendre un rendez-vous"
   }
 }

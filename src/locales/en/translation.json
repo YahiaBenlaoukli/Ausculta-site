@@ -187,5 +187,39 @@
     "show_password": "Show password",
     "hide_password": "Hide password",
     "footer": "Ausculta © {{year}} — Medical clinic"
+  },
+  "appointments": {
+    "title": "Appointments",
+    "subtitle": "Manage your cabinet's calendar and bookings.",
+    "planning_day": "Day Schedule",
+    "loading": "Loading...",
+    "new_appointment": "New Appointment",
+    "new_appointment_subtitle": "Fill in the appointment information.",
+    "date_label": "Date of Appt",
+    "slot_label": "Slot",
+    "patient_label": "Patient",
+    "patient_search_placeholder": "Search patient by name...",
+    "patient_not_found": "No patient found",
+    "reason_label": "Reason for Appointment",
+    "reason_placeholder": "E.g. General check-up, Blood pressure monitoring...",
+    "duration_label": "Estimated Duration",
+    "duration_minutes": "{{count}} minutes",
+    "cancel": "Cancel",
+    "save": "Save",
+    "success_message": "Appointment successfully booked",
+    "confirm_delete": "Do you want to permanently delete this appointment?",
+    "modifier": "Modify",
+    "status": {
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "no_show": "Absent"
+    },
+    "actions": {
+      "complete": "Complete",
+      "cancel": "Cancel",
+      "delete": "Delete"
+    },
+    "book_button": "Book an appointment"
   }
 }

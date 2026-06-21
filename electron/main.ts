@@ -6,6 +6,7 @@ import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, s
 import { uploadDocument, getDocumentsByPatientId, getAllDocuments, deleteDocument, openDocument } from './services/documents'
 import { addPrescription, getPrescriptionById, getPatientPrescriptions, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, setPrescriptionPdf, generatePatientPrescriptionPDF } from './services/prescription'
 import { createUser, login, checkAuth, logout } from './services/auth'
+import { getAllAppointments, bookAppoitment, cancelAppointment, deleteAppointment, updateAppointment, getAppointmentsByDay, getAppointmentsByPatientId, getAppointmentsByDateRange } from './services/appointments'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -102,5 +103,15 @@ app.whenReady().then(() => {
   ipcMain.handle('login', async (_event, phoneNumber, password, stayLogged) => login(phoneNumber, password, stayLogged));
   ipcMain.handle('check-auth', async () => checkAuth());
   ipcMain.handle('logout', async () => logout());
+  
+  //gestion des rendez-vous
+  ipcMain.handle('get-all-appointments', async (_event, doctorId, date) => getAllAppointments(doctorId, date));
+  ipcMain.handle('book-appointment', async (_event, patientId, doctorId, datetime, duration, reason) => bookAppoitment(patientId, doctorId, datetime, duration, reason));
+  ipcMain.handle('cancel-appointment', async (_event, id) => cancelAppointment(id));
+  ipcMain.handle('delete-appointment', async (_event, id) => deleteAppointment(id));
+  ipcMain.handle('update-appointment', async (_event, id, status) => updateAppointment(id, status));
+  ipcMain.handle('get-appointments-by-day', async (_event, doctorId, date) => getAppointmentsByDay(doctorId, date));
+  ipcMain.handle('get-appointments-by-patient-id', async (_event, patientId) => getAppointmentsByPatientId(patientId));
+  ipcMain.handle('get-appointments-by-date-range', async (_event, doctorId, startDate, endDate) => getAppointmentsByDateRange(doctorId, startDate, endDate));
   createWindow();
 })

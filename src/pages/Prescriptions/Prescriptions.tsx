@@ -68,12 +68,6 @@ const icons = {
     ),
 };
 
-function formatDate(dateStr: string) {
-    if (!dateStr) return '—';
-    try {
-        return new Date(dateStr).toLocaleDateString('fr', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch { return dateStr; }
-}
 
 function formatDateGroup(dateStr: string) {
     if (!dateStr) return '—';

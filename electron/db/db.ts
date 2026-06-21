@@ -136,7 +136,20 @@ export function initializeDatabase(): Database.Database {
   } catch (error) {
     console.error("Failed to auto-link existing prescriptions to documents:", error);
   }
+  syncMissedAppointments();
   return db;
+}
+
+function syncMissedAppointments() {
+  try {
+    const db = getDatabase();
+    const stmt = db.prepare(`UPDATE appointments SET status = 'Cancelled' WHERE appointment_datetime < ? AND status = 'Scheduled'`);
+    const result = stmt.run(new Date().toISOString());
+    return result;
+  } catch (error) {
+    console.error("syncMissedAppointments error:", error);
+    return { status: "fail", message: (error as Error).message };
+  }
 }
 
 export function getDatabase(): Database.Database {

@@ -62,5 +62,15 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   //Patient prescription
   generatePatientPrescriptionPDF: (patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string) => ipcRenderer.invoke('generate-patient-prescription-pdf', patientId, prescriptions, doctor, weight),
 
+  //gestion des rendez-vous
+  getAllAppointments: (doctorId: number, date: string) => ipcRenderer.invoke('get-all-appointments', doctorId, date),
+  bookAppointment: (patientId: number, doctorId: number, datetime: string, duration?: number, reason?: string) => ipcRenderer.invoke('book-appointment', patientId, doctorId, datetime, duration, reason),
+  cancelAppointment: (id: number) => ipcRenderer.invoke('cancel-appointment', id),
+  deleteAppointment: (id: number) => ipcRenderer.invoke('delete-appointment', id),
+  updateAppointment: (id: number, status: string) => ipcRenderer.invoke('update-appointment', id, status),
+  getAppointmentsByDay: (doctorId: number, date: string) => ipcRenderer.invoke('get-appointments-by-day', doctorId, date),
+  getAppointmentsByPatientId: (patientId: number) => ipcRenderer.invoke('get-appointments-by-patient-id', patientId),
+  getAppointmentsByDateRange: (doctorId: number, startDate: string, endDate: string) => ipcRenderer.invoke('get-appointments-by-date-range', doctorId, startDate, endDate),
+
 
 })

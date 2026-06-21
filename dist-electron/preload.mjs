@@ -50,5 +50,14 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   checkAuth: () => electron.ipcRenderer.invoke("check-auth"),
   logout: () => electron.ipcRenderer.invoke("logout"),
   //Patient prescription
-  generatePatientPrescriptionPDF: (patientId, prescriptions, doctor, weight) => electron.ipcRenderer.invoke("generate-patient-prescription-pdf", patientId, prescriptions, doctor, weight)
+  generatePatientPrescriptionPDF: (patientId, prescriptions, doctor, weight) => electron.ipcRenderer.invoke("generate-patient-prescription-pdf", patientId, prescriptions, doctor, weight),
+  //gestion des rendez-vous
+  getAllAppointments: (doctorId, date) => electron.ipcRenderer.invoke("get-all-appointments", doctorId, date),
+  bookAppointment: (patientId, doctorId, datetime, duration, reason) => electron.ipcRenderer.invoke("book-appointment", patientId, doctorId, datetime, duration, reason),
+  cancelAppointment: (id) => electron.ipcRenderer.invoke("cancel-appointment", id),
+  deleteAppointment: (id) => electron.ipcRenderer.invoke("delete-appointment", id),
+  updateAppointment: (id, status) => electron.ipcRenderer.invoke("update-appointment", id, status),
+  getAppointmentsByDay: (doctorId, date) => electron.ipcRenderer.invoke("get-appointments-by-day", doctorId, date),
+  getAppointmentsByPatientId: (patientId) => electron.ipcRenderer.invoke("get-appointments-by-patient-id", patientId),
+  getAppointmentsByDateRange: (doctorId, startDate, endDate) => electron.ipcRenderer.invoke("get-appointments-by-date-range", doctorId, startDate, endDate)
 });

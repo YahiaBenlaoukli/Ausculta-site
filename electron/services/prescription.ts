@@ -426,7 +426,7 @@ async function fillPatientPrescriptionTemplate(
     }
 }
 
-function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBold: PDFFont, helveticaFont: PDFFont, width: number, height: number, weight?: string) {
+function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBold: PDFFont, helveticaFont: PDFFont, _width: number, height: number, weight?: string) {
     const dayOfConsultationText = new Date().toLocaleDateString('en-GB');
     page.drawText(dayOfConsultationText, {
         x: 67,
@@ -468,7 +468,7 @@ function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBo
     }
 }
 
-function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveticaFontBold: PDFFont, helveticaFont: PDFFont, width: number, height: number) {
+function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveticaFontBold: PDFFont, helveticaFont: PDFFont, _width: number, height: number) {
     const startX = 30;
     let currentY = height - 315;
     const lineSpacing = 15;
