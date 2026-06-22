@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initializeDatabase } from './db/db'
@@ -7,6 +7,7 @@ import { uploadDocument, getDocumentsByPatientId, getAllDocuments, deleteDocumen
 import { addPrescription, getPrescriptionById, getPatientPrescriptions, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, setPrescriptionPdf, generatePatientPrescriptionPDF } from './services/prescription'
 import { createUser, login, checkAuth, logout } from './services/auth'
 import { getAllAppointments, bookAppoitment, cancelAppointment, deleteAppointment, updateAppointment, getAppointmentsByDay, getAppointmentsByPatientId, getAppointmentsByDateRange } from './services/appointments'
+import { getFinancalStatistics, getAppointmentStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -103,7 +104,7 @@ app.whenReady().then(() => {
   ipcMain.handle('login', async (_event, phoneNumber, password, stayLogged) => login(phoneNumber, password, stayLogged));
   ipcMain.handle('check-auth', async () => checkAuth());
   ipcMain.handle('logout', async () => logout());
-  
+
   //gestion des rendez-vous
   ipcMain.handle('get-all-appointments', async (_event, doctorId, date) => getAllAppointments(doctorId, date));
   ipcMain.handle('book-appointment', async (_event, patientId, doctorId, datetime, duration, reason) => bookAppoitment(patientId, doctorId, datetime, duration, reason));
@@ -113,5 +114,12 @@ app.whenReady().then(() => {
   ipcMain.handle('get-appointments-by-day', async (_event, doctorId, date) => getAppointmentsByDay(doctorId, date));
   ipcMain.handle('get-appointments-by-patient-id', async (_event, patientId) => getAppointmentsByPatientId(patientId));
   ipcMain.handle('get-appointments-by-date-range', async (_event, doctorId, startDate, endDate) => getAppointmentsByDateRange(doctorId, startDate, endDate));
+
+  //gestion des statistiques
+  ipcMain.handle('get-financial-statistics', async (_event, startDate, endDate, appointmentPrice) => getFinancalStatistics(startDate, endDate, appointmentPrice));
+  ipcMain.handle('get-appointment-statistics', async (_event, startDate, endDate, appointmentPrice) => getAppointmentStatistics(startDate, endDate, appointmentPrice));
+  ipcMain.handle('get-noshow-rate', async (_event, startDate, endDate) => getNoShowRate(startDate, endDate));
+  ipcMain.handle('get-consultation-volume', async (_event, startDate, endDate) => getConsultationVolume(startDate, endDate));
+
   createWindow();
 })

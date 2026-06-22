@@ -143,7 +143,7 @@ export function initializeDatabase(): Database.Database {
 function syncMissedAppointments() {
   try {
     const db = getDatabase();
-    const stmt = db.prepare(`UPDATE appointments SET status = 'Cancelled' WHERE appointment_datetime < ? AND status = 'Scheduled'`);
+    const stmt = db.prepare(`UPDATE appointments SET status = 'No-Show' WHERE appointment_datetime < ? AND status = 'Scheduled'`);
     const result = stmt.run(new Date().toISOString());
     return result;
   } catch (error) {

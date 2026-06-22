@@ -221,5 +221,59 @@
       "delete": "Delete"
     },
     "book_button": "Book an appointment"
+  },
+  "statistics": {
+    "title": "Statistics & Analytics",
+    "welcome": "Monitor medical activity, attendance rates, and financial performance.",
+    "loading": "Loading data...",
+    "filters": {
+      "price": "Appt Price"
+    },
+    "ranges": {
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year",
+      "all": "All"
+    },
+    "metrics": {
+      "completed": "Consultations",
+      "completed_sub": "Successfully completed consultations",
+      "revenue": "Estimated Revenue",
+      "revenue_sub": "Estimated total fees generated",
+      "noshow": "No-Show Rate",
+      "absents": "absent",
+      "noshow_sub": "Ratio of patients who missed their appointment",
+      "cancelled": "Cancelled Appts",
+      "cancelled_sub": "Cancelled or rescheduled appointments"
+    },
+    "charts": {
+      "volume_title": "Consultations Volume",
+      "volume_subtitle": "Trends by month",
+      "no_data": "No consultation data for this period.",
+      "legend_total": "Total Appts",
+      "legend_completed": "Completed",
+      "distribution_title": "Appointments Distribution",
+      "total": "Total Appts"
+    },
+    "table": {
+      "top_absents_title": "Most Absent Patients",
+      "top_absents_subtitle": "Patients with accumulated absences (No-Show) in this period.",
+      "badge_alert": "Follow Up",
+      "patient": "Patient",
+      "phone": "Phone Number",
+      "no_show_count": "Absences",
+      "intensity": "Severity",
+      "status": "Status",
+      "empty": "No absent patients in this period. Congratulations!",
+      "alert_critical": "Critical",
+      "alert_warn": "Warned"
+    },
+    "status": {
+      "completed": "Completed",
+      "scheduled": "Scheduled",
+      "cancelled": "Cancelled",
+      "no_show": "No-Show",
+      "none": "No Data"
+    }
   }
 }

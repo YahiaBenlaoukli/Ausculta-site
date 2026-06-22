@@ -140,7 +140,7 @@ function initializeDatabase() {
 function syncMissedAppointments() {
   try {
     const db2 = getDatabase();
-    const stmt = db2.prepare(`UPDATE appointments SET status = 'Cancelled' WHERE appointment_datetime < ? AND status = 'Scheduled'`);
+    const stmt = db2.prepare(`UPDATE appointments SET status = 'No-Show' WHERE appointment_datetime < ? AND status = 'Scheduled'`);
     const result = stmt.run((/* @__PURE__ */ new Date()).toISOString());
     return result;
   } catch (error2) {
@@ -23745,6 +23745,116 @@ function getAppointmentsByDateRange(doctorId, startDate, endDate) {
     return [];
   }
 }
+function getFinancalStatistics(startDate, endDate, appointmentPrice = 2e3) {
+  try {
+    const db2 = getDatabase();
+    const stmt = db2.prepare(`
+            SELECT COUNT(*) AS total_completed
+            FROM appointments
+            WHERE status = 'Completed' AND appointment_datetime BETWEEN ? AND ?
+        `);
+    const result = stmt.get(startDate, endDate);
+    const total_completed = result ? result.total_completed : 0;
+    const total_revenue = total_completed * appointmentPrice;
+    return { total_completed, total_revenue };
+  } catch (error2) {
+    console.error("getFinancalStatistics error:", error2);
+    return { status: "fail", message: error2.message };
+  }
+}
+function getAppointmentStatistics(startDate, endDate, appointmentPrice = 2e3) {
+  try {
+    const db2 = getDatabase();
+    const stmt = db2.prepare(`SELECT 
+            (SELECT COUNT(*) FROM appointments WHERE status = 'Completed' AND appointment_datetime BETWEEN ? AND ?) AS total_completed,
+            (SELECT COUNT(*) FROM appointments WHERE status = 'No-Show' AND appointment_datetime BETWEEN ? AND ?) AS total_no_show,
+            (SELECT COUNT(*) FROM appointments WHERE status = 'Cancelled' AND appointment_datetime BETWEEN ? AND ?) AS total_cancelled,
+            (SELECT COUNT(*) FROM appointments WHERE status = 'Scheduled' AND appointment_datetime BETWEEN ? AND ?) AS total_scheduled,
+            (SELECT COUNT(*) FROM appointments WHERE appointment_datetime BETWEEN ? AND ?) AS total_appointments
+        `);
+    const result = stmt.get(
+      startDate,
+      endDate,
+      startDate,
+      endDate,
+      startDate,
+      endDate,
+      startDate,
+      endDate,
+      startDate,
+      endDate
+    );
+    if (!result) {
+      return {
+        total_completed: 0,
+        total_no_show: 0,
+        total_cancelled: 0,
+        total_scheduled: 0,
+        total_appointments: 0,
+        total_revenue: 0
+      };
+    }
+    return {
+      ...result,
+      total_revenue: result.total_completed * appointmentPrice
+    };
+  } catch (error2) {
+    console.error("getAppointmentStatistics error:", error2);
+    return { status: "fail", message: error2.message };
+  }
+}
+function getNoShowRate(startDate, endDate) {
+  try {
+    const db2 = getDatabase();
+    const countsStmt = db2.prepare(`SELECT 
+            (SELECT COUNT(*) FROM appointments WHERE status = 'No-Show' AND appointment_datetime BETWEEN ? AND ?) AS total_no_show,
+            (SELECT COUNT(*) FROM appointments WHERE appointment_datetime BETWEEN ? AND ?) AS total_appointments
+        `);
+    const counts = countsStmt.get(startDate, endDate, startDate, endDate);
+    const total_no_show = counts ? counts.total_no_show : 0;
+    const total_appointments = counts ? counts.total_appointments : 0;
+    const no_show_rate = total_appointments > 0 ? total_no_show / total_appointments * 100 : 0;
+    const topPatientsStmt = db2.prepare(`
+            SELECT p.id, p.full_name, p.phone_number, COUNT(a.id) AS no_show_count
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            WHERE a.status = 'No-Show' AND a.appointment_datetime BETWEEN ? AND ?
+            GROUP BY p.id
+            ORDER BY no_show_count DESC
+            LIMIT 5
+        `);
+    const top_no_show_patients = topPatientsStmt.all(startDate, endDate);
+    return {
+      total_no_show,
+      total_appointments,
+      no_show_rate,
+      top_no_show_patients
+    };
+  } catch (error2) {
+    console.error("getNoShowRate error:", error2);
+    return { status: "fail", message: error2.message };
+  }
+}
+function getConsultationVolume(startDate, endDate) {
+  try {
+    const db2 = getDatabase();
+    const stmt = db2.prepare(`
+            SELECT 
+                strftime('%Y-%m', appointment_datetime) AS month,
+                COUNT(*) AS total_appointments,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed_appointments
+            FROM appointments
+            WHERE appointment_datetime BETWEEN ? AND ?
+            GROUP BY month
+            ORDER BY month ASC
+        `);
+    const monthlyVolume = stmt.all(startDate, endDate);
+    return monthlyVolume;
+  } catch (error2) {
+    console.error("getConsultationVolume error:", error2);
+    return { status: "fail", message: error2.message };
+  }
+}
 const __dirname$1 = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
@@ -23817,6 +23927,10 @@ app.whenReady().then(() => {
   ipcMain.handle("get-appointments-by-day", async (_event, doctorId, date) => getAppointmentsByDay(doctorId, date));
   ipcMain.handle("get-appointments-by-patient-id", async (_event, patientId) => getAppointmentsByPatientId(patientId));
   ipcMain.handle("get-appointments-by-date-range", async (_event, doctorId, startDate, endDate) => getAppointmentsByDateRange(doctorId, startDate, endDate));
+  ipcMain.handle("get-financial-statistics", async (_event, startDate, endDate, appointmentPrice) => getFinancalStatistics(startDate, endDate, appointmentPrice));
+  ipcMain.handle("get-appointment-statistics", async (_event, startDate, endDate, appointmentPrice) => getAppointmentStatistics(startDate, endDate, appointmentPrice));
+  ipcMain.handle("get-noshow-rate", async (_event, startDate, endDate) => getNoShowRate(startDate, endDate));
+  ipcMain.handle("get-consultation-volume", async (_event, startDate, endDate) => getConsultationVolume(startDate, endDate));
   createWindow();
 });
 export {

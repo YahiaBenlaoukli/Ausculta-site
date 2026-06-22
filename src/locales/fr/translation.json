@@ -221,5 +221,59 @@
       "delete": "Supprimer"
     },
     "book_button": "Prendre un rendez-vous"
+  },
+  "statistics": {
+    "title": "Statistiques & Analyses",
+    "welcome": "Visualisez l'activité médicale, le taux de présence et la performance financière.",
+    "loading": "Chargement des données...",
+    "filters": {
+      "price": "Prix RDV"
+    },
+    "ranges": {
+      "month": "Mois",
+      "quarter": "Trimestre",
+      "year": "Année",
+      "all": "Tout"
+    },
+    "metrics": {
+      "completed": "Consultations",
+      "completed_sub": "Consultations terminées avec succès",
+      "revenue": "Revenus Estimés",
+      "revenue_sub": "Total estimé des honoraires",
+      "noshow": "Taux d'Absence",
+      "absents": "absents",
+      "noshow_sub": "Ratio des patients n'ayant pas honoré le RDV",
+      "cancelled": "RDV Annulés",
+      "cancelled_sub": "Rendez-vous annulés ou reportés"
+    },
+    "charts": {
+      "volume_title": "Volume des Consultations",
+      "volume_subtitle": "Évolution par mois",
+      "no_data": "Aucune donnée de consultation pour cette période.",
+      "legend_total": "Total RDV",
+      "legend_completed": "Complétés",
+      "distribution_title": "Distribution des RDV",
+      "total": "Total RDV"
+    },
+    "table": {
+      "top_absents_title": "Patients les Plus Absents",
+      "top_absents_subtitle": "Patients ayant cumulé des absences (No-Show) sur la période.",
+      "badge_alert": "A Suivre",
+      "patient": "Patient",
+      "phone": "Téléphone",
+      "no_show_count": "Absences",
+      "intensity": "Gravité",
+      "status": "Statut",
+      "empty": "Aucun patient absent sur cette période. Félicitations !",
+      "alert_critical": "Critique",
+      "alert_warn": "Averti"
+    },
+    "status": {
+      "completed": "Complété",
+      "scheduled": "Prévu",
+      "cancelled": "Annulé",
+      "no_show": "Absent",
+      "none": "Aucune donnée"
+    }
   }
 }

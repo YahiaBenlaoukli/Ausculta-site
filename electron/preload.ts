@@ -72,5 +72,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getAppointmentsByPatientId: (patientId: number) => ipcRenderer.invoke('get-appointments-by-patient-id', patientId),
   getAppointmentsByDateRange: (doctorId: number, startDate: string, endDate: string) => ipcRenderer.invoke('get-appointments-by-date-range', doctorId, startDate, endDate),
 
-
+  //gestion des statistiques
+  getFinancialStatistics: (startDate: string, endDate: string, appointmentPrice: number) => ipcRenderer.invoke('get-financial-statistics', startDate, endDate, appointmentPrice),
+  getAppointmentStatistics: (startDate: string, endDate: string, appointmentPrice: number) => ipcRenderer.invoke('get-appointment-statistics', startDate, endDate, appointmentPrice),
+  getNoShowRate: (startDate: string, endDate: string) => ipcRenderer.invoke('get-noshow-rate', startDate, endDate),
+  getConsultationVolume: (startDate: string, endDate: string) => ipcRenderer.invoke('get-consultation-volume', startDate, endDate),
 })

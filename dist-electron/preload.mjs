@@ -59,5 +59,10 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   updateAppointment: (id, status) => electron.ipcRenderer.invoke("update-appointment", id, status),
   getAppointmentsByDay: (doctorId, date) => electron.ipcRenderer.invoke("get-appointments-by-day", doctorId, date),
   getAppointmentsByPatientId: (patientId) => electron.ipcRenderer.invoke("get-appointments-by-patient-id", patientId),
-  getAppointmentsByDateRange: (doctorId, startDate, endDate) => electron.ipcRenderer.invoke("get-appointments-by-date-range", doctorId, startDate, endDate)
+  getAppointmentsByDateRange: (doctorId, startDate, endDate) => electron.ipcRenderer.invoke("get-appointments-by-date-range", doctorId, startDate, endDate),
+  //gestion des statistiques
+  getFinancialStatistics: (startDate, endDate, appointmentPrice) => electron.ipcRenderer.invoke("get-financial-statistics", startDate, endDate, appointmentPrice),
+  getAppointmentStatistics: (startDate, endDate, appointmentPrice) => electron.ipcRenderer.invoke("get-appointment-statistics", startDate, endDate, appointmentPrice),
+  getNoShowRate: (startDate, endDate) => electron.ipcRenderer.invoke("get-noshow-rate", startDate, endDate),
+  getConsultationVolume: (startDate, endDate) => electron.ipcRenderer.invoke("get-consultation-volume", startDate, endDate)
 });

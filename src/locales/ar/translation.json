@@ -221,5 +221,59 @@
       "delete": "حذف"
     },
     "book_button": "حجز موعد"
+  },
+  "statistics": {
+    "title": "الإحصائيات والتحليلات",
+    "welcome": "تتبع النشاط الطبي، معدلات الحضور، والأداء المالي لعيادتك.",
+    "loading": "جاري تحميل البيانات...",
+    "filters": {
+      "price": "سعر الموعد"
+    },
+    "ranges": {
+      "month": "الشهر",
+      "quarter": "الفصل",
+      "year": "السنة",
+      "all": "الكل"
+    },
+    "metrics": {
+      "completed": "الاستشارات",
+      "completed_sub": "الاستشارات التي تمت بنجاح",
+      "revenue": "الإيرادات المقدرة",
+      "revenue_sub": "مجموع الأتعاب والرسوم المقدرة",
+      "noshow": "معدل الغياب",
+      "absents": "غائب",
+      "noshow_sub": "نسبة المرضى الذين تخلفوا عن موعدهم",
+      "cancelled": "المواعيد الملغاة",
+      "cancelled_sub": "المواعيد الملغاة أو المؤجلة"
+    },
+    "charts": {
+      "volume_title": "حجم الاستشارات",
+      "volume_subtitle": "تطور الحجم حسب الأشهر",
+      "no_data": "لا توجد بيانات استشارات لهذه الفترة.",
+      "legend_total": "إجمالي المواعيد",
+      "legend_completed": "المكتملة",
+      "distribution_title": "توزيع المواعيد",
+      "total": "إجمالي المواعيد"
+    },
+    "table": {
+      "top_absents_title": "المرضى الأكثر غياباً",
+      "top_absents_subtitle": "المرضى الذين تراكم غيابهم (لم يحضروا) خلال هذه الفترة.",
+      "badge_alert": "للمتابعة",
+      "patient": "المريض",
+      "phone": "رقم الهاتف",
+      "no_show_count": "الغيابات",
+      "intensity": "الخطورة",
+      "status": "الحالة",
+      "empty": "لا يوجد مرضى غائبون في هذه الفترة. تهانينا!",
+      "alert_critical": "حرج",
+      "alert_warn": "منذر"
+    },
+    "status": {
+      "completed": "مكتمل",
+      "scheduled": "مجدول",
+      "cancelled": "ملغى",
+      "no_show": "غائب",
+      "none": "لا توجد بيانات"
+    }
   }
 }
