@@ -11,6 +11,7 @@ import Appointments from './pages/Appointments/Appointments'
 import Authentification from './pages/Authentification/Authentification'
 import Documents from './pages/Documents/Documents'
 import Statistics from './pages/Statistics/Statistics'
+import Parameters from './pages/Parameters/Parameters'
 import './services/i18n';
 import './index.css'
 
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/documents" element={<Layout><Documents /></Layout>} />
         <Route path="/appointments" element={<Layout><Appointments /></Layout>} />
         <Route path="/statistics" element={<Layout><Statistics /></Layout>} />
+        <Route path="/settings" element={<Layout><Parameters /></Layout>} />
       </Routes>
     </HashRouter>
   </React.StrictMode>,

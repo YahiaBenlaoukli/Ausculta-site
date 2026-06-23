@@ -29,11 +29,25 @@
       "today_patients": "Patients du jour",
       "appointments": "Rendez-vous",
       "documents": "Documents",
-      "prescriptions": "Ordonnances"
+      "prescriptions": "Ordonnances",
+      "total_patients": "Total Patients",
+      "total_patients_sub": "Patients enregistrés",
+      "today_appointments": "Rendez-vous du jour",
+      "today_appointments_sub": "Planifiés aujourd'hui",
+      "completed_today": "Consultations terminées",
+      "completed_today_sub": "Terminées avec succès",
+      "cancelled_absent": "Annulés / Absents",
+      "cancelled_absent_sub": "Annulés ou non présentés"
     },
     "upcoming": {
-      "title": "Rendez-vous à venir",
+      "title": "Planning d'aujourd'hui",
       "empty": "Le calendrier de vos prochains rendez-vous apparaîtra ici."
+    },
+    "chart": {
+      "distribution_title": "Distribution du Jour",
+      "breakdown_subtitle": "Répartition par statut",
+      "total": "Total RDV",
+      "no_data": "Aucune donnée"
     }
   },
   "patients": {
@@ -274,6 +288,253 @@
       "cancelled": "Annulé",
       "no_show": "Absent",
       "none": "Aucune donnée"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Gérez les configurations de votre cabinet, votre profil professionnel et vos données.",
+    "tabs": {
+      "profile": "Profil Professionnel",
+      "consultation": "Consultations & RDV",
+      "security": "Sécurité & Session",
+      "data": "Sauvegarde & Données"
+    },
+    "profile": {
+      "title": "Profil du Médecin",
+      "subtitle": "Ces informations apparaîtront sur l'en-tête de vos ordonnances médicales.",
+      "name": "Nom complet *",
+      "speciality": "Spécialité *",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "address": "Adresse du cabinet",
+      "save": "Enregistrer le profil",
+      "saving": "Enregistrement...",
+      "success": "Profil mis à jour avec succès !",
+      "error": "Erreur lors de la mise à jour du profil"
+    },
+    "consultation": {
+      "title": "Paramètres de Consultation",
+      "subtitle": "Définissez les tarifs et durées par défaut de vos consultations.",
+      "price": "Prix par défaut de la consultation",
+      "price_hint": "Ce tarif est utilisé pour calculer les revenus dans l'onglet Statistiques.",
+      "duration": "Durée par défaut d'un rendez-vous",
+      "duration_minutes": "{{count}} minutes",
+      "save": "Enregistrer les paramètres",
+      "success": "Configuration de consultation enregistrée !"
+    },
+    "security": {
+      "title": "Sécurité de la Session",
+      "subtitle": "Gérez votre connexion et déconnectez-vous en toute sécurité.",
+      "logout": "Se déconnecter",
+      "logout_confirm": "Êtes-vous sûr de vouloir vous déconnecter ?",
+      "role": "Votre rôle actuel"
+    },
+    "data": {
+      "title": "Base de données & Données",
+      "subtitle": "Sauvegardez vos données ou réinitialisez la base de données.",
+      "export_patients": "Exporter les patients (JSON)",
+      "export_patients_csv": "Exporter les patients (CSV)",
+      "export_success": "Fichier exporté avec succès !",
+      "export_error": "Erreur lors de l'exportation",
+      "reset_db": "Réinitialiser la base de données",
+      "reset_warning": "Attention : cette action supprimera définitivement tous les patients, rendez-vous, ordonnances et documents. Cette action est irréversible !",
+      "reset_confirm": "Tapez 'RESET' pour confirmer la suppression définitive :",
+      "reset_success": "Base de données réinitialisée avec succès !",
+      "reset_error": "Erreur lors de la réinitialisation"
+    }
+  },
+  "documents": {
+    "title": "Documents & Fichiers",
+    "subtitle": "Consultez et gérez l'ensemble des ordonnances et documents médicaux de vos patients.",
+    "add_button": "Ajouter un document",
+    "categories": {
+      "all": "Tous les types",
+      "prescription": "Ordonnances",
+      "radiography": "Radiographies",
+      "analysis": "Analyses de sang / Labo",
+      "other": "Autres documents"
+    },
+    "dropzone": {
+      "prompt": "Glissez-déposez un fichier ici, ou",
+      "click_browse": "cliquez pour parcourir",
+      "supported": "Formats supportés : PDF, JPG, PNG, DOC (Max: 10 Mo)",
+      "prompt_modal": "Cliquez pour parcourir ou glissez un fichier ici",
+      "supported_modal": "PDF, JPG, PNG ou DOC (Max. 10 Mo)"
+    },
+    "table": {
+      "title": "Fichiers Attachés",
+      "total_count": "{{count}} document au total",
+      "total_count_plural": "{{count}} documents au total",
+      "search_placeholder": "Rechercher par fichier, patient...",
+      "header": {
+        "filename": "Nom du fichier",
+        "size": "Taille",
+        "modified": "Dernière modification",
+        "patient": "Patient attaché",
+        "actions": "Actions"
+      },
+      "empty": "Aucun document trouvé",
+      "empty_hint": "Aucun document ne correspond à vos critères. Modifiez vos filtres ou ajoutez un nouveau fichier.",
+      "pagination": "Affichage de {{start}} à {{end}} sur {{total}} documents",
+      "prev": "← Précédent",
+      "next": "Suivant →"
+    },
+    "modal": {
+      "title": "Ajouter un document",
+      "subtitle": "Associez un fichier médical à la fiche d'un patient.",
+      "patient_label": "Patient attaché *",
+      "patient_placeholder": "Rechercher un patient par son nom...",
+      "patient_change": "Changer",
+      "patient_not_found": "Aucun patient trouvé",
+      "type_label": "Type de document *",
+      "file_label": "Fichier *",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "saving": "Envoi en cours..."
+    },
+    "alerts": {
+      "patient_required": "Veuillez sélectionner un patient",
+      "file_required": "Veuillez sélectionner un fichier à télécharger",
+      "upload_success": "Fichier téléchargé et enregistré avec succès !",
+      "upload_error": "Erreur lors du téléchargement du fichier.",
+      "save_error": "Erreur lors de l'enregistrement du document",
+      "delete_confirm": "Êtes-vous sûr de vouloir supprimer ce document définitivement ?",
+      "delete_success": "Document supprimé avec succès",
+      "delete_error": "Erreur lors de la suppression du document",
+      "open_error": "Impossible d'ouvrir le fichier : {{error}}",
+      "open_fail": "Erreur lors de l'ouverture du document"
+    },
+    "bytes": {
+      "bytes": "Octets",
+      "kb": "Ko",
+      "mb": "Mo",
+      "gb": "Go",
+      "tb": "To"
+    },
+    "badge": {
+      "prescription": "Ordonnance",
+      "radiography": "Radiographie",
+      "analysis": "Analyse / Labo",
+      "other": "Autre document"
+    }
+  },
+  "prescriptions": {
+    "title": "Ordonnances",
+    "subtitle": "Gérez vos ordonnances et votre profil médecin",
+    "loading": "Chargement...",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "create_profile": {
+      "welcome": "Bienvenue, Docteur ! 👋",
+      "subtitle": "Pour commencer à créer des ordonnances, veuillez d'abord configurer votre profil médecin. Vos informations apparaîtront sur chaque ordonnance.",
+      "action": "Créer mon profil"
+    },
+    "generate_pdf": {
+      "title": "Générer votre modèle PDF ✨",
+      "subtitle": "Votre profil est prêt ! Générez maintenant votre modèle d'ordonnance personnalisé avec vos informations.",
+      "doctor_title": "Dr. {{name}}",
+      "email": "Email",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "generating": "Génération en cours...",
+      "generate_button": "Générer le modèle PDF"
+    },
+    "workspace": {
+      "pdf_configured": "PDF configuré",
+      "view_pdf": "Voir l'ordonnance",
+      "select_patient": {
+        "title": "Sélectionner un patient",
+        "subtitle": "Recherchez un patient pour créer ou consulter ses ordonnances",
+        "search_placeholder": "Rechercher par nom...",
+        "empty": "Aucun patient trouvé"
+      },
+      "patient_card": {
+        "change": "Changer"
+      },
+      "builder": {
+        "title": "Nouvelle Ordonnance",
+        "weight_label": "Poids du patient",
+        "weight_optional": "(optionnel)",
+        "weight_placeholder": "ex: 70 kg",
+        "medication": "Médicament",
+        "medication_placeholder": "Nom du médicament",
+        "dosage": "Dosage",
+        "dosage_placeholder": "ex: 500mg",
+        "quantity": "Quantité",
+        "quantity_placeholder": "ex: 2 boîtes",
+        "frequency": "Fréquence",
+        "frequency_placeholder": "ex: 3x/jour",
+        "duration": "Durée",
+        "duration_placeholder": "ex: 7 jours",
+        "add_button": "Ajouter le médicament",
+        "added_title": "Médicaments ajoutés ({{count}})",
+        "saving": "Enregistrement...",
+        "generating_pdf": "Génération PDF...",
+        "save_button": "Enregistrer & Générer PDF"
+      },
+      "previous": {
+        "title": "Ordonnances précédentes",
+        "generate_all": "Générer PDF",
+        "count_one": "1 ordonnance",
+        "count_plural": "{{count}} ordonnances",
+        "empty": "Aucune ordonnance précédente",
+        "empty_hint": "Les ordonnances enregistrées pour ce patient apparaîtront ici",
+        "item_header": "Ordonnance #{{id}} — {{count}} médicament",
+        "item_header_plural": "Ordonnance #{{id}} — {{count}} médicaments",
+        "no_pdf": "Aucun PDF",
+        "view_tooltip": "Voir le PDF",
+        "delete_tooltip": "Supprimer",
+        "pagination_info": "{{start}}–{{end}} sur {{total}}",
+        "prev": "← Précédent",
+        "next": "Suivant →"
+      }
+    },
+    "alerts": {
+      "profile_success": "Profil médecin créé avec succès !",
+      "profile_error": "Erreur lors de la création du profil : {{message}}",
+      "profile_error_default": "Erreur lors de la création du profil",
+      "pdf_success": "Modèle PDF généré avec succès !",
+      "save_success": "Ordonnance enregistrée et PDF généré avec succès !",
+      "save_error": "Erreur lors de l'enregistrement : {{message}}",
+      "save_error_default": "Erreur lors de l'enregistrement de l'ordonnance",
+      "pdf_generate_success": "PDF de l'ordonnance généré avec succès !",
+      "pdf_generate_error": "Erreur lors de la génération du PDF : {{message}}",
+      "pdf_generate_error_default": "Erreur lors de la génération du PDF",
+      "no_meds": "Aucun médicament à inclure dans le PDF",
+      "delete_success": "Médicament supprimé"
+    },
+    "modal": {
+      "title": "Profil Médecin",
+      "subtitle": "Ces informations figureront sur vos ordonnances",
+      "name_label": "Nom complet",
+      "name_placeholder": "Dr. Mohammed Benali",
+      "email_label": "Email",
+      "email_placeholder": "dr.benali@example.com",
+      "speciality_label": "Spécialité",
+      "speciality_select": "Sélectionner une spécialité",
+      "phone_label": "Téléphone",
+      "phone_placeholder": "0555123456",
+      "phone_error_length": "Le numéro doit contenir 10 chiffres",
+      "phone_error_start": "Le numéro doit commencer par 05, 06 ou 07",
+      "phone_error_submit": "Le numéro doit contenir 10 chiffres et commencer par 05, 06 ou 07",
+      "address_label": "Adresse du cabinet",
+      "address_placeholder": "123 Rue des Oliviers, Alger",
+      "cancel": "Annuler",
+      "submit": "Créer le profil",
+      "specialities": {
+        "general": "Médecine Générale",
+        "cardio": "Cardiologie",
+        "derma": "Dermatologie",
+        "pedia": "Pédiatrie",
+        "ophtalmo": "Ophtalmologie",
+        "orl": "ORL",
+        "gyneco": "Gynécologie",
+        "neuro": "Neurologie",
+        "ortho": "Orthopédie",
+        "psych": "Psychiatrie",
+        "radio": "Radiologie",
+        "surgery": "Chirurgie"
+      }
     }
   }
 }

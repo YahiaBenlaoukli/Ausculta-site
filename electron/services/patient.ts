@@ -117,3 +117,21 @@ export async function countPatients(): Promise<number> {
         throw error as Error;
     }
 }
+
+export function resetMedicalDatabase() {
+    try {
+        const db = getDatabase();
+        const transaction = db.transaction(() => {
+            db.prepare(`DELETE FROM appointments`).run();
+            db.prepare(`DELETE FROM patient_documents`).run();
+            db.prepare(`DELETE FROM prescription_medicines`).run();
+            db.prepare(`DELETE FROM prescriptions`).run();
+            db.prepare(`DELETE FROM patients`).run();
+        });
+        transaction();
+        return { status: "success" };
+    } catch (error) {
+        console.error("resetMedicalDatabase error:", error);
+        return { status: "fail", message: (error as Error).message };
+    }
+}

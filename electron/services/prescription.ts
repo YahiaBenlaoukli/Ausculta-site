@@ -58,11 +58,25 @@ export async function createDoctorProfile(userId: number, fullName: string, spec
     }
 }
 
-export function getDoctorProfileByUserId(userId: number) {
+export async function getDoctorProfileByUserId(userId: number) {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`SELECT * FROM doctor_profile WHERE user_id = ?`);
-        const row = stmt.get(userId) as Record<string, unknown> | undefined;
+        let row = stmt.get(userId) as Record<string, unknown> | undefined;
+        if (!row) {
+            console.log("Doctor profile not found for user", userId, ". Initializing default profile...");
+            const userStmt = db.prepare(`SELECT full_name FROM users WHERE id = ?`);
+            const userRow = userStmt.get(userId) as { full_name: string } | undefined;
+            const fullName = userRow?.full_name ?? "Médecin";
+
+            const createResult = await createDoctorProfile(userId, fullName, "Médecin Généraliste", "", "", "");
+            if (createResult.status === "success" && createResult.data) {
+                // Initialize default prescription PDF template
+                await setPrescriptionPdf(createResult.data.id);
+                // Fetch the row again
+                row = stmt.get(userId) as Record<string, unknown> | undefined;
+            }
+        }
         if (!row) {
             return { status: "not_found", data: null };
         }
@@ -70,6 +84,44 @@ export function getDoctorProfileByUserId(userId: number) {
         return { status: "success", data: doctor };
     } catch (error) {
         console.error("getDoctorProfileByUserId error:", error);
+        return { status: "fail", message: (error as Error).message };
+    }
+}
+
+export async function updateDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) {
+    try {
+        console.log("updating doctor profile in db for user", userId);
+        const db = getDatabase();
+        const checkStmt = db.prepare(`SELECT id FROM doctor_profile WHERE user_id = ?`);
+        let profile = checkStmt.get(userId) as { id: number } | undefined;
+        
+        if (!profile) {
+            // If somehow doesn't exist, create it
+            const createResult = await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email);
+            if (createResult.status !== "success" || !createResult.data) {
+                throw new Error(createResult.message || "Failed to create doctor profile");
+            }
+            profile = { id: createResult.data.id };
+        } else {
+            const stmt = db.prepare(`
+                UPDATE doctor_profile 
+                SET full_name = ?, speciality = ?, phone_number = ?, address = ?, email = ?
+                WHERE user_id = ?
+            `);
+            stmt.run(fullName, speciality, phoneNumber, address, email, userId);
+        }
+
+        // Regenerate template PDF with the new details
+        await setPrescriptionPdf(profile.id);
+
+        // Fetch updated profile
+        const selectStmt = db.prepare(`SELECT * FROM doctor_profile WHERE user_id = ?`);
+        const row = selectStmt.get(userId) as Record<string, unknown> | undefined;
+        const doctor = row ? mapRowToDoctorProfile(row) : null;
+
+        return { status: "success", data: doctor };
+    } catch (error) {
+        console.error("updateDoctorProfile error:", error);
         return { status: "fail", message: (error as Error).message };
     }
 }

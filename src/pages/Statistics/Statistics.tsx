@@ -91,7 +91,7 @@ export default function Statistics() {
   const [activeRange, setActiveRange] = useState<string>("year");
   const [startDate, setStartDate] = useState<string>(defaultDates.startDate);
   const [endDate, setEndDate] = useState<string>(defaultDates.endDate);
-  const [priceInput, setPriceInput] = useState<string>("2000");
+  const [priceInput, setPriceInput] = useState<string>(localStorage.getItem('default_consultation_price') || "2000");
   const [loading, setLoading] = useState<boolean>(true);
 
   // Statistics state

@@ -2,9 +2,9 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initializeDatabase } from './db/db'
-import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, searchPatients, countPatients } from './services/patient'
+import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, searchPatients, countPatients, resetMedicalDatabase } from './services/patient'
 import { uploadDocument, getDocumentsByPatientId, getAllDocuments, deleteDocument, openDocument } from './services/documents'
-import { addPrescription, getPrescriptionById, getPatientPrescriptions, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, setPrescriptionPdf, generatePatientPrescriptionPDF } from './services/prescription'
+import { addPrescription, getPrescriptionById, getPatientPrescriptions, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, updateDoctorProfile, setPrescriptionPdf, generatePatientPrescriptionPDF } from './services/prescription'
 import { createUser, login, checkAuth, logout } from './services/auth'
 import { getAllAppointments, bookAppoitment, cancelAppointment, deleteAppointment, updateAppointment, getAppointmentsByDay, getAppointmentsByPatientId, getAppointmentsByDateRange } from './services/appointments'
 import { getFinancalStatistics, getAppointmentStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
@@ -33,7 +33,7 @@ let win: BrowserWindow | null
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -79,16 +79,21 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-patient', async (_event, id) => await deletePatient(id));
   ipcMain.handle('search-patients', async (_event, query) => await searchPatients(query));
   ipcMain.handle('count-patients', async () => await countPatients());
+  ipcMain.handle('reset-database', async () => await resetMedicalDatabase());
+  
   //gestion des documents
   ipcMain.handle('get-documents-by-patient-id', async (_event, patientId) => getDocumentsByPatientId(patientId));
   ipcMain.handle('get-all-documents', async () => getAllDocuments());
   ipcMain.handle('upload-document', async (_event, document) => await uploadDocument(document));
   ipcMain.handle('delete-document', async (_event, id) => deleteDocument(id));
   ipcMain.handle('open-document', async (_event, path) => await openDocument(path));
+
   //gestion profil médecin
   ipcMain.handle('create-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address, email) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle('get-doctor-profile', async (_event, userId) => getDoctorProfileByUserId(userId));
+  ipcMain.handle('update-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address, email) => await updateDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle('set-prescription-pdf', async (_event, doctorId) => await setPrescriptionPdf(doctorId));
+
   //gestion des prescriptions 
   ipcMain.handle('add-prescription', async (_event, userId, patientId, medicines, notes) => await addPrescription(userId, patientId, medicines, notes));
   ipcMain.handle('get-prescription-by-id', async (_event, id, patientId) => getPrescriptionById(id, patientId));
@@ -99,6 +104,7 @@ app.whenReady().then(() => {
   ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
   ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
   ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight));
+
   //gestion authentification
   ipcMain.handle('create-user', async (_event, user) => await createUser(user));
   ipcMain.handle('login', async (_event, phoneNumber, password, stayLogged) => login(phoneNumber, password, stayLogged));

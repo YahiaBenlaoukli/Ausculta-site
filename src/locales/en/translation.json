@@ -29,11 +29,25 @@
       "today_patients": "Today's Patients",
       "appointments": "Appointments",
       "documents": "Documents",
-      "prescriptions": "Prescriptions"
+      "prescriptions": "Prescriptions",
+      "total_patients": "Total Patients",
+      "total_patients_sub": "Registered patients",
+      "today_appointments": "Today's Appointments",
+      "today_appointments_sub": "Scheduled for today",
+      "completed_today": "Completed Consultations",
+      "completed_today_sub": "Successfully completed",
+      "cancelled_absent": "Cancelled / Absent",
+      "cancelled_absent_sub": "Cancelled or no-show"
     },
     "upcoming": {
-      "title": "Upcoming Appointments",
+      "title": "Today's Schedule",
       "empty": "The calendar of your upcoming appointments will appear here."
+    },
+    "chart": {
+      "distribution_title": "Today's Distribution",
+      "breakdown_subtitle": "Breakdown by status",
+      "total": "Total Appts",
+      "no_data": "No data"
     }
   },
   "patients": {
@@ -274,6 +288,253 @@
       "cancelled": "Cancelled",
       "no_show": "No-Show",
       "none": "No Data"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your clinic configuration, professional profile, and data backups.",
+    "tabs": {
+      "profile": "Professional Profile",
+      "consultation": "Consultations & Appts",
+      "security": "Security & Session",
+      "data": "Backup & Database"
+    },
+    "profile": {
+      "title": "Doctor Profile",
+      "subtitle": "This information will appear on the header of your medical prescriptions.",
+      "name": "Full Name *",
+      "speciality": "Specialty *",
+      "phone": "Phone Number",
+      "email": "Email Address",
+      "address": "Office Address",
+      "save": "Save Profile",
+      "saving": "Saving...",
+      "success": "Profile successfully updated!",
+      "error": "Error updating profile"
+    },
+    "consultation": {
+      "title": "Consultation Settings",
+      "subtitle": "Set default consultation prices and appointment slot durations.",
+      "price": "Default Consultation Price",
+      "price_hint": "This rate is used to calculate revenue in the Statistics tab.",
+      "duration": "Default Appointment Duration",
+      "duration_minutes": "{{count}} minutes",
+      "save": "Save Settings",
+      "success": "Consultation settings saved!"
+    },
+    "security": {
+      "title": "Session Security",
+      "subtitle": "Manage your connection and securely sign out of your account.",
+      "logout": "Sign Out",
+      "logout_confirm": "Are you sure you want to sign out?",
+      "role": "Your Current Role"
+    },
+    "data": {
+      "title": "Database & Storage",
+      "subtitle": "Back up your clinic data or perform a database reset.",
+      "export_patients": "Export Patients (JSON)",
+      "export_patients_csv": "Export Patients (CSV)",
+      "export_success": "File successfully exported!",
+      "export_error": "Error exporting data",
+      "reset_db": "Reset Database",
+      "reset_warning": "Warning: this action will permanently delete all patients, appointments, prescriptions, and documents. This cannot be undone!",
+      "reset_confirm": "Type 'RESET' to confirm permanent deletion:",
+      "reset_success": "Database successfully reset!",
+      "reset_error": "Error resetting database"
+    }
+  },
+  "documents": {
+    "title": "Documents & Files",
+    "subtitle": "View and manage all medical prescriptions and patient documents.",
+    "add_button": "Add Document",
+    "categories": {
+      "all": "All types",
+      "prescription": "Prescriptions",
+      "radiography": "Radiographies",
+      "analysis": "Blood / Lab Analyses",
+      "other": "Other Documents"
+    },
+    "dropzone": {
+      "prompt": "Drag & drop a file here, or",
+      "click_browse": "click to browse",
+      "supported": "Supported formats: PDF, JPG, PNG, DOC (Max: 10 MB)",
+      "prompt_modal": "Click to browse or drag a file here",
+      "supported_modal": "PDF, JPG, PNG or DOC (Max. 10 MB)"
+    },
+    "table": {
+      "title": "Attached Files",
+      "total_count": "{{count}} document in total",
+      "total_count_plural": "{{count}} documents in total",
+      "search_placeholder": "Search by file, patient...",
+      "header": {
+        "filename": "File Name",
+        "size": "Size",
+        "modified": "Last Modified",
+        "patient": "Attached Patient",
+        "actions": "Actions"
+      },
+      "empty": "No documents found",
+      "empty_hint": "No documents match your criteria. Modify your filters or add a new file.",
+      "pagination": "Showing {{start}} to {{end}} of {{total}} documents",
+      "prev": "← Previous",
+      "next": "Next →"
+    },
+    "modal": {
+      "title": "Add a Document",
+      "subtitle": "Associate a medical file with a patient profile.",
+      "patient_label": "Attached Patient *",
+      "patient_placeholder": "Search patient by name...",
+      "patient_change": "Change",
+      "patient_not_found": "No patient found",
+      "type_label": "Document Type *",
+      "file_label": "File *",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Uploading..."
+    },
+    "alerts": {
+      "patient_required": "Please select a patient",
+      "file_required": "Please select a file to upload",
+      "upload_success": "File successfully uploaded and saved!",
+      "upload_error": "Error uploading file.",
+      "save_error": "Error saving document",
+      "delete_confirm": "Are you sure you want to permanently delete this document?",
+      "delete_success": "Document successfully deleted",
+      "delete_error": "Error deleting document",
+      "open_error": "Unable to open file: {{error}}",
+      "open_fail": "Error opening document"
+    },
+    "bytes": {
+      "bytes": "Bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB",
+      "tb": "TB"
+    },
+    "badge": {
+      "prescription": "Prescription",
+      "radiography": "Radiography",
+      "analysis": "Analysis / Lab",
+      "other": "Other Document"
+    }
+  },
+  "prescriptions": {
+    "title": "Prescriptions",
+    "subtitle": "Manage your prescriptions and doctor profile",
+    "loading": "Loading...",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "create_profile": {
+      "welcome": "Welcome, Doctor! 👋",
+      "subtitle": "To start creating prescriptions, please configure your doctor profile first. Your information will appear on every prescription.",
+      "action": "Create my profile"
+    },
+    "generate_pdf": {
+      "title": "Generate your PDF template ✨",
+      "subtitle": "Your profile is ready! Now generate your customized prescription template with your information.",
+      "doctor_title": "Dr. {{name}}",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "generating": "Generating...",
+      "generate_button": "Generate PDF Template"
+    },
+    "workspace": {
+      "pdf_configured": "PDF configured",
+      "view_pdf": "View prescription",
+      "select_patient": {
+        "title": "Select a patient",
+        "subtitle": "Search for a patient to create or view their prescriptions",
+        "search_placeholder": "Search by name...",
+        "empty": "No patient found"
+      },
+      "patient_card": {
+        "change": "Change"
+      },
+      "builder": {
+        "title": "New Prescription",
+        "weight_label": "Patient's weight",
+        "weight_optional": "(optional)",
+        "weight_placeholder": "ex: 70 kg",
+        "medication": "Medication",
+        "medication_placeholder": "Medication name",
+        "dosage": "Dosage",
+        "dosage_placeholder": "ex: 500mg",
+        "quantity": "Quantity",
+        "quantity_placeholder": "ex: 2 boxes",
+        "frequency": "Frequency",
+        "frequency_placeholder": "ex: 3x/day",
+        "duration": "Duration",
+        "duration_placeholder": "ex: 7 days",
+        "add_button": "Add medication",
+        "added_title": "Added medications ({{count}})",
+        "saving": "Saving...",
+        "generating_pdf": "Generating PDF...",
+        "save_button": "Save & Generate PDF"
+      },
+      "previous": {
+        "title": "Previous Prescriptions",
+        "generate_all": "Generate PDF",
+        "count_one": "1 prescription",
+        "count_plural": "{{count}} prescriptions",
+        "empty": "No previous prescriptions",
+        "empty_hint": "Prescriptions saved for this patient will appear here",
+        "item_header": "Prescription #{{id}} — {{count}} medication",
+        "item_header_plural": "Prescription #{{id}} — {{count}} medications",
+        "no_pdf": "No PDF",
+        "view_tooltip": "View PDF",
+        "delete_tooltip": "Delete",
+        "pagination_info": "{{start}}–{{end}} of {{total}}",
+        "prev": "← Previous",
+        "next": "Next →"
+      }
+    },
+    "alerts": {
+      "profile_success": "Doctor profile created successfully!",
+      "profile_error": "Error creating profile: {{message}}",
+      "profile_error_default": "Error creating profile",
+      "pdf_success": "PDF template generated successfully!",
+      "save_success": "Prescription saved and PDF generated successfully!",
+      "save_error": "Error saving: {{message}}",
+      "save_error_default": "Error saving prescription",
+      "pdf_generate_success": "Prescription PDF generated successfully!",
+      "pdf_generate_error": "Error generating PDF: {{message}}",
+      "pdf_generate_error_default": "Error generating PDF",
+      "no_meds": "No medications to include in PDF",
+      "delete_success": "Medication deleted"
+    },
+    "modal": {
+      "title": "Doctor Profile",
+      "subtitle": "This information will appear on your prescriptions",
+      "name_label": "Full Name",
+      "name_placeholder": "Dr. Mohammed Benali",
+      "email_label": "Email",
+      "email_placeholder": "dr.benali@example.com",
+      "speciality_label": "Specialty",
+      "speciality_select": "Select a specialty",
+      "phone_label": "Phone Number",
+      "phone_placeholder": "0555123456",
+      "phone_error_length": "Phone number must contain 10 digits",
+      "phone_error_start": "Phone number must start with 05, 06 or 07",
+      "phone_error_submit": "Phone number must contain 10 digits and start with 05, 06 or 07",
+      "address_label": "Office Address",
+      "address_placeholder": "123 Rue des Oliviers, Algiers",
+      "cancel": "Cancel",
+      "submit": "Create Profile",
+      "specialities": {
+        "general": "General Medicine",
+        "cardio": "Cardiology",
+        "derma": "Dermatology",
+        "pedia": "Pediatrics",
+        "ophtalmo": "Ophthalmology",
+        "orl": "ENT (Otolaryngology)",
+        "gyneco": "Gynecology",
+        "neuro": "Neurology",
+        "ortho": "Orthopedics",
+        "psych": "Psychiatry",
+        "radio": "Radiology",
+        "surgery": "Surgery"
+      }
     }
   }
 }

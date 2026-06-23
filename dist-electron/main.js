@@ -259,6 +259,23 @@ async function countPatients() {
     throw error2;
   }
 }
+function resetMedicalDatabase() {
+  try {
+    const db2 = getDatabase();
+    const transaction = db2.transaction(() => {
+      db2.prepare(`DELETE FROM appointments`).run();
+      db2.prepare(`DELETE FROM patient_documents`).run();
+      db2.prepare(`DELETE FROM prescription_medicines`).run();
+      db2.prepare(`DELETE FROM prescriptions`).run();
+      db2.prepare(`DELETE FROM patients`).run();
+    });
+    transaction();
+    return { status: "success" };
+  } catch (error2) {
+    console.error("resetMedicalDatabase error:", error2);
+    return { status: "fail", message: error2.message };
+  }
+}
 const recordsFolder = path$1.join(app.getPath("userData"), "records");
 if (!fs$1.existsSync(recordsFolder)) {
   fs$1.mkdirSync(recordsFolder, { recursive: true });
@@ -19431,11 +19448,22 @@ async function createDoctorProfile(userId, fullName, speciality, phoneNumber, ad
     return { status: "fail", message: error2.message };
   }
 }
-function getDoctorProfileByUserId(userId) {
+async function getDoctorProfileByUserId(userId) {
   try {
     const db2 = getDatabase();
     const stmt = db2.prepare(`SELECT * FROM doctor_profile WHERE user_id = ?`);
-    const row = stmt.get(userId);
+    let row = stmt.get(userId);
+    if (!row) {
+      console.log("Doctor profile not found for user", userId, ". Initializing default profile...");
+      const userStmt = db2.prepare(`SELECT full_name FROM users WHERE id = ?`);
+      const userRow = userStmt.get(userId);
+      const fullName = (userRow == null ? void 0 : userRow.full_name) ?? "Médecin";
+      const createResult = await createDoctorProfile(userId, fullName, "Médecin Généraliste", "", "", "");
+      if (createResult.status === "success" && createResult.data) {
+        await setPrescriptionPdf(createResult.data.id);
+        row = stmt.get(userId);
+      }
+    }
     if (!row) {
       return { status: "not_found", data: null };
     }
@@ -19443,6 +19471,36 @@ function getDoctorProfileByUserId(userId) {
     return { status: "success", data: doctor };
   } catch (error2) {
     console.error("getDoctorProfileByUserId error:", error2);
+    return { status: "fail", message: error2.message };
+  }
+}
+async function updateDoctorProfile(userId, fullName, speciality, phoneNumber, address, email) {
+  try {
+    console.log("updating doctor profile in db for user", userId);
+    const db2 = getDatabase();
+    const checkStmt = db2.prepare(`SELECT id FROM doctor_profile WHERE user_id = ?`);
+    let profile = checkStmt.get(userId);
+    if (!profile) {
+      const createResult = await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email);
+      if (createResult.status !== "success" || !createResult.data) {
+        throw new Error(createResult.message || "Failed to create doctor profile");
+      }
+      profile = { id: createResult.data.id };
+    } else {
+      const stmt = db2.prepare(`
+                UPDATE doctor_profile 
+                SET full_name = ?, speciality = ?, phone_number = ?, address = ?, email = ?
+                WHERE user_id = ?
+            `);
+      stmt.run(fullName, speciality, phoneNumber, address, email, userId);
+    }
+    await setPrescriptionPdf(profile.id);
+    const selectStmt = db2.prepare(`SELECT * FROM doctor_profile WHERE user_id = ?`);
+    const row = selectStmt.get(userId);
+    const doctor = row ? mapRowToDoctorProfile(row) : null;
+    return { status: "success", data: doctor };
+  } catch (error2) {
+    console.error("updateDoctorProfile error:", error2);
     return { status: "fail", message: error2.message };
   }
 }
@@ -23864,7 +23922,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT
 let win;
 function createWindow() {
   win = new BrowserWindow({
-    icon: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: path$1.join(process.env.VITE_PUBLIC, "logo.png"),
     webPreferences: {
       preload: path$1.join(__dirname$1, "preload.mjs")
     }
@@ -23898,6 +23956,7 @@ app.whenReady().then(() => {
   ipcMain.handle("delete-patient", async (_event, id) => await deletePatient(id));
   ipcMain.handle("search-patients", async (_event, query) => await searchPatients(query));
   ipcMain.handle("count-patients", async () => await countPatients());
+  ipcMain.handle("reset-database", async () => await resetMedicalDatabase());
   ipcMain.handle("get-documents-by-patient-id", async (_event, patientId) => getDocumentsByPatientId(patientId));
   ipcMain.handle("get-all-documents", async () => getAllDocuments());
   ipcMain.handle("upload-document", async (_event, document) => await uploadDocument(document));
@@ -23905,6 +23964,7 @@ app.whenReady().then(() => {
   ipcMain.handle("open-document", async (_event, path2) => await openDocument(path2));
   ipcMain.handle("create-doctor-profile", async (_event, userId, fullName, speciality, phoneNumber, address, email) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle("get-doctor-profile", async (_event, userId) => getDoctorProfileByUserId(userId));
+  ipcMain.handle("update-doctor-profile", async (_event, userId, fullName, speciality, phoneNumber, address, email) => await updateDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle("set-prescription-pdf", async (_event, doctorId) => await setPrescriptionPdf(doctorId));
   ipcMain.handle("add-prescription", async (_event, userId, patientId, medicines, notes) => await addPrescription(userId, patientId, medicines, notes));
   ipcMain.handle("get-prescription-by-id", async (_event, id, patientId) => getPrescriptionById(id, patientId));

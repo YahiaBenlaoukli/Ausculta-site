@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DoctorProfile, Prescription } from '../../../types/doctor';
 import type { Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
@@ -69,16 +70,16 @@ const icons = {
 };
 
 
-function formatDateGroup(dateStr: string) {
+function formatDateGroup(dateStr: string, currentLang: string, t: any) {
     if (!dateStr) return '—';
     try {
         const d = new Date(dateStr);
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
-        if (d.toDateString() === yesterday.toDateString()) return 'Hier';
-        return d.toLocaleDateString('fr', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        if (d.toDateString() === today.toDateString()) return t('prescriptions.today');
+        if (d.toDateString() === yesterday.toDateString()) return t('prescriptions.yesterday');
+        return d.toLocaleDateString(currentLang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     } catch { return dateStr; }
 }
 
@@ -86,6 +87,9 @@ function formatDateGroup(dateStr: string) {
 /*                       PRESCRIPTIONS PAGE                           */
 /* ═══════════════════════════════════════════════════════════════════ */
 export default function Prescriptions() {
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language || 'fr';
+
     /* ── Auth & wizard state ── */
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [step, setStep] = useState<Step>('loading');
@@ -194,14 +198,14 @@ export default function Prescriptions() {
                 setDoctorProfile(result.data);
                 setStep('generate-pdf');
                 setShowProfileModal(false);
-                showSuccess('Profil médecin créé avec succès !');
+                showSuccess(t('prescriptions.alerts.profile_success'));
             } else {
                 console.error('Create profile failed:', result.message);
-                showError(result.message || 'Erreur lors de la création du profil');
+                showError(result.message ? t('prescriptions.alerts.profile_error', { message: result.message }) : t('prescriptions.alerts.profile_error_default'));
             }
         } catch (error) {
             console.error('Error creating profile:', error);
-            showError('Erreur lors de la création du profil');
+            showError(t('prescriptions.alerts.profile_error_default'));
         }
     };
 
@@ -214,7 +218,7 @@ export default function Prescriptions() {
             if (result.status === 'success') {
                 setDoctorProfile(prev => prev ? { ...prev, pdfPath: result.data.pdfPath } : null);
                 setStep('prescriptions');
-                showSuccess('Modèle PDF généré avec succès !');
+                showSuccess(t('prescriptions.alerts.pdf_success'));
             }
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -300,14 +304,14 @@ export default function Prescriptions() {
                 }
 
                 setNewMedications([]);
-                showSuccess('Ordonnance enregistrée et PDF généré avec succès !');
+                showSuccess(t('prescriptions.alerts.save_success'));
                 await loadPatientPrescriptions(selectedPatient.id);
             } else {
-                showError(result.message || 'Erreur lors de l\'enregistrement');
+                showError(result.message ? t('prescriptions.alerts.save_error', { message: result.message }) : t('prescriptions.alerts.save_error_default'));
             }
         } catch (e) {
             console.error('Error saving ordonnance:', e);
-            showError('Erreur lors de l\'enregistrement de l\'ordonnance');
+            showError(t('prescriptions.alerts.save_error_default'));
         } finally {
             setIsSaving(false);
         }
@@ -318,7 +322,7 @@ export default function Prescriptions() {
         if (!selectedPatient || !doctorProfile) return;
         const medsToUse = prescriptions || patientPrescriptions;
         if (medsToUse.length === 0) {
-            showError('Aucun médicament à inclure dans le PDF');
+            showError(t('prescriptions.alerts.no_meds'));
             return;
         }
         setIsGeneratingPatientPdf(true);
@@ -330,15 +334,15 @@ export default function Prescriptions() {
                 weight || undefined
             );
             if (result.status === 'success') {
-                showSuccess('PDF de l\'ordonnance généré avec succès !');
+                showSuccess(t('prescriptions.alerts.pdf_generate_success'));
                 // Auto-open the generated PDF
                 await (window as any).ipcRenderer.openDocument(result.data);
             } else {
-                showError(result.message || 'Erreur lors de la génération du PDF');
+                showError(result.message ? t('prescriptions.alerts.pdf_generate_error', { message: result.message }) : t('prescriptions.alerts.pdf_generate_error_default'));
             }
         } catch (e) {
             console.error('Error generating patient PDF:', e);
-            showError('Erreur lors de la génération du PDF');
+            showError(t('prescriptions.alerts.pdf_generate_error_default'));
         } finally {
             setIsGeneratingPatientPdf(false);
         }
@@ -349,7 +353,7 @@ export default function Prescriptions() {
         try {
             await (window as any).ipcRenderer.invoke('delete-prescription', id);
             setPatientPrescriptions(prev => prev.filter(p => p.id !== id));
-            showSuccess('Médicament supprimé');
+            showSuccess(t('prescriptions.alerts.delete_success'));
         } catch (e) {
             console.error('Error deleting prescription:', e);
         }
@@ -383,9 +387,9 @@ export default function Prescriptions() {
             {/* ── Page Header ── */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-navy">Ordonnances</h1>
+                    <h1 className="text-2xl font-bold text-navy">{t('prescriptions.title')}</h1>
                     <p className="text-sm text-navy/50 mt-0.5">
-                        Gérez vos ordonnances et votre profil médecin
+                        {t('prescriptions.subtitle')}
                     </p>
                 </div>
             </div>
@@ -397,10 +401,9 @@ export default function Prescriptions() {
                         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-pink/10 to-pink/5 text-pink mb-5">
                             {icons.stethoscope}
                         </div>
-                        <h2 className="text-xl font-bold text-navy mb-2">Bienvenue, Docteur ! 👋</h2>
+                        <h2 className="text-xl font-bold text-navy mb-2">{t('prescriptions.create_profile.welcome')}</h2>
                         <p className="text-sm text-navy/45 leading-relaxed mb-6">
-                            Pour commencer à créer des ordonnances, veuillez d'abord configurer votre profil médecin.
-                            Vos informations apparaîtront sur chaque ordonnance.
+                            {t('prescriptions.create_profile.subtitle')}
                         </p>
                         <div className="flex items-center justify-center gap-1.5 mb-6">
                             <span className="w-2 h-2 rounded-full bg-pink" />
@@ -412,7 +415,7 @@ export default function Prescriptions() {
                             className="inline-flex items-center gap-2 bg-gradient-to-r from-pink to-pink-light text-white text-sm font-semibold px-7 py-3 rounded-xl shadow-[0_4px_14px_rgba(233,30,140,0.25)] hover:shadow-[0_6px_20px_rgba(233,30,140,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                         >
                             {icons.plus}
-                            Créer mon profil
+                            {t('prescriptions.create_profile.action')}
                         </button>
                     </div>
                 </div>
@@ -425,9 +428,9 @@ export default function Prescriptions() {
                         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-navy/10 to-navy/5 text-navy mb-5">
                             {icons.fileText}
                         </div>
-                        <h2 className="text-xl font-bold text-navy mb-2">Générer votre modèle PDF ✨</h2>
+                        <h2 className="text-xl font-bold text-navy mb-2">{t('prescriptions.generate_pdf.title')}</h2>
                         <p className="text-sm text-navy/45 leading-relaxed mb-6">
-                            Votre profil est prêt ! Générez maintenant votre modèle d'ordonnance personnalisé avec vos informations.
+                            {t('prescriptions.generate_pdf.subtitle')}
                         </p>
                         <div className="bg-navy/[0.02] border border-navy/[0.06] rounded-xl p-4 mb-6 text-left space-y-2">
                             <div className="flex items-center gap-3">
@@ -435,21 +438,21 @@ export default function Prescriptions() {
                                     {getInitials(doctorProfile.fullName)}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-navy">Dr. {doctorProfile.fullName}</p>
+                                    <p className="text-sm font-bold text-navy">{t('prescriptions.generate_pdf.doctor_title', { name: doctorProfile.fullName })}</p>
                                     <p className="text-xs text-navy/40">{doctorProfile.speciality}</p>
                                 </div>
                             </div>
                             <div className="border-t border-navy/[0.06] pt-2 grid grid-cols-3 gap-2">
                                 <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">Email</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">{t('prescriptions.generate_pdf.email')}</span>
                                     <p className="text-xs text-navy/60">{doctorProfile.email}</p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">Téléphone</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">{t('prescriptions.generate_pdf.phone')}</span>
                                     <p className="text-xs text-navy/60">{doctorProfile.phoneNumber}</p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">Adresse</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-navy/30">{t('prescriptions.generate_pdf.address')}</span>
                                     <p className="text-xs text-navy/60">{doctorProfile.address}</p>
                                 </div>
                             </div>
@@ -467,12 +470,12 @@ export default function Prescriptions() {
                             {isGeneratingPdf ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Génération en cours...
+                                    {t('prescriptions.generate_pdf.generating')}
                                 </>
                             ) : (
                                 <>
                                     {icons.sparkles}
-                                    Générer le modèle PDF
+                                    {t('prescriptions.generate_pdf.generate_button')}
                                 </>
                             )}
                         </button>
@@ -502,12 +505,12 @@ export default function Prescriptions() {
                                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
                                         </svg>
-                                        <span>Voir l'ordonnance</span>
+                                        <span>{t('prescriptions.workspace.view_pdf')}</span>
                                     </button>
                                 )}
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold">
                                     {icons.check}
-                                    <span>PDF configuré</span>
+                                    <span>{t('prescriptions.workspace.pdf_configured')}</span>
                                 </div>
                             </div>
                         </div>
@@ -523,8 +526,8 @@ export default function Prescriptions() {
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                                     </svg>
                                 </div>
-                                <h2 className="text-lg font-bold text-navy mb-1">Sélectionner un patient</h2>
-                                <p className="text-xs text-navy/40 mb-5">Recherchez un patient pour créer ou consulter ses ordonnances</p>
+                                <h2 className="text-lg font-bold text-navy mb-1">{t('prescriptions.workspace.select_patient.title')}</h2>
+                                <p className="text-xs text-navy/40 mb-5">{t('prescriptions.workspace.select_patient.subtitle')}</p>
 
                                 <div className="relative text-left">
                                     <div className="relative">
@@ -535,7 +538,7 @@ export default function Prescriptions() {
                                             value={patientSearchQuery}
                                             onChange={e => setPatientSearchQuery(e.target.value)}
                                             onFocus={() => { if (patientSearchResults.length > 0) setShowPatientDropdown(true); }}
-                                            placeholder="Rechercher par nom..."
+                                            placeholder={t('prescriptions.workspace.select_patient.search_placeholder')}
                                             className={`${inputClass} pl-10`}
                                             autoComplete="off"
                                         />
@@ -550,7 +553,7 @@ export default function Prescriptions() {
                                     {showPatientDropdown && (
                                         <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-navy/[0.08] rounded-xl shadow-[0_8px_30px_rgba(30,42,86,0.12)] max-h-48 overflow-y-auto">
                                             {patientSearchResults.length === 0 ? (
-                                                <div className="px-4 py-3 text-xs text-navy/35 text-center">Aucun patient trouvé</div>
+                                                <div className="px-4 py-3 text-xs text-navy/35 text-center">{t('prescriptions.workspace.select_patient.empty')}</div>
                                             ) : (
                                                 patientSearchResults.map(patient => (
                                                     <button
@@ -593,7 +596,7 @@ export default function Prescriptions() {
                                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" />
                                     </svg>
-                                    <span>Changer</span>
+                                    <span>{t('prescriptions.workspace.patient_card.change')}</span>
                                 </button>
                             </div>
 
@@ -603,68 +606,68 @@ export default function Prescriptions() {
                                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink to-pink-light flex items-center justify-center">
                                         {icons.plus}
                                     </div>
-                                    <h3 className="text-sm font-bold text-navy">Nouvelle Ordonnance</h3>
+                                    <h3 className="text-sm font-bold text-navy">{t('prescriptions.workspace.builder.title')}</h3>
                                 </div>
 
                                 <div className="p-5 space-y-4">
                                     {/* Weight input (optional) */}
                                     <div>
-                                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">Poids du patient <span className="text-navy/25 font-normal">(optionnel)</span></label>
+                                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.weight_label')} <span className="text-navy/25 font-normal">{t('prescriptions.workspace.builder.weight_optional')}</span></label>
                                         <input
                                             value={weight}
                                             onChange={e => setWeight(e.target.value)}
-                                            placeholder="ex: 70 kg"
+                                            placeholder={t('prescriptions.workspace.builder.weight_placeholder')}
                                             className={`${inputClass} max-w-[200px]`}
                                         />
                                     </div>
                                     {/* Medication input form */}
                                     <div className="space-y-3">
                                         <div>
-                                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">Médicament</label>
+                                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.medication')}</label>
                                             <input
                                                 value={medForm.medicineName}
                                                 onChange={e => setMedForm(f => ({ ...f, medicineName: e.target.value }))}
                                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMedication(); } }}
-                                                placeholder="Nom du médicament"
+                                                placeholder={t('prescriptions.workspace.builder.medication_placeholder')}
                                                 className={inputClass}
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">Dosage</label>
+                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.dosage')}</label>
                                                 <input
                                                     value={medForm.dosage}
                                                     onChange={e => setMedForm(f => ({ ...f, dosage: e.target.value }))}
-                                                    placeholder="ex: 500mg"
+                                                    placeholder={t('prescriptions.workspace.builder.dosage_placeholder')}
                                                     className={inputClass}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">Quantité</label>
+                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.quantity')}</label>
                                                 <input
                                                     value={medForm.quantity}
                                                     onChange={e => setMedForm(f => ({ ...f, quantity: e.target.value }))}
-                                                    placeholder="ex: 2 boîtes"
+                                                    placeholder={t('prescriptions.workspace.builder.quantity_placeholder')}
                                                     className={inputClass}
                                                 />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">Fréquence</label>
+                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.frequency')}</label>
                                                 <input
                                                     value={medForm.frequency}
                                                     onChange={e => setMedForm(f => ({ ...f, frequency: e.target.value }))}
-                                                    placeholder="ex: 3x/jour"
+                                                    placeholder={t('prescriptions.workspace.builder.frequency_placeholder')}
                                                     className={inputClass}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">Durée</label>
+                                                <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.duration')}</label>
                                                 <input
                                                     value={medForm.duration}
                                                     onChange={e => setMedForm(f => ({ ...f, duration: e.target.value }))}
-                                                    placeholder="ex: 7 jours"
+                                                    placeholder={t('prescriptions.workspace.builder.duration_placeholder')}
                                                     className={inputClass}
                                                 />
                                             </div>
@@ -677,7 +680,7 @@ export default function Prescriptions() {
                                             className="flex items-center gap-1.5 text-xs font-semibold text-pink hover:text-pink-light transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                         >
                                             {icons.plus}
-                                            Ajouter le médicament
+                                            {t('prescriptions.workspace.builder.add_button')}
                                         </button>
                                     </div>
 
@@ -685,7 +688,7 @@ export default function Prescriptions() {
                                     {newMedications.length > 0 && (
                                         <div className="border-t border-navy/[0.06] pt-4 space-y-2">
                                             <p className="text-[11px] font-semibold uppercase tracking-wider text-navy/30 mb-2">
-                                                Médicaments ajoutés ({newMedications.length})
+                                                {t('prescriptions.workspace.builder.added_title', { count: newMedications.length })}
                                             </p>
                                             {newMedications.map((med, index) => (
                                                 <div key={index} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-navy/[0.02] border border-navy/[0.04] group">
@@ -719,12 +722,12 @@ export default function Prescriptions() {
                                             {isSaving || isGeneratingPatientPdf ? (
                                                 <>
                                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                    {isGeneratingPatientPdf ? 'Génération PDF...' : 'Enregistrement...'}
+                                                    {isGeneratingPatientPdf ? t('prescriptions.workspace.builder.generating_pdf') : t('prescriptions.workspace.builder.saving')}
                                                 </>
                                             ) : (
                                                 <>
                                                     {icons.check}
-                                                    Enregistrer & Générer PDF
+                                                    {t('prescriptions.workspace.builder.save_button')}
                                                 </>
                                             )}
                                         </button>
@@ -735,7 +738,7 @@ export default function Prescriptions() {
                             {/* ═══════ Past Ordonnances ═══════ */}
                             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(30,42,86,0.06)] border border-navy/[0.04] overflow-hidden">
                                 <div className="px-5 py-3.5 border-b border-navy/[0.06] flex items-center justify-between">
-                                    <h3 className="text-sm font-bold text-navy">Ordonnances précédentes</h3>
+                                    <h3 className="text-sm font-bold text-navy">{t('prescriptions.workspace.previous.title')}</h3>
                                     <div className="flex items-center gap-2">
                                         {patientPrescriptions.length > 0 && (
                                             <>
@@ -752,13 +755,13 @@ export default function Prescriptions() {
                                                             <polyline points="14 2 14 8 20 8" />
                                                         </svg>
                                                     )}
-                                                    Générer PDF
+                                                    {t('prescriptions.workspace.previous.generate_all')}
                                                 </button>
                                                 <div className="flex items-center gap-1.5">
                                                     <div className="w-5 h-5 rounded-full bg-gradient-to-br from-navy to-navy-light flex items-center justify-center">
                                                         <span className="text-[9px] font-bold text-white">{patientPrescriptions.length}</span>
                                                     </div>
-                                                    <span className="text-xs text-navy/35">{patientPrescriptions.length} ordonnance{patientPrescriptions.length > 1 ? 's' : ''}</span>
+                                                    <span className="text-xs text-navy/35">{patientPrescriptions.length === 1 ? t('prescriptions.workspace.previous.count_one') : t('prescriptions.workspace.previous.count_plural', { count: patientPrescriptions.length })}</span>
                                                 </div>
                                             </>
                                         )}
@@ -768,8 +771,8 @@ export default function Prescriptions() {
                                 {patientPrescriptions.length === 0 ? (
                                     <div className="text-center py-12">
                                         <div className="text-navy/15 text-4xl mb-3">📋</div>
-                                        <p className="text-sm text-navy/35 font-medium mb-1">Aucune ordonnance précédente</p>
-                                        <p className="text-xs text-navy/25">Les ordonnances enregistrées pour ce patient apparaîtront ici</p>
+                                        <p className="text-sm text-navy/35 font-medium mb-1">{t('prescriptions.workspace.previous.empty')}</p>
+                                        <p className="text-xs text-navy/25">{t('prescriptions.workspace.previous.empty_hint')}</p>
                                     </div>
                                 ) : (() => {
                                     const paginatedPrescs = patientPrescriptions.slice(prescriptionPage * ROWS_PER_PAGE, (prescriptionPage + 1) * ROWS_PER_PAGE);
@@ -780,7 +783,7 @@ export default function Prescriptions() {
                                     for (const presc of paginatedPrescs) {
                                         const dateKey = new Date(presc.createdAt).toDateString();
                                         if (dateKey !== lastDateKey) {
-                                            grouped.push({ dateLabel: formatDateGroup(presc.createdAt), items: [presc] });
+                                            grouped.push({ dateLabel: formatDateGroup(presc.createdAt, currentLang, t), items: [presc] });
                                             lastDateKey = dateKey;
                                         } else {
                                             grouped[grouped.length - 1].items.push(presc);
@@ -840,10 +843,10 @@ export default function Prescriptions() {
                                                                             <div className="flex-1 min-w-0">
                                                                                 <div className="flex items-center gap-2 mb-1">
                                                                                     <p className="text-xs font-semibold text-navy/40">
-                                                                                        Ordonnance #{presc.id} — {presc.medicines.length} médicament{presc.medicines.length > 1 ? 's' : ''}
+                                                                                        {presc.medicines.length === 1 ? t('prescriptions.workspace.previous.item_header', { id: presc.id }) : t('prescriptions.workspace.previous.item_header_plural', { id: presc.id, count: presc.medicines.length })}
                                                                                     </p>
                                                                                     <span className="text-[10px] text-navy/20">
-                                                                                        {new Date(presc.createdAt).toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' })}
+                                                                                        {new Date(presc.createdAt).toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit' })}
                                                                                     </span>
                                                                                 </div>
                                                                                 {presc.medicines.map((med) => (
@@ -867,7 +870,7 @@ export default function Prescriptions() {
                                                                                     <button
                                                                                         onClick={() => handleViewPdf(pdfDoc.localPath)}
                                                                                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
-                                                                                        title="Voir le PDF"
+                                                                                        title={t('prescriptions.workspace.previous.view_tooltip')}
                                                                                     >
                                                                                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                                             <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -876,12 +879,12 @@ export default function Prescriptions() {
                                                                                         PDF
                                                                                     </button>
                                                                                 ) : (
-                                                                                    <span className="text-[10px] text-navy/20 italic">Aucun PDF</span>
+                                                                                    <span className="text-[10px] text-navy/20 italic">{t('prescriptions.workspace.previous.no_pdf')}</span>
                                                                                 )}
                                                                                 <button
                                                                                     onClick={() => handleDeletePrescription(presc.id)}
                                                                                     className="p-1.5 rounded-lg text-navy/20 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                                                                                    title="Supprimer"
+                                                                                    title={t('prescriptions.workspace.previous.delete_tooltip')}
                                                                                 >
                                                                                     {icons.trash}
                                                                                 </button>
@@ -898,7 +901,7 @@ export default function Prescriptions() {
                                             {patientPrescriptions.length > ROWS_PER_PAGE && (
                                                 <div className="px-5 py-3 border-t border-navy/[0.06] flex items-center justify-between">
                                                     <span className="text-xs text-navy/35">
-                                                        {prescriptionPage * ROWS_PER_PAGE + 1}–{Math.min((prescriptionPage + 1) * ROWS_PER_PAGE, patientPrescriptions.length)} sur {patientPrescriptions.length}
+                                                        {t('prescriptions.workspace.previous.pagination_info', { start: prescriptionPage * ROWS_PER_PAGE + 1, end: Math.min((prescriptionPage + 1) * ROWS_PER_PAGE, patientPrescriptions.length), total: patientPrescriptions.length })}
                                                     </span>
                                                     <div className="flex items-center gap-1.5">
                                                         <button
@@ -906,14 +909,14 @@ export default function Prescriptions() {
                                                             disabled={prescriptionPage === 0}
                                                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-navy/50 hover:bg-navy/[0.04] hover:text-navy transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                                         >
-                                                            ← Précédent
+                                                            {t('prescriptions.workspace.previous.prev')}
                                                         </button>
                                                         <button
                                                             onClick={() => setPrescriptionPage(p => p + 1)}
                                                             disabled={(prescriptionPage + 1) * ROWS_PER_PAGE >= patientPrescriptions.length}
                                                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-navy/50 hover:bg-navy/[0.04] hover:text-navy transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                                         >
-                                                            Suivant →
+                                                            {t('prescriptions.workspace.previous.next')}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -968,6 +971,7 @@ function CreateProfileModal({
     onClose: () => void;
     onSave: (form: { fullName: string; speciality: string; phoneNumber: string; address: string; email: string }) => void;
 }) {
+    const { t } = useTranslation();
     const [form, setForm] = useState({
         fullName: '',
         speciality: '',
@@ -979,9 +983,9 @@ function CreateProfileModal({
 
     const validatePhone = (value: string) => {
         if (value.length > 0 && value.length < 10) {
-            setPhoneError('Le numéro doit contenir 10 chiffres');
+            setPhoneError(t('prescriptions.modal.phone_error_length'));
         } else if (value.length === 10 && !/^(05|06|07)/.test(value)) {
-            setPhoneError('Le numéro doit commencer par 05, 06 ou 07');
+            setPhoneError(t('prescriptions.modal.phone_error_start'));
         } else {
             setPhoneError('');
         }
@@ -992,25 +996,25 @@ function CreateProfileModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!isPhoneValid) {
-            setPhoneError('Le numéro doit contenir 10 chiffres et commencer par 05, 06 ou 07');
+            setPhoneError(t('prescriptions.modal.phone_error_submit'));
             return;
         }
         onSave(form);
     };
 
     const specialities = [
-        'Médecine Générale',
-        'Cardiologie',
-        'Dermatologie',
-        'Pédiatrie',
-        'Ophtalmologie',
-        'ORL',
-        'Gynécologie',
-        'Neurologie',
-        'Orthopédie',
-        'Psychiatrie',
-        'Radiologie',
-        'Chirurgie',
+        { key: 'general', label: t('prescriptions.modal.specialities.general') },
+        { key: 'cardio', label: t('prescriptions.modal.specialities.cardio') },
+        { key: 'derma', label: t('prescriptions.modal.specialities.derma') },
+        { key: 'pedia', label: t('prescriptions.modal.specialities.pedia') },
+        { key: 'ophtalmo', label: t('prescriptions.modal.specialities.ophtalmo') },
+        { key: 'orl', label: t('prescriptions.modal.specialities.orl') },
+        { key: 'gyneco', label: t('prescriptions.modal.specialities.gyneco') },
+        { key: 'neuro', label: t('prescriptions.modal.specialities.neuro') },
+        { key: 'ortho', label: t('prescriptions.modal.specialities.ortho') },
+        { key: 'psych', label: t('prescriptions.modal.specialities.psych') },
+        { key: 'radio', label: t('prescriptions.modal.specialities.radio') },
+        { key: 'surgery', label: t('prescriptions.modal.specialities.surgery') },
     ];
 
     return (
@@ -1020,8 +1024,8 @@ function CreateProfileModal({
             <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-[0_24px_80px_rgba(30,42,86,0.18)] p-7 animate-[scaleIn_0.25s_ease-out]">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h2 className="text-lg font-bold text-navy">Profil Médecin</h2>
-                        <p className="text-xs text-navy/40 mt-0.5">Ces informations figureront sur vos ordonnances</p>
+                        <h2 className="text-lg font-bold text-navy">{t('prescriptions.modal.title')}</h2>
+                        <p className="text-xs text-navy/40 mt-0.5">{t('prescriptions.modal.subtitle')}</p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-xl text-navy/30 hover:text-navy hover:bg-navy/[0.04] transition-colors cursor-pointer">
                         {icons.close}
@@ -1030,45 +1034,45 @@ function CreateProfileModal({
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">Nom complet</label>
+                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.modal.name_label')}</label>
                         <input
                             required
                             value={form.fullName}
                             onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                            placeholder="Dr. Mohammed Benali"
+                            placeholder={t('prescriptions.modal.name_placeholder')}
                             className={inputClass}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">Email</label>
+                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.modal.email_label')}</label>
                         <input
                             type="email"
                             value={form.email}
                             onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                            placeholder="dr.benali@example.com"
+                            placeholder={t('prescriptions.modal.email_placeholder')}
                             className={inputClass}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">Spécialité</label>
+                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.modal.speciality_label')}</label>
                         <select
                             required
                             value={form.speciality}
                             onChange={e => setForm(f => ({ ...f, speciality: e.target.value }))}
                             className={inputClass}
                         >
-                            <option value="">Sélectionner une spécialité</option>
+                            <option value="">{t('prescriptions.modal.speciality_select')}</option>
                             {specialities.map(s => (
-                                <option key={s} value={s}>{s}</option>
+                                <option key={s.key} value={s.label}>{s.label}</option>
                             ))}
                         </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">Téléphone</label>
+                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.modal.phone_label')}</label>
                             <input
                                 required
                                 maxLength={10}
@@ -1078,7 +1082,7 @@ function CreateProfileModal({
                                     setForm(f => ({ ...f, phoneNumber: digits }));
                                     validatePhone(digits);
                                 }}
-                                placeholder="0555123456"
+                                placeholder={t('prescriptions.modal.phone_placeholder')}
                                 className={`${inputClass} ${phoneError ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : ''}`}
                             />
                             {phoneError && (
@@ -1086,12 +1090,12 @@ function CreateProfileModal({
                             )}
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">Adresse du cabinet</label>
+                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.modal.address_label')}</label>
                             <input
                                 required
                                 value={form.address}
                                 onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                                placeholder="123 Rue des Oliviers, Alger"
+                                placeholder={t('prescriptions.modal.address_placeholder')}
                                 className={inputClass}
                             />
                         </div>
@@ -1103,13 +1107,13 @@ function CreateProfileModal({
                             onClick={onClose}
                             className="px-5 py-2.5 text-sm font-medium text-navy/50 hover:text-navy hover:bg-navy/[0.04] rounded-xl transition-colors cursor-pointer"
                         >
-                            Annuler
+                            {t('prescriptions.modal.cancel')}
                         </button>
                         <button
                             type="submit"
                             className="px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-pink to-pink-light text-white rounded-xl shadow-[0_4px_14px_rgba(233,30,140,0.25)] hover:shadow-[0_6px_20px_rgba(233,30,140,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                         >
-                            Créer le profil
+                            {t('prescriptions.modal.submit')}
                         </button>
                     </div>
                 </form>

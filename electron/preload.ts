@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getPatientById: (id: number) => ipcRenderer.invoke('get-patient-by-id', id),
   searchPatient: (query: string) => ipcRenderer.invoke('search-patients', query),
   countPatients: () => ipcRenderer.invoke('count-patients'),
+  resetDatabase: () => ipcRenderer.invoke('reset-database'),
 
 
   //gestion documents
@@ -42,6 +43,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   //gestion profil médecin
   createDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('create-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
   getDoctorProfile: (userId: number) => ipcRenderer.invoke('get-doctor-profile', userId),
+  updateDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('update-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
   setPrescriptionPdf: (doctorId: number) => ipcRenderer.invoke('set-prescription-pdf', doctorId),
   //gestion des prescriptions
   addPrescription: (userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string) => ipcRenderer.invoke('add-prescription', userId, patientId, medicines, notes),

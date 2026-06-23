@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { Patient } from '../../../types/patient';
 
 type PatientDocumentDetail = {
@@ -16,14 +17,12 @@ type PatientDocumentDetail = {
 };
 
 const fileCategories = [
-    { value: 'all', label: 'Tous les types' },
-    { value: 'prescription', label: 'Ordonnances' },
-    { value: 'radiography', label: 'Radiographies' },
-    { value: 'analysis', label: 'Analyses de sang / Labo' },
-    { value: 'other', label: 'Autres documents' }
+    { value: 'all', labelKey: 'documents.categories.all' },
+    { value: 'prescription', labelKey: 'documents.categories.prescription' },
+    { value: 'radiography', labelKey: 'documents.categories.radiography' },
+    { value: 'analysis', labelKey: 'documents.categories.analysis' },
+    { value: 'other', labelKey: 'documents.categories.other' }
 ];
-
-
 
 /* ─── Inline SVG Icons ─── */
 const icons = {
@@ -101,25 +100,33 @@ const icons = {
     )
 };
 
-function formatBytes(bytes: number, decimals = 2) {
+function formatBytes(bytes: number, t: any, decimals = 2) {
     if (!bytes || bytes === 0) return '—';
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Octets', 'Ko', 'Mo', 'Go', 'To'];
+    const sizes = [
+        t('documents.bytes.bytes'),
+        t('documents.bytes.kb'),
+        t('documents.bytes.mb'),
+        t('documents.bytes.gb'),
+        t('documents.bytes.tb')
+    ];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, locale = 'fr') {
     if (!dateStr) return '—';
     try {
-        return new Date(dateStr).toLocaleDateString('fr', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return new Date(dateStr).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch {
         return dateStr;
     }
 }
 
 export default function Documents() {
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language || 'fr';
 
     const [documents, setDocuments] = useState<PatientDocumentDetail[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -226,11 +233,11 @@ export default function Documents() {
     const handleUploadSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedPatient) {
-            showError('Veuillez sélectionner un patient');
+            showError(t('documents.alerts.patient_required'));
             return;
         }
         if (!selectedFile) {
-            showError('Veuillez sélectionner un fichier à télécharger');
+            showError(t('documents.alerts.file_required'));
             return;
         }
 
@@ -249,7 +256,7 @@ export default function Documents() {
             });
 
             if (result) {
-                showSuccess('Fichier téléchargé et enregistré avec succès !');
+                showSuccess(t('documents.alerts.upload_success'));
                 setShowUploadModal(false);
                 setSelectedPatient(null);
                 setPatientSearchQuery('');
@@ -257,11 +264,11 @@ export default function Documents() {
                 setUploadCategory('radiography');
                 await loadDocuments();
             } else {
-                showError('Erreur lors du téléchargement du fichier.');
+                showError(t('documents.alerts.upload_error'));
             }
         } catch (err) {
             console.error('Upload error:', err);
-            showError('Erreur lors de l\'enregistrement du document');
+            showError(t('documents.alerts.save_error'));
         } finally {
             setIsUploading(false);
         }
@@ -269,14 +276,14 @@ export default function Documents() {
 
     /* ── Delete document ── */
     const handleDeleteDocument = async (id: number) => {
-        if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce document définitivement ?')) return;
+        if (!window.confirm(t('documents.alerts.delete_confirm'))) return;
         try {
             await (window as any).ipcRenderer.deleteDocument(id);
-            showSuccess('Document supprimé avec succès');
+            showSuccess(t('documents.alerts.delete_success'));
             setDocuments(prev => prev.filter(d => d.id !== id));
         } catch (e) {
             console.error('Delete document error:', e);
-            showError('Erreur lors de la suppression du document');
+            showError(t('documents.alerts.delete_error'));
         }
     };
 
@@ -285,11 +292,11 @@ export default function Documents() {
         try {
             const error = await (window as any).ipcRenderer.openDocument(filePath);
             if (error) {
-                showError(`Impossible d'ouvrir le fichier : ${error}`);
+                showError(t('documents.alerts.open_error', { error }));
             }
         } catch (e) {
             console.error('Open document error:', e);
-            showError('Erreur lors de l\'ouverture du document');
+            showError(t('documents.alerts.open_fail'));
         }
     };
 
@@ -327,10 +334,10 @@ export default function Documents() {
 
     const getCategoryLabel = (category: string) => {
         switch (category) {
-            case 'prescription': return 'Ordonnance';
-            case 'radiography': return 'Radiographie';
-            case 'analysis': return 'Analyse / Labo';
-            default: return 'Autre document';
+            case 'prescription': return t('documents.badge.prescription');
+            case 'radiography': return t('documents.badge.radiography');
+            case 'analysis': return t('documents.badge.analysis');
+            default: return t('documents.badge.other');
         }
     };
 
@@ -356,17 +363,17 @@ export default function Documents() {
             {/* ── Page Header ── */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-navy">Documents & Fichiers</h1>
+                    <h1 className="text-2xl font-bold text-navy">{t('documents.title')}</h1>
                     <p className="text-sm text-navy/50 mt-0.5">
-                        Consultez et gérez l'ensemble des ordonnances et documents médicaux de vos patients.
+                        {t('documents.subtitle')}
                     </p>
                 </div>
                 <button
                     onClick={() => setShowUploadModal(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink to-pink-light text-white text-sm font-semibold hover:shadow-[0_4px_16px_rgba(233,30,140,0.25)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink to-pink-light text-white text-sm font-semibold hover:shadow-[0_4px_16px_rgba(233,30,140,0.25)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer select-none"
                 >
                     {icons.plus}
-                    Ajouter un document
+                    {t('documents.add_button')}
                 </button>
             </div>
 
@@ -399,10 +406,10 @@ export default function Documents() {
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-navy">
-                            Glissez-déposez un fichier ici, ou <span className="text-pink hover:underline">cliquez pour parcourir</span>
+                            {t('documents.dropzone.prompt')} <span className="text-pink hover:underline">{t('documents.dropzone.click_browse')}</span>
                         </p>
                         <p className="text-xs text-navy/40 mt-1">
-                            Formats supportés : PDF, JPG, PNG, DOC (Max: 10 Mo)
+                            {t('documents.dropzone.supported')}
                         </p>
                     </div>
                 </div>
@@ -413,8 +420,12 @@ export default function Documents() {
                 {/* Table Toolbar */}
                 <div className="px-6 py-4 border-b border-navy/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h3 className="text-sm font-bold text-navy">Fichiers Attachés</h3>
-                        <p className="text-xs text-navy/40 mt-0.5">{filteredDocuments.length} document{filteredDocuments.length !== 1 ? 's' : ''} au total</p>
+                        <h3 className="text-sm font-bold text-navy">{t('documents.table.title')}</h3>
+                        <p className="text-xs text-navy/40 mt-0.5">
+                            {filteredDocuments.length === 1 
+                                ? t('documents.table.total_count', { count: filteredDocuments.length }) 
+                                : t('documents.table.total_count_plural', { count: filteredDocuments.length })}
+                        </p>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -430,7 +441,7 @@ export default function Documents() {
                                     setSearchQuery(e.target.value);
                                     setCurrentPage(0);
                                 }}
-                                placeholder="Rechercher par fichier, patient..."
+                                placeholder={t('documents.table.search_placeholder')}
                                 className="w-full pl-10 pr-4 py-2 text-xs bg-navy/[0.02] border border-navy/[0.08] rounded-xl text-navy placeholder:text-navy/25 focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30 transition-all duration-200"
                             />
                         </div>
@@ -449,7 +460,9 @@ export default function Documents() {
                                 className="w-full pl-9 pr-8 py-2 text-xs bg-navy/[0.02] border border-navy/[0.08] rounded-xl text-navy focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30 transition-all duration-200 cursor-pointer appearance-none"
                             >
                                 {fileCategories.map(cat => (
-                                    <option key={cat.value} value={cat.value} className="text-navy">{cat.label}</option>
+                                    <option key={cat.value} value={cat.value} className="text-navy">
+                                        {t(cat.labelKey)}
+                                    </option>
                                 ))}
                             </select>
                             {/* Native select styling arrows */}
@@ -466,9 +479,9 @@ export default function Documents() {
                 ) : filteredDocuments.length === 0 ? (
                     <div className="text-center py-20">
                         <div className="text-navy/15 text-5xl mb-4">📂</div>
-                        <p className="text-base font-semibold text-navy mb-1">Aucun document trouvé</p>
+                        <p className="text-base font-semibold text-navy mb-1">{t('documents.table.empty')}</p>
                         <p className="text-xs text-navy/40 max-w-sm mx-auto">
-                            Aucun document ne correspond à vos critères. Modifiez vos filtres ou ajoutez un nouveau fichier.
+                            {t('documents.table.empty_hint')}
                         </p>
                     </div>
                 ) : (
@@ -480,11 +493,11 @@ export default function Documents() {
                                         <th className="w-12 px-6 py-4 text-center">
                                             <input type="checkbox" className="rounded border-navy/20 text-pink focus:ring-pink/30 cursor-pointer" readOnly checked={false} />
                                         </th>
-                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">Nom du fichier</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">Taille</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">Dernière modification</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">Patient attaché</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider text-right">Actions</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">{t('documents.table.header.filename')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">{t('documents.table.header.size')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">{t('documents.table.header.modified')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider">{t('documents.table.header.patient')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-navy/45 uppercase tracking-wider text-right">{t('documents.table.header.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-navy/[0.04]">
@@ -516,12 +529,12 @@ export default function Documents() {
                                             </td>
                                             <td className="px-6 py-4.5">
                                                 <span className="text-sm font-medium text-navy/70">
-                                                    {formatBytes(doc.fileSize)}
+                                                    {formatBytes(doc.fileSize, t)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4.5">
                                                 <span className="text-sm font-medium text-navy/70">
-                                                    {formatDate(doc.uploadDate)}
+                                                    {formatDate(doc.uploadDate, currentLang)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4.5">
@@ -537,14 +550,14 @@ export default function Documents() {
                                                     <button
                                                         onClick={() => handleOpenDocument(doc.localPath)}
                                                         className="p-2 rounded-xl text-navy/40 hover:text-pink hover:bg-pink/5 transition-all cursor-pointer"
-                                                        title="Ouvrir le fichier"
+                                                        title={t('patient_details.documents.open')}
                                                     >
                                                         {icons.open}
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteDocument(doc.id)}
                                                         className="p-2 rounded-xl text-navy/40 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
-                                                        title="Supprimer"
+                                                        title={t('patient_details.documents.delete')}
                                                     >
                                                         {icons.trash}
                                                     </button>
@@ -560,22 +573,26 @@ export default function Documents() {
                         {filteredDocuments.length > ROWS_PER_PAGE && (
                             <div className="px-6 py-4 border-t border-navy/[0.06] flex items-center justify-between">
                                 <span className="text-xs text-navy/35 font-medium">
-                                    Affichage de {currentPage * ROWS_PER_PAGE + 1} à {Math.min((currentPage + 1) * ROWS_PER_PAGE, filteredDocuments.length)} sur {filteredDocuments.length} documents
+                                    {t('documents.table.pagination', {
+                                        start: currentPage * ROWS_PER_PAGE + 1,
+                                        end: Math.min((currentPage + 1) * ROWS_PER_PAGE, filteredDocuments.length),
+                                        total: filteredDocuments.length
+                                    })}
                                 </span>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setCurrentPage(p => p - 1)}
                                         disabled={currentPage === 0}
-                                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-navy/60 bg-navy/[0.03] hover:bg-navy/[0.06] hover:text-navy transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-navy/60 bg-navy/[0.03] hover:bg-navy/[0.06] hover:text-navy transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed select-none"
                                     >
-                                        ← Précédent
+                                        {t('documents.table.prev')}
                                     </button>
                                     <button
                                         onClick={() => setCurrentPage(p => p + 1)}
                                         disabled={(currentPage + 1) * ROWS_PER_PAGE >= filteredDocuments.length}
-                                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-navy/60 bg-navy/[0.03] hover:bg-navy/[0.06] hover:text-navy transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-navy/60 bg-navy/[0.03] hover:bg-navy/[0.06] hover:text-navy transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed select-none"
                                     >
-                                        Suivant →
+                                        {t('documents.table.next')}
                                     </button>
                                 </div>
                             </div>
@@ -586,37 +603,41 @@ export default function Documents() {
 
             {/* ═══════ Upload Document Modal ═══════ */}
             {showUploadModal && (
-                <div className="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-navy/5 overflow-hidden animate-scale-up">
+                <div className="fixed inset-0 z-50 bg-navy/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <form
+                        onSubmit={handleUploadSubmit}
+                        className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 animate-scale-in flex flex-col max-h-[90vh]"
+                    >
                         {/* Modal Header */}
-                        <div className="px-6 py-5 border-b border-navy/[0.06] flex items-center justify-between bg-gradient-to-r from-navy to-navy-dark text-white">
+                        <div className="bg-white px-6 pt-6 pb-2 flex items-start justify-between">
                             <div>
-                                <h3 className="text-lg font-bold">Ajouter un document</h3>
-                                <p className="text-xs text-white/60 mt-0.5">Associez un fichier médical à la fiche d'un patient.</p>
+                                <h3 className="font-bold text-navy text-xl md:text-2xl">{t('documents.modal.title')}</h3>
+                                <p className="text-xs md:text-sm text-gray-400 mt-1">{t('documents.modal.subtitle')}</p>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => {
                                     setShowUploadModal(false);
                                     setSelectedPatient(null);
                                     setPatientSearchQuery('');
                                     setSelectedFile(null);
                                 }}
-                                className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                className="text-gray-400 hover:text-gray-600 cursor-pointer p-1"
                             >
                                 {icons.close}
                             </button>
                         </div>
 
                         {/* Modal Body */}
-                        <form onSubmit={handleUploadSubmit} className="p-6 space-y-5">
+                        <div className="p-6 overflow-y-auto space-y-4 flex-1">
                             {/* Patient Selection Search */}
                             <div className="space-y-1.5 relative">
-                                <label className="text-xs font-bold text-navy/60 uppercase tracking-wide">Patient attaché *</label>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t('documents.modal.patient_label')}</label>
                                 {selectedPatient ? (
-                                    <div className="flex items-center justify-between p-3.5 bg-pink/[0.03] border border-pink/20 rounded-xl">
+                                    <div className="p-4 bg-pink/5 border border-pink/25 rounded-2xl flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-semibold text-navy">{selectedPatient.fullName}</p>
-                                            <p className="text-xs text-navy/45 mt-0.5">Date de naissance : {selectedPatient.dateOfBirth}</p>
+                                            <span className="font-bold text-navy block">{selectedPatient.fullName}</span>
+                                            <span className="text-xs text-gray-500 block">{t('patients.modal.dob')} : {selectedPatient.dateOfBirth}</span>
                                         </div>
                                         <button
                                             type="button"
@@ -624,24 +645,24 @@ export default function Documents() {
                                                 setSelectedPatient(null);
                                                 setPatientSearchQuery('');
                                             }}
-                                            className="text-xs font-semibold text-pink hover:text-pink-dark cursor-pointer hover:underline"
+                                            className="text-xs font-semibold text-pink hover:underline cursor-pointer"
                                         >
-                                            Changer
+                                            {t('documents.modal.patient_change')}
                                         </button>
                                     </div>
                                 ) : (
                                     <>
                                         <div className="relative">
-                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy/35">
-                                                {icons.search}
-                                            </span>
                                             <input
                                                 type="text"
                                                 value={patientSearchQuery}
                                                 onChange={e => setPatientSearchQuery(e.target.value)}
-                                                placeholder="Tapez le nom ou prénom du patient..."
-                                                className="w-full pl-10 pr-4 py-2.5 text-sm bg-navy/[0.02] border border-navy/[0.08] rounded-xl text-navy focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30"
+                                                placeholder={t('documents.modal.patient_placeholder')}
+                                                className="w-full p-3.5 pl-10 bg-gray-50/50 hover:bg-gray-50 border border-gray-200/80 rounded-2xl font-medium text-navy focus:border-pink focus:ring-1 focus:ring-pink focus:bg-white outline-none transition-all"
                                             />
+                                            <span className="absolute left-3 top-[17px] text-gray-400">
+                                                {icons.search}
+                                            </span>
                                             {isSearchingPatient && (
                                                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                                                     <div className="w-4 h-4 border-2 border-pink/30 border-t-pink rounded-full animate-spin" />
@@ -651,7 +672,7 @@ export default function Documents() {
 
                                         {/* Autocomplete Dropdown */}
                                         {showPatientDropdown && patientSearchResults.length > 0 && (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-navy/[0.08] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-navy/[0.04]">
+                                            <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200/80 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
                                                 {patientSearchResults.map(p => (
                                                     <button
                                                         key={p.id}
@@ -660,17 +681,17 @@ export default function Documents() {
                                                             setSelectedPatient(p);
                                                             setShowPatientDropdown(false);
                                                         }}
-                                                        className="w-full text-left px-4 py-3 hover:bg-navy/[0.02] transition-colors cursor-pointer"
+                                                        className="w-full text-left p-3.5 hover:bg-pink/5 border-b border-gray-100 last:border-0 flex flex-col cursor-pointer transition-all"
                                                     >
-                                                        <p className="text-sm font-semibold text-navy">{p.fullName}</p>
-                                                        <p className="text-xs text-navy/40 mt-0.5">Né(e) le {p.dateOfBirth} | SSN: {p.ssn || '—'}</p>
+                                                        <span className="font-semibold text-sm text-navy">{p.fullName}</span>
+                                                        <span className="text-xs text-gray-400 mt-0.5">{t('patients.modal.dob')} {p.dateOfBirth} | SSN: {p.ssn || '—'}</span>
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                         {showPatientDropdown && patientSearchResults.length === 0 && patientSearchQuery && (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-navy/[0.08] rounded-xl shadow-xl p-4 text-center z-50 text-xs text-navy/45">
-                                                Aucun patient trouvé
+                                            <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200/80 rounded-2xl shadow-xl p-3.5 text-center text-sm text-gray-400">
+                                                {t('documents.modal.patient_not_found')}
                                             </div>
                                         )}
                                     </>
@@ -679,22 +700,22 @@ export default function Documents() {
 
                             {/* Category Selection */}
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-navy/60 uppercase tracking-wide">Type de document *</label>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t('documents.modal.type_label')}</label>
                                 <select
                                     value={uploadCategory}
                                     onChange={e => setUploadCategory(e.target.value)}
-                                    className="w-full px-4 py-2.5 text-sm bg-navy/[0.02] border border-navy/[0.08] rounded-xl text-navy focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30 cursor-pointer"
+                                    className="w-full p-3.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-200/80 rounded-2xl font-medium text-navy focus:border-pink focus:ring-1 focus:ring-pink focus:bg-white outline-none transition-all cursor-pointer"
                                 >
-                                    <option value="radiography">Radiographie</option>
-                                    <option value="analysis">Analyse de sang / Laboratoire</option>
-                                    <option value="prescription">Ordonnance</option>
-                                    <option value="other">Autre document médical</option>
+                                    <option value="radiography">{t('documents.categories.radiography')}</option>
+                                    <option value="analysis">{t('documents.categories.analysis')}</option>
+                                    <option value="prescription">{t('documents.categories.prescription')}</option>
+                                    <option value="other">{t('documents.categories.other')}</option>
                                 </select>
                             </div>
 
                             {/* File Selector Dropzone */}
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-navy/60 uppercase tracking-wide">Fichier *</label>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t('documents.modal.file_label')}</label>
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -707,7 +728,7 @@ export default function Documents() {
                                     onDragOver={handleDragOver}
                                     onDrop={handleDrop}
                                     onClick={triggerFileSelect}
-                                    className="border-2 border-dashed border-navy/10 hover:border-pink rounded-2xl p-6 text-center cursor-pointer transition-colors bg-navy/[0.01] hover:bg-pink/[0.01]"
+                                    className="border-2 border-dashed border-gray-200 hover:border-pink rounded-2xl p-6 text-center cursor-pointer transition-colors bg-gray-50/20 hover:bg-pink/[0.01]"
                                 >
                                     {selectedFile ? (
                                         <div className="flex flex-col items-center space-y-2">
@@ -718,54 +739,54 @@ export default function Documents() {
                                                 {selectedFile.name}
                                             </div>
                                             <div className="text-xs text-navy/45">
-                                                {formatBytes(selectedFile.size)}
+                                                {formatBytes(selectedFile.size, t)}
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center space-y-1.5">
                                             <span className="text-3xl">📄</span>
                                             <p className="text-xs font-semibold text-navy">
-                                                Cliquez pour parcourir ou glissez un fichier ici
+                                                {t('documents.dropzone.prompt_modal')}
                                             </p>
                                             <p className="text-[10px] text-navy/35">
-                                                PDF, JPG, PNG ou DOC (Max. 10 Mo)
+                                                {t('documents.dropzone.supported_modal')}
                                             </p>
                                         </div>
                                     )}
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Modal Actions */}
-                            <div className="pt-2 flex items-center justify-end gap-3 border-t border-navy/[0.06]">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowUploadModal(false);
-                                        setSelectedPatient(null);
-                                        setPatientSearchQuery('');
-                                        setSelectedFile(null);
-                                    }}
-                                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-navy/60 hover:bg-navy/[0.04] transition-colors cursor-pointer"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isUploading || !selectedPatient || !selectedFile}
-                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink to-pink-light text-white text-xs font-bold hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isUploading ? (
-                                        <>
-                                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Envoi en cours...
-                                        </>
-                                    ) : (
-                                        'Enregistrer le document'
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                        {/* Modal Footer */}
+                        <div className="bg-white px-6 py-5 flex items-center justify-end gap-4 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowUploadModal(false);
+                                    setSelectedPatient(null);
+                                    setPatientSearchQuery('');
+                                    setSelectedFile(null);
+                                }}
+                                className="px-5 py-3 text-gray-500 hover:text-navy font-semibold transition-all cursor-pointer select-none"
+                            >
+                                {t('documents.modal.cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isUploading || !selectedPatient || !selectedFile}
+                                className="px-8 py-3 bg-pink hover:bg-pink-dark text-white font-bold rounded-2xl shadow-lg shadow-pink/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 select-none"
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        {t('documents.modal.saving')}
+                                    </>
+                                ) : (
+                                    t('documents.modal.save')
+                                )}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>

@@ -23,7 +23,6 @@ type Appointment = {
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation();
-  const isRtl = i18n.dir() === 'rtl';
   const locale = i18n.language || 'fr';
 
   // Auth and profile states
@@ -132,16 +131,16 @@ export default function Dashboard() {
     });
 
     return [
-      { name: t("appointments.status.completed", "Completed"), value: counts.Completed, color: "#10b981" },
-      { name: t("appointments.status.scheduled", "Scheduled"), value: counts.Scheduled, color: "#1e2a56" },
-      { name: t("appointments.status.cancelled", "Cancelled"), value: counts.Cancelled, color: "#e91e8c" },
-      { name: t("appointments.status.no_show", "Absent"), value: counts['No-Show'], color: "#f59e0b" }
+      { name: t("appointments.status.completed"), value: counts.Completed, color: "#10b981" },
+      { name: t("appointments.status.scheduled"), value: counts.Scheduled, color: "#1e2a56" },
+      { name: t("appointments.status.cancelled"), value: counts.Cancelled, color: "#e91e8c" },
+      { name: t("appointments.status.no_show"), value: counts['No-Show'], color: "#f59e0b" }
     ].filter(item => item.value > 0);
   }, [todayAppointments, t]);
 
   const distributionPieData = distributionData.length > 0 
     ? distributionData 
-    : [{ name: t("statistics.status.none", "No Appointments"), value: 1, color: "#e5e7eb" }];
+    : [{ name: t("dashboard.chart.no_data"), value: 1, color: "#e5e7eb" }];
 
   return (
     <div className="space-y-6 text-[#1E2A56]">
@@ -154,39 +153,103 @@ export default function Dashboard() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <div className="w-10 h-10 border-4 border-[#e91e8c] border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-semibold text-[#1E2A56]/60">{t("appointments.loading", "Chargement...")}</span>
+          <span className="text-sm font-semibold text-[#1E2A56]/60">{t("appointments.loading")}</span>
         </div>
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              { key: 'today_patients', value: stats.todayAppointmentsCount.toString(), accent: 'from-[#e91e8c] to-[#be185d]', icon: '📅', path: '/appointments' },
-              { key: 'appointments', value: stats.totalPatients.toString(), accent: 'from-[#1e2a56] to-slate-800', icon: '🩺', path: '/patients' },
-              { key: 'documents', value: stats.totalDocuments.toString(), accent: 'from-pink-dark to-[#e91e8c]', icon: '📄', path: '/documents' },
-              { key: 'prescriptions', value: stats.totalPrescriptions.toString(), accent: 'from-slate-700 to-[#1e2a56]', icon: '💊', path: '/prescriptions' },
-            ].map(card => (
-              <Link
-                key={card.key}
-                to={card.path}
-                className="relative overflow-hidden bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(30,42,86,0.04)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.08)] transition-all duration-300 group no-underline text-inherit block border border-white/20"
-              >
-                <div className={`absolute top-0 ${isRtl ? 'left-0 rounded-br-[40px]' : 'right-0 rounded-bl-[40px]'} w-20 h-20 bg-gradient-to-br ${card.accent} opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-300`} />
-                <div className="text-2xl mb-2">{card.icon}</div>
-                <div className="text-3xl font-extrabold text-[#1E2A56] tracking-tight">{card.value}</div>
-                <div className="text-xs text-gray-400 font-bold mt-1 uppercase tracking-wider">
-                  {card.key === 'today_patients' ? t('dashboard.stats.today_patients', "Rendez-vous du jour") : t(`dashboard.stats.${card.key}`)}
-                </div>
-              </Link>
-            ))}
-          </div>
+          {(() => {
+            const completedToday = todayAppointments.filter(a => a.status === 'Completed').length;
+            const cancelledOrAbsent = todayAppointments.filter(a => a.status === 'Cancelled' || a.status === 'No-Show').length;
+            const cards = [
+              {
+                label: t('dashboard.stats.total_patients', 'Total Patients'),
+                value: stats.totalPatients,
+                subtitle: t('dashboard.stats.total_patients_sub', 'Patients enregistrés'),
+                path: '/patients',
+                highlighted: true,
+              },
+              {
+                label: t('dashboard.stats.today_appointments', "Rendez-vous du jour"),
+                value: stats.todayAppointmentsCount,
+                subtitle: t('dashboard.stats.today_appointments_sub', 'Planifiés aujourd\'hui'),
+                path: '/appointments',
+                highlighted: false,
+              },
+              {
+                label: t('dashboard.stats.completed_today', 'Consultations terminées'),
+                value: completedToday,
+                subtitle: t('dashboard.stats.completed_today_sub', 'Terminées avec succès'),
+                path: '/appointments',
+                highlighted: false,
+              },
+              {
+                label: t('dashboard.stats.cancelled_absent', 'Annulés / Absents'),
+                value: cancelledOrAbsent,
+                subtitle: t('dashboard.stats.cancelled_absent_sub', 'Annulés ou non présentés'),
+                path: '/appointments',
+                highlighted: false,
+              },
+            ];
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {cards.map((card, idx) => (
+                  <Link
+                    key={idx}
+                    to={card.path}
+                    className={`relative overflow-hidden rounded-2xl p-5 transition-all duration-300 group no-underline block border ${
+                      card.highlighted
+                        ? 'bg-gradient-to-br from-[#1E2A56] to-[#2d3d6e] border-[#1E2A56]/20 shadow-[0_4px_20px_rgba(30,42,86,0.18)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.25)]'
+                        : 'bg-white border-white/20 shadow-[0_2px_12px_rgba(30,42,86,0.04)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.08)]'
+                    }`}
+                  >
+                    {/* Top row: label + arrow icon */}
+                    <div className="flex items-center justify-between mb-5">
+                      <span className={`text-xs font-bold uppercase tracking-wider ${
+                        card.highlighted ? 'text-white/70' : 'text-gray-400'
+                      }`}>
+                        {card.label}
+                      </span>
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                        card.highlighted
+                          ? 'bg-white/10 text-white/60 group-hover:bg-white/20 group-hover:text-white'
+                          : 'bg-gray-50 text-gray-400 group-hover:bg-[#e91e8c]/10 group-hover:text-[#e91e8c]'
+                      }`}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path d="M7 17L17 7M17 7H7M17 7v10" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </div>
+
+                    {/* Big number */}
+                    <div className={`text-4xl font-extrabold tracking-tight ${
+                      card.highlighted ? 'text-white' : 'text-[#1E2A56]'
+                    }`}>
+                      {card.value}
+                    </div>
+
+                    {/* Subtitle */}
+                    <div className={`text-xs font-semibold mt-2 flex items-center gap-1.5 ${
+                      card.highlighted ? 'text-[#e91e8c]/80' : 'text-[#e91e8c]/60'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        card.highlighted ? 'bg-[#e91e8c]' : 'bg-[#e91e8c]/50'
+                      }`} />
+                      {card.subtitle}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Today's Appointments & Distribution Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Today's Appointments List (Left column - 2 cols wide) */}
             <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col">
               <div className="flex items-center justify-between mb-4 border-b border-gray-50 pb-3">
-                <h2 className="text-base font-bold text-[#1E2A56]">{t('dashboard.upcoming.title', "Planning d'aujourd'hui")}</h2>
+                <h2 className="text-base font-bold text-[#1E2A56]">{t('dashboard.upcoming.title')}</h2>
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                   {new Date().toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })}
                 </span>
@@ -200,7 +263,7 @@ export default function Dashboard() {
                     to="/appointments"
                     className="mt-4 px-5 py-2 rounded-xl bg-[#e91e8c] text-white text-xs font-bold shadow-md shadow-[#e91e8c]/25 hover:scale-[1.02] transition-transform no-underline"
                   >
-                    {t('appointments.book_button', "Prendre un rendez-vous")}
+                    {t('appointments.book_button')}
                   </Link>
                 </div>
               ) : (
@@ -242,10 +305,10 @@ export default function Dashboard() {
             <div className="bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col justify-between">
               <div>
                 <h3 className="text-base font-bold text-[#1E2A56] mb-2">
-                  {t("statistics.charts.distribution_title", "Distribution du Jour")}
+                  {t("dashboard.chart.distribution_title")}
                 </h3>
                 <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mb-4">
-                  {t("statistics.charts.volume_subtitle", "Breakdown by Status")}
+                  {t("dashboard.chart.breakdown_subtitle")}
                 </p>
 
                 <div className="h-44 w-full flex items-center justify-center relative">
@@ -282,7 +345,7 @@ export default function Dashboard() {
                       {stats.todayAppointmentsCount}
                     </span>
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                      {t("statistics.charts.total", "Total RDV")}
+                      {t("dashboard.chart.total")}
                     </span>
                   </div>
                 </div>
@@ -304,7 +367,7 @@ export default function Dashboard() {
                 ))}
                 {distributionData.length === 0 && (
                   <span className="text-xs text-gray-400 text-center col-span-2 py-2">
-                    {t("statistics.charts.no_data", "Aucune donnée")}
+                    {t("dashboard.chart.no_data")}
                   </span>
                 )}
               </div>

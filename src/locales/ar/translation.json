@@ -29,11 +29,25 @@
       "today_patients": "مرضى اليوم",
       "appointments": "المواعيد",
       "documents": "المستندات",
-      "prescriptions": "الوصفات الطبية"
+      "prescriptions": "الوصفات الطبية",
+      "total_patients": "إجمالي المرضى",
+      "total_patients_sub": "المرضى المسجلون",
+      "today_appointments": "مواعيد اليوم",
+      "today_appointments_sub": "المخطط لها اليوم",
+      "completed_today": "الاستشارات المكتملة",
+      "completed_today_sub": "تمت بنجاح",
+      "cancelled_absent": "ملغاة / غياب",
+      "cancelled_absent_sub": "ملغاة أو لم يحضر"
     },
     "upcoming": {
-      "title": "المواعيد القادمة",
+      "title": "جدول اليوم",
       "empty": "سيظهر جدول مواعيدك القادمة هنا."
+    },
+    "chart": {
+      "distribution_title": "توزيع اليوم",
+      "breakdown_subtitle": "التوزيع حسب الحالة",
+      "total": "إجمالي المواعيد",
+      "no_data": "لا توجد بيانات"
     }
   },
   "patients": {
@@ -274,6 +288,253 @@
       "cancelled": "ملغى",
       "no_show": "غائب",
       "none": "لا توجد بيانات"
+    }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "subtitle": "إدارة تكوينات العيادة، ملفك الشخصي المهني، والنسخ الاحتياطي للبيانات.",
+    "tabs": {
+      "profile": "الملف الشخصي المهني",
+      "consultation": "الاستشارات والمواعيد",
+      "security": "الأمان والجلسة",
+      "data": "النسخ الاحتياطي وقاعدة البيانات"
+    },
+    "profile": {
+      "title": "الملف الشخصي للطبيب",
+      "subtitle": "ستظهر هذه المعلومات في رأس وصفاتك الطبية.",
+      "name": "الاسم الكامل *",
+      "speciality": "التخصص *",
+      "phone": "رقم الهاتف",
+      "email": "البريد الإلكتروني",
+      "address": "عنوان العيادة",
+      "save": "حفظ الملف الشخصي",
+      "saving": "جاري الحفظ...",
+      "success": "تم تحديث الملف الشخصي بنجاح!",
+      "error": "حدث خطأ أثناء تحديث الملف الشخصي"
+    },
+    "consultation": {
+      "title": "إعدادات الاستشارة",
+      "subtitle": "حدد الأسعار الافتراضية ومدة الحصص لمواعيد الاستشارات الخاصة بك.",
+      "price": "السعر الافتراضي للاستشارة",
+      "price_hint": "يتم استخدام هذا السعر لحساب الإيرادات في علامة تبويب الإحصائيات.",
+      "duration": "المدة الافتراضية للموعد",
+      "duration_minutes": "{{count}} دقيقة",
+      "save": "حفظ الإعدادات",
+      "success": "تم حفظ إعدادات الاستشارة بنجاح!"
+    },
+    "security": {
+      "title": "أمان الجلسة",
+      "subtitle": "إدارة اتصالك وتسجيل الخروج الآمن من حسابك.",
+      "logout": "تسجيل الخروج",
+      "logout_confirm": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
+      "role": "دورك الحالي"
+    },
+    "data": {
+      "title": "قاعدة البيانات والتخزين",
+      "subtitle": "قم بعمل نسخة احتياطية لبيانات عيادتك أو قم بإعادة تهيئة قاعدة البيانات.",
+      "export_patients": "تصدير المرضى (JSON)",
+      "export_patients_csv": "تصدير المرضى (CSV)",
+      "export_success": "تم تصدير الملف بنجاح!",
+      "export_error": "خطأ أثناء تصدير البيانات",
+      "reset_db": "إعادة تهيئة قاعدة البيانات",
+      "reset_warning": "تحذير: سيؤدي هذا الإجراء إلى حذف جميع المرضى والمواعيد والوصفات الطبية والمستندات بشكل نهائي. لا يمكن التراجع عن هذا الإجراء!",
+      "reset_confirm": "اكتب 'RESET' لتأكيد الحذف النهائي:",
+      "reset_success": "تمت إعادة تهيئة قاعدة البيانات بنجاح!",
+      "reset_error": "خطأ أثناء إعادة تهيئة قاعدة البيانات"
+    }
+  },
+  "documents": {
+    "title": "المستندات والملفات",
+    "subtitle": "عرض وإدارة جميع الوصفات الطبية والمستندات الخاصة بالمرضى.",
+    "add_button": "إضافة مستند",
+    "categories": {
+      "all": "جميع الأنواع",
+      "prescription": "الوصفات الطبية",
+      "radiography": "الأشعة السينيرة",
+      "analysis": "تحاليل الدم والمختبر",
+      "other": "مستندات أخرى"
+    },
+    "dropzone": {
+      "prompt": "اسحب وأسقط الملف هنا، أو",
+      "click_browse": "انقر للتصفح",
+      "supported": "الصيغ المدعومة: PDF, JPG, PNG, DOC (الحد الأقصى: 10 ميغابايت)",
+      "prompt_modal": "انقر للتصفح أو اسحب ملفاً هنا",
+      "supported_modal": "PDF، JPG، PNG أو DOC (الحد الأقصى 10 ميغابايت)"
+    },
+    "table": {
+      "title": "الملفات المرفقة",
+      "total_count": "مستند واحد في الإجمالي",
+      "total_count_plural": "{{count}} مستندات في الإجمالي",
+      "search_placeholder": "البحث عن طريق الملف، المريض...",
+      "header": {
+        "filename": "اسم الملف",
+        "size": "الحجم",
+        "modified": "آخر تعديل",
+        "patient": "المريض المرتبط",
+        "actions": "الإجراءات"
+      },
+      "empty": "لم يتم العثور على مستندات",
+      "empty_hint": "لا توجد مستندات تطابق معاييرك. قم بتعديل التصفية أو أضف ملفاً جديداً.",
+      "pagination": "عرض من {{start}} إلى {{end}} من أصل {{total}} مستندات",
+      "prev": "السابق →",
+      "next": "← التالي"
+    },
+    "modal": {
+      "title": "إضافة مستند",
+      "subtitle": "ربط ملف طبي بملف المريض.",
+      "patient_label": "المريض المرتبط *",
+      "patient_placeholder": "البحث عن مريض بالاسم...",
+      "patient_change": "تغيير",
+      "patient_not_found": "لم يتم العثور على أي مريض",
+      "type_label": "نوع المستند *",
+      "file_label": "الملف *",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "saving": "جاري الرفع..."
+    },
+    "alerts": {
+      "patient_required": "يرجى اختيار مريض",
+      "file_required": "يرجى اختيار ملف لرفعه",
+      "upload_success": "تم رفع الملف وحفظه بنجاح!",
+      "upload_error": "خطأ أثناء رفع الملف.",
+      "save_error": "خطأ أثناء حفظ المستند",
+      "delete_confirm": "هل أنت متأكد من رغبتك في حذف هذا المستند نهائياً؟",
+      "delete_success": "تم حذف المستند بنجاح",
+      "delete_error": "خطأ أثناء حذف المستند",
+      "open_error": "تعذر فتح الملف: {{error}}",
+      "open_fail": "خطأ أثناء فتح المستند"
+    },
+    "bytes": {
+      "bytes": "بايت",
+      "kb": "كيلوبايت",
+      "mb": "ميغابايت",
+      "gb": "جيجابايت",
+      "tb": "تيرابايت"
+    },
+    "badge": {
+      "prescription": "وصفة طبية",
+      "radiography": "أشعة",
+      "analysis": "تحاليل / مختبر",
+      "other": "مستند آخر"
+    }
+  },
+  "prescriptions": {
+    "title": "الوصفات الطبية",
+    "subtitle": "إدارة الوصفات الطبية وملف الطبيب الشخصي",
+    "loading": "جاري التحميل...",
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "create_profile": {
+      "welcome": "مرحباً بك، دكتور! 👋",
+      "subtitle": "للبدء في إنشاء الوصفات الطبية، يرجى تهيئة ملفك الشخصي كطبيب أولاً. ستظهر معلوماتك في كل وصفة طبية.",
+      "action": "إنشاء ملفي الشخصي"
+    },
+    "generate_pdf": {
+      "title": "توليد نموذج PDF الخاص بك ✨",
+      "subtitle": "ملفك الشخصي جاهز! قم الآن بتوليد نموذج الوصفة الطبية المخصص بمعلوماتك.",
+      "doctor_title": "د. {{name}}",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "address": "العنوان",
+      "generating": "جاري التوليد...",
+      "generate_button": "توليد نموذج PDF"
+    },
+    "workspace": {
+      "pdf_configured": "تم إعداد PDF",
+      "view_pdf": "عرض الوصفة الطبية",
+      "select_patient": {
+        "title": "اختر مريضاً",
+        "subtitle": "ابحث عن مريض لإنشاء أو عرض وصفاته الطبية",
+        "search_placeholder": "البحث بالاسم...",
+        "empty": "لم يتم العثور على أي مريض"
+      },
+      "patient_card": {
+        "change": "تغيير"
+      },
+      "builder": {
+        "title": "وصفة طبية جديدة",
+        "weight_label": "وزن المريض",
+        "weight_optional": "(اختياري)",
+        "weight_placeholder": "مثال: 70 كغ",
+        "medication": "الدواء",
+        "medication_placeholder": "اسم الدواء",
+        "dosage": "الجرعة",
+        "dosage_placeholder": "مثال: 500 ملغ",
+        "quantity": "الكمية",
+        "quantity_placeholder": "مثال: علبتين",
+        "frequency": "التكرار",
+        "frequency_placeholder": "مثال: 3 مرات/يوم",
+        "duration": "المدة",
+        "duration_placeholder": "مثال: 7 أيام",
+        "add_button": "إضافة الدواء",
+        "added_title": "الأدوية المضافة ({{count}})",
+        "saving": "جاري الحفظ...",
+        "generating_pdf": "جاري توليد PDF...",
+        "save_button": "حفظ وتوليد PDF"
+      },
+      "previous": {
+        "title": "الوصفات الطبية السابقة",
+        "generate_all": "توليد PDF",
+        "count_one": "وصفة واحدة",
+        "count_plural": "{{count}} وصفات",
+        "empty": "لا توجد وصفات طبية سابقة",
+        "empty_hint": "الوصفات الطبية المحفوظة لهذا المريض ستظهر هنا",
+        "item_header": "وصفة رقم #{{id}} — دواء واحد",
+        "item_header_plural": "وصفة رقم #{{id}} — {{count}} أدوية",
+        "no_pdf": "لا يوجد PDF",
+        "view_tooltip": "عرض PDF",
+        "delete_tooltip": "حذف",
+        "pagination_info": "{{start}}–{{end}} من {{total}}",
+        "prev": "السابق →",
+        "next": "← التالي"
+      }
+    },
+    "alerts": {
+      "profile_success": "تم إنشاء ملف الطبيب بنجاح!",
+      "profile_error": "حدث خطأ أثناء إنشاء ملف الطبيب: {{message}}",
+      "profile_error_default": "حدث خطأ أثناء إنشاء ملف الطبيب",
+      "pdf_success": "تم توليد نموذج PDF بنجاح!",
+      "save_success": "تم حفظ الوصفة وتوليد PDF بنجاح!",
+      "save_error": "خطأ أثناء الحفظ: {{message}}",
+      "save_error_default": "حدث خطأ أثناء حفظ الوصفة الطبية",
+      "pdf_generate_success": "تم توليد ملف PDF للوصفة بنجاح!",
+      "pdf_generate_error": "حدث خطأ أثناء توليد ملف PDF: {{message}}",
+      "pdf_generate_error_default": "حدث خطأ أثناء توليد ملف PDF",
+      "no_meds": "لا توجد أدوية لإدراجها في ملف PDF",
+      "delete_success": "تم حذف الدواء"
+    },
+    "modal": {
+      "title": "الملف الشخصي للطبيب",
+      "subtitle": "ستظهر هذه المعلومات في وصفاتك الطبية",
+      "name_label": "الاسم الكامل",
+      "name_placeholder": "د. محمد بن علي",
+      "email_label": "البريد الإلكتروني",
+      "email_placeholder": "dr.benali@example.com",
+      "speciality_label": "التخصص",
+      "speciality_select": "اختر التخصص",
+      "phone_label": "رقم الهاتف",
+      "phone_placeholder": "0555123456",
+      "phone_error_length": "يجب أن يتكون رقم الهاتف من 10 أرقام",
+      "phone_error_start": "يجب أن يبدأ رقم الهاتف بـ 05 أو 06 أو 07",
+      "phone_error_submit": "يجب أن يتكون رقم الهاتف من 10 أرقام ويبدأ بـ 05 أو 06 أو 07",
+      "address_label": "عنوان العيادة",
+      "address_placeholder": "123 شارع الزيتون، الجزائر",
+      "cancel": "إلغاء",
+      "submit": "إنشاء الملف الشخصي",
+      "specialities": {
+        "general": "الطب العام",
+        "cardio": "أمراض القلب",
+        "derma": "طب الجلد",
+        "pedia": "طب الأطفال",
+        "ophtalmo": "طب العيون",
+        "orl": "أذن وأنف وحنجرة",
+        "gyneco": "طب النساء والتوليد",
+        "neuro": "طب الأعصاب",
+        "ortho": "تقويم العظام",
+        "psych": "الطب النفسي",
+        "radio": "الأشعة",
+        "surgery": "الجراحة"
+      }
     }
   }
 }
