@@ -192,7 +192,7 @@ export default function Sidebar() {
       <div className={`flex border-b border-white/[0.07] flex-shrink-0 ${collapsed ? 'flex-col items-center px-3 py-4 gap-3' : 'flex-row items-center px-5 py-5 justify-between'}`}>
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform duration-200">
-            <img src="/logo.png" alt="Logo" className="w-9 h-9 object-contain" />
+            <img src="./logo.png" alt="Logo" className="w-9 h-9 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col overflow-hidden whitespace-nowrap">

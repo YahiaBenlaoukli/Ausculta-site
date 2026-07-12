@@ -9,7 +9,20 @@
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "!dist/**/*.rar",
+    "!dist/**/*.crdownload"
+  ],
+  "extraResources": [
+    {
+      "from": "public",
+      "to": "public",
+      "filter": [
+        "**/*",
+        "!**/*.rar",
+        "!**/*.crdownload"
+      ]
+    }
   ],
   "mac": {
     "target": [

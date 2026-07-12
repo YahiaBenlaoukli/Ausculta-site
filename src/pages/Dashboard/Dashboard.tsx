@@ -138,9 +138,19 @@ export default function Dashboard() {
     ].filter(item => item.value > 0);
   }, [todayAppointments, t]);
 
-  const distributionPieData = distributionData.length > 0 
-    ? distributionData 
+  const distributionPieData = distributionData.length > 0
+    ? distributionData
     : [{ name: t("dashboard.chart.no_data"), value: 1, color: "#e5e7eb" }];
+
+  // Determine which required doctor profile fields are missing
+  const missingProfileFields = useMemo(() => {
+    if (!doctorProfile) return [];
+    const missing: string[] = [];
+    if (!doctorProfile.email?.trim()) missing.push(t('dashboard.profile_notice.email'));
+    if (!doctorProfile.phoneNumber?.trim()) missing.push(t('dashboard.profile_notice.phone'));
+    if (!doctorProfile.address?.trim()) missing.push(t('dashboard.profile_notice.address'));
+    return missing;
+  }, [doctorProfile, t]);
 
   return (
     <div className="space-y-6 text-[#1E2A56]">
@@ -149,6 +159,31 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-[#1E2A56]">{t('dashboard.title')}</h1>
         <p className="text-sm text-[#1E2A56]/50 mt-1">{t('dashboard.welcome')}</p>
       </div>
+
+      {/* Incomplete Profile Notice */}
+      {missingProfileFields.length > 0 && (
+        <div className="flex items-center justify-between gap-4 flex-wrap rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-amber-800">{t('dashboard.profile_notice.title')}</div>
+              <div className="text-xs text-amber-700/80 font-medium truncate">
+                {t('dashboard.profile_notice.missing_prefix')}{missingProfileFields.join(', ')}
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/settings"
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-colors no-underline"
+          >
+            {t('dashboard.profile_notice.action')}
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">

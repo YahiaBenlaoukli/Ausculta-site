@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 /* ─── Heart Animation (simplified for login — gentle auto-loop) ─── */
 const TOTAL_FRAMES = 150;
-const FRAME_PATH = '/sequences/heart/';
+const FRAME_PATH = './sequences/heart/';
 
 function HeartCanvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,7 +18,7 @@ function HeartCanvas() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         const img = imagesRef.current[frameIndex];
-        if (!img || !img.complete) return;
+        if (!img || !img.complete || !img.naturalWidth) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     }, []);
@@ -38,6 +38,14 @@ function HeartCanvas() {
                         drawFrame(0);
                         setIsLoaded(true);
                     }
+                    if (loadedCount === end && end < TOTAL_FRAMES) {
+                        loadBatch(end, size);
+                    }
+                };
+                img.onerror = () => {
+                    // Remove broken image so drawFrame skips it
+                    images[i] = null as unknown as HTMLImageElement;
+                    loadedCount++;
                     if (loadedCount === end && end < TOTAL_FRAMES) {
                         loadBatch(end, size);
                     }
@@ -330,7 +338,7 @@ export default function Authentification() {
                 {/* Branding below heart */}
                 <div className="relative z-10 mt-6 text-center">
                     <div className="flex items-center justify-center gap-3 mb-3">
-                        <img src="/logo.png" alt="Ausculta" className="w-10 h-10 object-contain" />
+                        <img src="./logo.png" alt="Ausculta" className="w-10 h-10 object-contain" />
                         <div className="inline-flex">
                             <span className="text-3xl tracking-tight text-white font-bold">Ausc</span>
                             <span className="text-3xl tracking-tight text-pink font-bold">ulta</span>
@@ -406,7 +414,7 @@ export default function Authentification() {
 
                 {/* Mobile-only logo */}
                 <div className="lg:hidden flex items-center gap-2.5 mb-10">
-                    <img src="/logo.png" alt="Ausculta" className="w-9 h-9 object-contain" />
+                    <img src="./logo.png" alt="Ausculta" className="w-9 h-9 object-contain" />
                     <div className="inline-flex">
                         <span className="text-2xl tracking-tight text-navy font-bold">Ausc</span>
                         <span className="text-2xl tracking-tight text-pink font-bold">ulta</span>

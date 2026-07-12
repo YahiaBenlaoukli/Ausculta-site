@@ -5,6 +5,18 @@ import type { Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
 import type { Prescription } from '../../../types/doctor';
 
+type Appointment = {
+    id: number;
+    patient_id: number;
+    doctor_id: number;
+    appointment_datetime: string;
+    duration_minutes: number;
+    reason: string | null;
+    status: 'Scheduled' | 'Completed' | 'Cancelled' | 'No-Show';
+    full_name: string;
+    phone_number: string;
+};
+
 const icons = {
     chevronLeft: (
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -113,6 +125,7 @@ export default function PatientDetails() {
     const [patientData, setPatientData] = useState<Patient | null>(null);
     const [documents, setDocuments] = useState<PatientDocument[]>([]);
     const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'activity' | 'prescriptions' | 'documents' | 'appointments' | 'notes'>('activity');
 
@@ -139,6 +152,9 @@ export default function PatientDetails() {
             if (prescriptionsResult.status === 'success') {
                 setPrescriptions(prescriptionsResult.data || []);
             }
+
+            const appointmentsResult = await (window as any).ipcRenderer.getAppointmentsByPatientId(Number(id));
+            setAppointments(Array.isArray(appointmentsResult) ? appointmentsResult : []);
         } catch (error) {
             console.error("Error fetching patient details:", error);
         } finally {
@@ -561,14 +577,65 @@ export default function PatientDetails() {
                 )}
 
                 {activeTab === 'appointments' && (
-                    <div className="text-center py-12">
-                        <div className="mx-auto w-12 h-12 bg-pink/5 rounded-full flex items-center justify-center text-pink mb-3">
-                            {icons.calendar}
+                    <div className="space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-navy">Rendez-vous du patient</h4>
+                            <button
+                                onClick={() => navigate('/appointments', { state: { patient: patientData } })}
+                                className="flex items-center gap-1.5 bg-navy/5 text-navy hover:bg-navy/10 text-xs font-semibold px-4.5 py-2 rounded-xl transition-all cursor-pointer border-none"
+                            >
+                                {icons.plus}
+                                Planifier un rendez-vous
+                            </button>
                         </div>
-                        <p className="text-sm font-bold text-navy mb-1">Aucun rendez-vous planifie</p>
-                        <p className="text-xs text-navy/40 max-w-xs mx-auto">
-                            Il n'y a pas de rendez-vous futur ou passe enregistre pour ce patient. Vous pouvez planifier une nouvelle consultation depuis l'onglet Rendez-vous de la barre latérale.
-                        </p>
+
+                        {appointments.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="mx-auto w-12 h-12 bg-pink/5 rounded-full flex items-center justify-center text-pink mb-3">
+                                    {icons.calendar}
+                                </div>
+                                <p className="text-sm font-bold text-navy mb-1">Aucun rendez-vous planifie</p>
+                                <p className="text-xs text-navy/40 max-w-xs mx-auto">
+                                    Il n'y a pas de rendez-vous futur ou passe enregistre pour ce patient. Vous pouvez planifier une nouvelle consultation depuis l'onglet Rendez-vous de la barre latérale.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-navy/[0.04]">
+                                {appointments.map((app) => (
+                                    <div key={app.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                                app.status === 'Completed' ? 'bg-green-50 text-green-600' :
+                                                app.status === 'Cancelled' ? 'bg-red-50 text-red-500' :
+                                                app.status === 'No-Show' ? 'bg-amber-50 text-amber-500' :
+                                                'bg-navy/5 text-navy/40'
+                                            }`}>
+                                                {icons.calendar}
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-semibold text-navy block">
+                                                    {new Date(app.appointment_datetime).toLocaleString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <span className="text-[10px] text-navy/40 font-medium">
+                                                    {app.duration_minutes} min{app.reason ? ` · ${app.reason}` : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
+                                            app.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                                            app.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                                            app.status === 'No-Show' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                            'bg-navy/5 text-navy border-navy/10'
+                                        }`}>
+                                            {app.status === 'Scheduled' ? t('appointments.status.scheduled') :
+                                                app.status === 'Completed' ? t('appointments.status.completed') :
+                                                app.status === 'Cancelled' ? t('appointments.status.cancelled') :
+                                                t('appointments.status.no_show')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

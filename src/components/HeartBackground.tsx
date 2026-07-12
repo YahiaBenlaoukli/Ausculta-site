@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 const TOTAL_FRAMES = 150;
-const FRAME_PATH = "/sequences/heart/";
+const FRAME_PATH = "./sequences/heart/";
 
 export default function HeartBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -23,7 +23,7 @@ export default function HeartBackground() {
     if (!ctx) return;
 
     const img = imagesRef.current[frameIndex];
-    if (!img || !img.complete) return;
+    if (!img || !img.complete || !img.naturalWidth) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -48,6 +48,15 @@ export default function HeartBackground() {
             setIsLoaded(true);
           }
           // Load next batch when this one finishes
+          if (loadedCount === end && end < TOTAL_FRAMES) {
+            loadBatch(end, batchSize);
+          }
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load heart frame: ${img.src}`);
+          // Nullify broken image so drawFrame skips it
+          images[i] = null as unknown as HTMLImageElement;
+          loadedCount++;
           if (loadedCount === end && end < TOTAL_FRAMES) {
             loadBatch(end, batchSize);
           }

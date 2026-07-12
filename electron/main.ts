@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initializeDatabase } from './db/db'
@@ -33,7 +34,7 @@ let win: BrowserWindow | null
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'logo.png'),
+    icon: path.join(process.env.VITE_PUBLIC, 'logo.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -80,7 +81,7 @@ app.whenReady().then(() => {
   ipcMain.handle('search-patients', async (_event, query) => await searchPatients(query));
   ipcMain.handle('count-patients', async () => await countPatients());
   ipcMain.handle('reset-database', async () => await resetMedicalDatabase());
-  
+
   //gestion des documents
   ipcMain.handle('get-documents-by-patient-id', async (_event, patientId) => getDocumentsByPatientId(patientId));
   ipcMain.handle('get-all-documents', async () => getAllDocuments());

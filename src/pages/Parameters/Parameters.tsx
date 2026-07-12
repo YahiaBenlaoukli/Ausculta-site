@@ -31,6 +31,7 @@ export default function Parameters() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   // Consultation Preferences
   const [defaultPrice, setDefaultPrice] = useState("2000");
@@ -91,6 +92,10 @@ export default function Parameters() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    if (phone && phone.length !== 10) {
+      setPhoneError(t("settings.profile.phone_error"));
+      return;
+    }
     setSaving(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -334,10 +339,21 @@ export default function Parameters() {
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all"
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setPhone(digits);
+                      setPhoneError(digits.length > 0 && digits.length !== 10 ? t("settings.profile.phone_error") : "");
+                    }}
+                    className={`w-full px-4 py-3 text-sm bg-bg/50 border rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:bg-white transition-all ${
+                      phoneError ? "border-red-400 focus:border-red-400" : "border-navy/[0.08] focus:border-[#e91e8c]/40"
+                    }`}
                   />
+                  {phoneError && (
+                    <p className="text-[11px] text-red-500 mt-1.5">{phoneError}</p>
+                  )}
                 </div>
 
                 <div>

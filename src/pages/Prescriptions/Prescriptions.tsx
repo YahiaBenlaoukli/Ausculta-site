@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import type { DoctorProfile, Prescription } from '../../../types/doctor';
 import type { Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
@@ -65,6 +66,11 @@ const icons = {
     sparkles: (
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+        </svg>
+    ),
+    calendar: (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
         </svg>
     ),
 };
@@ -372,6 +378,16 @@ export default function Prescriptions() {
     const getInitials = (name: string) =>
         name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
+    // Determine which required doctor profile fields are missing
+    const missingProfileFields = useMemo(() => {
+        if (!doctorProfile) return [];
+        const missing: string[] = [];
+        if (!doctorProfile.email?.trim()) missing.push(t('dashboard.profile_notice.email'));
+        if (!doctorProfile.phoneNumber?.trim()) missing.push(t('dashboard.profile_notice.phone'));
+        if (!doctorProfile.address?.trim()) missing.push(t('dashboard.profile_notice.address'));
+        return missing;
+    }, [doctorProfile, t]);
+
     /* ══════════════════════ Loading ══════════════════════ */
     if (step === 'loading') {
         return (
@@ -393,6 +409,31 @@ export default function Prescriptions() {
                     </p>
                 </div>
             </div>
+
+            {/* Incomplete Profile Notice */}
+            {missingProfileFields.length > 0 && (
+                <div className="flex items-center justify-between gap-4 flex-wrap rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                            </svg>
+                        </span>
+                        <div className="min-w-0">
+                            <div className="text-sm font-bold text-amber-800">{t('dashboard.profile_notice.title')}</div>
+                            <div className="text-xs text-amber-700/80 font-medium truncate">
+                                {t('dashboard.profile_notice.missing_prefix')}{missingProfileFields.join(', ')}
+                            </div>
+                        </div>
+                    </div>
+                    <Link
+                        to="/settings"
+                        className="flex-shrink-0 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-colors no-underline"
+                    >
+                        {t('dashboard.profile_notice.action')}
+                    </Link>
+                </div>
+            )}
 
             {/* ═══════ Step 1: Create Profile ═══════ */}
             {step === 'create-profile' && (
@@ -739,38 +780,19 @@ export default function Prescriptions() {
                             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(30,42,86,0.06)] border border-navy/[0.04] overflow-hidden">
                                 <div className="px-5 py-3.5 border-b border-navy/[0.06] flex items-center justify-between">
                                     <h3 className="text-sm font-bold text-navy">{t('prescriptions.workspace.previous.title')}</h3>
-                                    <div className="flex items-center gap-2">
-                                        {patientPrescriptions.length > 0 && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleGeneratePatientPdf()}
-                                                    disabled={isGeneratingPatientPdf}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink/10 to-pink-light/10 text-pink text-xs font-semibold hover:from-pink/20 hover:to-pink-light/20 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {isGeneratingPatientPdf ? (
-                                                        <div className="w-3.5 h-3.5 border-2 border-pink/30 border-t-pink rounded-full animate-spin" />
-                                                    ) : (
-                                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                                            <polyline points="14 2 14 8 20 8" />
-                                                        </svg>
-                                                    )}
-                                                    {t('prescriptions.workspace.previous.generate_all')}
-                                                </button>
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-navy to-navy-light flex items-center justify-center">
-                                                        <span className="text-[9px] font-bold text-white">{patientPrescriptions.length}</span>
-                                                    </div>
-                                                    <span className="text-xs text-navy/35">{patientPrescriptions.length === 1 ? t('prescriptions.workspace.previous.count_one') : t('prescriptions.workspace.previous.count_plural', { count: patientPrescriptions.length })}</span>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                    {patientPrescriptions.length > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-navy to-navy-light flex items-center justify-center">
+                                                <span className="text-[9px] font-bold text-white">{patientPrescriptions.length}</span>
+                                            </div>
+                                            <span className="text-xs text-navy/35">{patientPrescriptions.length === 1 ? t('prescriptions.workspace.previous.count_one') : t('prescriptions.workspace.previous.count_plural', { count: patientPrescriptions.length })}</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {patientPrescriptions.length === 0 ? (
                                     <div className="text-center py-12">
-                                        <div className="text-navy/15 text-4xl mb-3">📋</div>
+                                        <div className="flex justify-center text-navy/15 mb-3">{icons.fileText}</div>
                                         <p className="text-sm text-navy/35 font-medium mb-1">{t('prescriptions.workspace.previous.empty')}</p>
                                         <p className="text-xs text-navy/25">{t('prescriptions.workspace.previous.empty_hint')}</p>
                                     </div>
@@ -826,15 +848,16 @@ export default function Prescriptions() {
                                         <>
                                             <div>
                                                 {grouped.map((group, gi) => (
-                                                    <div key={gi}>
+                                                    <div key={gi} className={gi > 0 ? 'border-t-2 border-navy/[0.05]' : ''}>
                                                         {/* Date header */}
-                                                        <div className="px-5 py-2 bg-navy/[0.02] border-b border-navy/[0.04] sticky top-0">
-                                                            <span className="text-[11px] font-semibold uppercase tracking-wider text-navy/35">
-                                                                📅 {group.dateLabel}
+                                                        <div className="px-5 py-2.5 bg-navy/[0.03] border-b border-navy/[0.06] sticky top-0">
+                                                            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-navy/45">
+                                                                {icons.calendar}
+                                                                {group.dateLabel}
                                                             </span>
                                                         </div>
                                                         {/* Prescriptions in this date group */}
-                                                        <div className="divide-y divide-navy/[0.04]">
+                                                        <div className="divide-y divide-navy/[0.06]">
                                                             {group.items.map(presc => {
                                                                 const pdfDoc = findPdfDoc(presc);
                                                                 return (
@@ -843,10 +866,10 @@ export default function Prescriptions() {
                                                                             <div className="flex-1 min-w-0">
                                                                                 <div className="flex items-center gap-2 mb-1">
                                                                                     <p className="text-xs font-semibold text-navy/40">
-                                                                                        {presc.medicines.length === 1 ? t('prescriptions.workspace.previous.item_header', { id: presc.id }) : t('prescriptions.workspace.previous.item_header_plural', { id: presc.id, count: presc.medicines.length })}
+                                                                                        {presc.medicines.length === 1 ? t('prescriptions.workspace.previous.item_header', { id: presc.id, count: presc.medicines.length }) : t('prescriptions.workspace.previous.item_header_plural', { id: presc.id, count: presc.medicines.length })}
                                                                                     </p>
-                                                                                    <span className="text-[10px] text-navy/20">
-                                                                                        {new Date(presc.createdAt).toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit' })}
+                                                                                    <span className="text-[10px] text-navy/25 font-medium">
+                                                                                        {new Date(presc.createdAt).toLocaleDateString(currentLang, { day: '2-digit', month: 'short' })} · {new Date(presc.createdAt).toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit' })}
                                                                                     </span>
                                                                                 </div>
                                                                                 {presc.medicines.map((med) => (
@@ -861,11 +884,11 @@ export default function Prescriptions() {
                                                                                     </div>
                                                                                 ))}
                                                                                 {presc.notes && (
-                                                                                    <p className="text-[11px] text-navy/35 italic mt-1 ml-2">📝 {presc.notes}</p>
+                                                                                    <p className="text-[11px] text-navy/35 italic mt-1 ml-2">{presc.notes}</p>
                                                                                 )}
                                                                             </div>
                                                                             {/* Actions */}
-                                                                            <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <div className="flex items-center gap-1.5 flex-shrink-0">
                                                                                 {pdfDoc ? (
                                                                                     <button
                                                                                         onClick={() => handleViewPdf(pdfDoc.localPath)}
@@ -883,7 +906,7 @@ export default function Prescriptions() {
                                                                                 )}
                                                                                 <button
                                                                                     onClick={() => handleDeletePrescription(presc.id)}
-                                                                                    className="p-1.5 rounded-lg text-navy/20 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                                                                                    className="p-1.5 rounded-lg text-navy/40 bg-navy/[0.03] hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                                                                                     title={t('prescriptions.workspace.previous.delete_tooltip')}
                                                                                 >
                                                                                     {icons.trash}

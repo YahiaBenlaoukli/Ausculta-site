@@ -48,6 +48,14 @@
       "breakdown_subtitle": "Breakdown by status",
       "total": "Total Appts",
       "no_data": "No data"
+    },
+    "profile_notice": {
+      "title": "Complete your profile",
+      "missing_prefix": "Missing information: ",
+      "email": "email",
+      "phone": "phone number",
+      "address": "address",
+      "action": "Complete now"
     }
   },
   "patients": {
@@ -305,6 +313,7 @@
       "name": "Full Name *",
       "speciality": "Specialty *",
       "phone": "Phone Number",
+      "phone_error": "The number must contain digits only and be exactly 10 digits long",
       "email": "Email Address",
       "address": "Office Address",
       "save": "Save Profile",

@@ -8,11 +8,8 @@ import type { DoctorProfile, Prescription } from "../../types/doctor";
 import { uploadDocument, getDocumentsByPatientId } from "./documents";
 
 
-import { fileURLToPath } from "node:url";
 import type { Patient } from "../../types/patient";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.join(__dirname, "..", "src", "assets", "ordonnance", "template.pdf");
 const PDF_OUTPUT_DIR = path.join(app.getPath("userData"), "prescriptions");
 const PATIENTS_PDF_DIR = path.join(app.getPath('userData'), 'records', 'Gestion-cabinet-medicale');
 
@@ -94,7 +91,7 @@ export async function updateDoctorProfile(userId: number, fullName: string, spec
         const db = getDatabase();
         const checkStmt = db.prepare(`SELECT id FROM doctor_profile WHERE user_id = ?`);
         let profile = checkStmt.get(userId) as { id: number } | undefined;
-        
+
         if (!profile) {
             // If somehow doesn't exist, create it
             const createResult = await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email);
@@ -192,11 +189,48 @@ function getCenteredX(text: string, font: import("pdf-lib").PDFFont, fontSize: n
     return (pageWidth - textWidth) / 2;
 }
 
+function drawFittedText(
+    page: PDFPage,
+    text: string,
+    font: PDFFont,
+    x: number,
+    y: number,
+    maxWidth: number,
+    defaultSize: number,
+    minSize: number
+) {
+    let size = defaultSize;
+    while (size > minSize && font.widthOfTextAtSize(text, size) > maxWidth) {
+        size -= 0.5;
+    }
+    if (font.widthOfTextAtSize(text, size) <= maxWidth) {
+        page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0) });
+        return;
+    }
+
+    // Still too wide at minSize: break onto two lines at the last word that fits
+    const words = text.split(" ");
+    let firstLine = "";
+    let i = 0;
+    for (; i < words.length; i++) {
+        const candidate = firstLine ? `${firstLine} ${words[i]}` : words[i];
+        if (firstLine && font.widthOfTextAtSize(candidate, minSize) > maxWidth) break;
+        firstLine = candidate;
+    }
+    const secondLine = words.slice(i).join(" ");
+
+    page.drawText(firstLine, { x, y, size: minSize, font, color: rgb(0, 0, 0) });
+    if (secondLine) {
+        page.drawText(secondLine, { x, y: y - (minSize + 2), size: minSize, font, color: rgb(0, 0, 0) });
+    }
+}
+
 async function fillTemplate(
     doctor: DoctorProfile
 ): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
     try {
-        const existingPdfBytes = await fs.readFile(TEMPLATE_PATH);
+        const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", "template.pdf");
+        const existingPdfBytes = await fs.readFile(templatePath);
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
 
         const pages = pdfDoc.getPages();
@@ -222,23 +256,31 @@ async function fillTemplate(
         });
         firstPage.drawText(doctor.phoneNumber, {
             x: 91,
-            y: height - 127,
+            y: height - 125,
             size: 10,
             font: helveticaFont,
             color: rgb(0, 0, 0),
         });
         firstPage.drawText(doctor.email, {
             x: 240,
-            y: height - 127,
+            y: height - 125,
             size: 10,
             font: helveticaFont,
             color: rgb(0, 0, 0)
         })
-        firstPage.drawText(doctor.address, {
-            x: 412,
-            y: height - 127,
-            size: 10,
-            font: helveticaFont,
+        const addressMaxWidth = width - 412 - 15;
+        drawFittedText(firstPage, doctor.address, helveticaFont, 412, height - 125, addressMaxWidth, 10, 7);
+
+        const signatureLabel = "Signature :";
+        const signatureFontSize = 11;
+        const signatureMarginRight = 90;
+        const signatureMarginBottom = 90;
+        const signatureWidth = helveticaFontBold.widthOfTextAtSize(signatureLabel, signatureFontSize);
+        firstPage.drawText(signatureLabel, {
+            x: width - signatureMarginRight - signatureWidth,
+            y: signatureMarginBottom,
+            size: signatureFontSize,
+            font: helveticaFontBold,
             color: rgb(0, 0, 0),
         });
 
@@ -482,20 +524,20 @@ function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBo
     const dayOfConsultationText = new Date().toLocaleDateString('en-GB');
     page.drawText(dayOfConsultationText, {
         x: 67,
-        y: height - 207,
+        y: height - 209,
         size: 10,
         font: helveticaFontBold,
         color: rgb(0, 0, 0),
     });
     page.drawText(patient.fullName, {
         x: 434,
-        y: height - 207,
+        y: height - 209,
         size: 10,
-        font: helveticaFont,
+        font: helveticaFontBold,
         color: rgb(0, 0, 0),
     });
     page.drawText(patient.dateOfBirth, {
-        x: 486,
+        x: 485,
         y: height - 238,
         size: 10,
         font: helveticaFontBold,
@@ -503,16 +545,26 @@ function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBo
     });
     const ageText = `${calculateAge(patient.dateOfBirth).years} ans`;
     page.drawText(ageText, {
-        x: 400,
-        y: height - 269,
+        x: 401,
+        y: height - 270,
         size: 10,
         font: helveticaFontBold,
         color: rgb(0, 0, 0),
     });
     if (weight) {
-        page.drawText(weight, {
-            x: 500,
-            y: height - 269,
+        const weightLabel = "Poids:";
+        const weightLabelX = 455;
+        page.drawText(weightLabel, {
+            x: weightLabelX,
+            y: height - 270,
+            size: 12,
+            font: helveticaFontBold,
+            color: rgb(0, 0, 0),
+        });
+        const patientWeight = `${weight} kg`;
+        page.drawText(patientWeight, {
+            x: weightLabelX + helveticaFontBold.widthOfTextAtSize(weightLabel, 12) + 2,
+            y: height - 270,
             size: 10,
             font: helveticaFontBold,
             color: rgb(0, 0, 0),
@@ -520,36 +572,48 @@ function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBo
     }
 }
 
-function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveticaFontBold: PDFFont, helveticaFont: PDFFont, _width: number, height: number) {
-    const startX = 30;
+function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveticaFontBold: PDFFont, helveticaFont: PDFFont, width: number, height: number) {
+    const marginX = 30;
+    const rightMargin = 35;
     let currentY = height - 315;
-    const lineSpacing = 15;
-    const prescriptionSpacing = 30;
 
     let medIndex = 1;
     for (const prescription of prescriptions) {
         for (const med of prescription.medicines) {
-            const numberPrefix = `${medIndex}. `;
-            const medicineLine = `${numberPrefix}${med.medicineName}  —  ${med.dosage}`;
-
-            page.drawText(medicineLine, {
-                x: startX,
+            // Top line: index + medicine name (left), quantity badge (far right)
+            const nameText = `${medIndex}.  ${med.medicineName}`;
+            page.drawText(nameText, {
+                x: marginX,
                 y: currentY,
-                size: 11,
+                size: 13,
                 font: helveticaFontBold,
                 color: rgb(0, 0, 0),
             });
-            currentY -= lineSpacing;
 
-            const detailsLine = `${med.frequency} | Qté: ${med.quantity} | Durée: ${med.duration}`;
-            page.drawText(detailsLine, {
-                x: startX + 20,
+            const quantityText = `Qté : ${med.quantity}`;
+            const quantitySize = 11;
+            const quantityWidth = helveticaFontBold.widthOfTextAtSize(quantityText, quantitySize);
+            page.drawText(quantityText, {
+                x: width - rightMargin - quantityWidth,
                 y: currentY,
-                size: 9,
-                font: helveticaFont,
-                color: rgb(0.25, 0.25, 0.25),
+                size: quantitySize,
+                font: helveticaFontBold,
+                color: rgb(0, 0, 0),
             });
-            currentY -= prescriptionSpacing;
+
+            currentY -= 17;
+
+            // Detail line: dosage, frequency and duration
+            const detailsLine = `${med.dosage}  -  ${med.frequency}  -  Durée : ${med.duration}`;
+            page.drawText(detailsLine, {
+                x: marginX + 16,
+                y: currentY,
+                size: 10,
+                font: helveticaFont,
+                color: rgb(0.3, 0.3, 0.3),
+            });
+
+            currentY -= 28;
             medIndex++;
         }
     }

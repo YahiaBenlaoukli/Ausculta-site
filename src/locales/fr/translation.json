@@ -48,6 +48,14 @@
       "breakdown_subtitle": "Répartition par statut",
       "total": "Total RDV",
       "no_data": "Aucune donnée"
+    },
+    "profile_notice": {
+      "title": "Complétez votre profil",
+      "missing_prefix": "Informations manquantes : ",
+      "email": "email",
+      "phone": "téléphone",
+      "address": "adresse",
+      "action": "Compléter maintenant"
     }
   },
   "patients": {
@@ -305,6 +313,7 @@
       "name": "Nom complet *",
       "speciality": "Spécialité *",
       "phone": "Téléphone",
+      "phone_error": "Le numéro doit contenir uniquement des chiffres et comporter exactement 10 chiffres",
       "email": "E-mail",
       "address": "Adresse du cabinet",
       "save": "Enregistrer le profil",
