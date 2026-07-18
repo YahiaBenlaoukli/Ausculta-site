@@ -144,11 +144,6 @@ const icons = {
             <polyline points="16 10 11 15 8 12" />
         </svg>
     ),
-    role: (
-        <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01z" />
-        </svg>
-    ),
 };
 
 /* ─── Password Input Component ─── */
@@ -213,7 +208,6 @@ export default function Authentification() {
 
     // Register-only
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [role, setRole] = useState('doctor');
 
     // Check for existing session on mount
     useEffect(() => {
@@ -238,7 +232,6 @@ export default function Authentification() {
         setFullName('');
         setPassword('');
         setConfirmPassword('');
-        setRole('doctor');
         setError('');
         setSuccess('');
     };
@@ -295,7 +288,6 @@ export default function Authentification() {
             const result = await window.ipcRenderer.createUser({
                 fullName,
                 password,
-                role,
             });
             if (result?.status === 'success') {
                 setSuccess(t('auth.register.success'));
@@ -492,47 +484,16 @@ export default function Authentification() {
                             t={t}
                         />
 
-                        {/* ── Register-only fields ── */}
+                        {/* ── Register-only: confirm password ── */}
                         {!isLogin && (
-                            <>
-                                {/* Confirm password */}
-                                <PasswordInput
-                                    id="auth-confirm-password"
-                                    value={confirmPassword}
-                                    onChange={setConfirmPassword}
-                                    placeholder={t('auth.register.confirm_password_placeholder')}
-                                    label={t('auth.register.confirm_password')}
-                                    t={t}
-                                />
-
-                                {/* Role select */}
-                                <div className="mb-5">
-                                    <label htmlFor="auth-role" className="block text-xs font-semibold text-navy/50 uppercase tracking-wide mb-2">
-                                        {t('auth.register.role')}
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy/25 pointer-events-none">
-                                            {icons.role}
-                                        </span>
-                                        <select
-                                            id="auth-role"
-                                            value={role}
-                                            onChange={(e) => setRole(e.target.value)}
-                                            className="w-full pl-11 pr-4 py-3 rounded-xl bg-bg/70 border border-navy/[0.08] text-navy text-sm appearance-none focus:outline-none focus:border-pink/40 focus:bg-white focus:shadow-[0_0_0_3px_rgba(233,30,140,0.06)] transition-all duration-200 cursor-pointer"
-                                        >
-                                            <option value="doctor">{t('auth.register.role_doctor')}</option>
-                                            <option value="assistant">{t('auth.register.role_assistant')}</option>
-                                            <option value="admin">{t('auth.register.role_admin')}</option>
-                                        </select>
-                                        {/* Dropdown chevron */}
-                                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-navy/25 pointer-events-none">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="6 9 12 15 18 9" />
-                                            </svg>
-                                        </span>
-                                    </div>
-                                </div>
-                            </>
+                            <PasswordInput
+                                id="auth-confirm-password"
+                                value={confirmPassword}
+                                onChange={setConfirmPassword}
+                                placeholder={t('auth.register.confirm_password_placeholder')}
+                                label={t('auth.register.confirm_password')}
+                                t={t}
+                            />
                         )}
 
                         {/* ── Login-only: stay logged checkbox ── */}
@@ -602,6 +563,14 @@ export default function Authentification() {
                         >
                             {isLogin ? t('auth.login.register_link') : t('auth.register.login_link')}
                         </button>
+                    </p>
+
+                    {/* License hint — activating a license requires an account first.
+                        The trial "Activate now" pill leads to Settings, which needs a
+                        logged-in user, so from the login screen it looks like it does
+                        nothing. This note tells the user the correct order. */}
+                    <p className="text-center text-navy/35 text-xs mt-4 leading-relaxed">
+                        {t('auth.license_note')}
                     </p>
 
                     {/* Footer note */}

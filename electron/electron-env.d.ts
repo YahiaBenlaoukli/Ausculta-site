@@ -120,9 +120,9 @@ interface AuscultaIpc {
   generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string): Promise<IpcResult<string>>
 
   // gestion authentification
-  createUser(user: { fullName: string; password: string; role: string }): Promise<IpcResult<{ id: number; fullName: string; role: string }>>
-  login(fullName: string, password: string, stayLogged: boolean): Promise<{ status: 'success' | 'fail'; token?: string; user?: { id: number; fullName: string; role: string }; message?: string }>
-  checkAuth(): Promise<{ status: 'success' | 'fail'; token?: string; user?: { id: number; fullName: string; role: string }; message?: string }>
+  createUser(user: { fullName: string; password: string }): Promise<IpcResult<{ id: number; fullName: string }>>
+  login(fullName: string, password: string, stayLogged: boolean): Promise<{ status: 'success' | 'fail'; token?: string; user?: { id: number; fullName: string }; message?: string }>
+  checkAuth(): Promise<{ status: 'success' | 'fail'; token?: string; user?: { id: number; fullName: string }; message?: string }>
   logout(): Promise<IpcResult>
 
   // gestion des rendez-vous

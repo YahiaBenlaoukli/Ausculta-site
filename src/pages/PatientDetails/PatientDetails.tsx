@@ -17,6 +17,29 @@ type Appointment = {
     phone_number: string;
 };
 
+/* A single follow-up note. Notes are stored as a JSON array of these in the
+   patients.notes text column. */
+type NoteEntry = { date: string; text: string };
+
+/* Parses the patients.notes field into a list of entries. Falls back to
+   treating legacy plain-text notes as one undated entry so nothing is lost. */
+function parseNotes(raw: string | null | undefined): NoteEntry[] {
+    if (!raw) return [];
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+            return parsed
+                .filter((e): e is NoteEntry => e && typeof e.text === 'string')
+                .map((e) => ({ date: typeof e.date === 'string' ? e.date : '', text: e.text }));
+        }
+    } catch {
+        // Not JSON — legacy free-text note.
+    }
+    return [{ date: '', text: trimmed }];
+}
+
 const icons = {
     chevronLeft: (
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -129,9 +152,21 @@ export default function PatientDetails() {
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'activity' | 'prescriptions' | 'documents' | 'appointments' | 'notes'>('activity');
 
-    // Notes state for editing
-    const [notes, setNotes] = useState('');
+    // Notes are a timestamped log stored as JSON in patients.notes.
+    const [noteEntries, setNoteEntries] = useState<NoteEntry[]>([]);
+    const [newNote, setNewNote] = useState('');
     const [isSavingNotes, setIsSavingNotes] = useState(false);
+    const [notesSaved, setNotesSaved] = useState(false);
+    const [notesError, setNotesError] = useState('');
+
+    // Next upcoming appointment (earliest scheduled one still in the future),
+    // used to turn the static "no appointment" placeholders into a real hint.
+    const nextAppointment = useMemo(() => {
+        const now = Date.now();
+        return appointments
+            .filter((a) => a.status === 'Scheduled' && new Date(a.appointment_datetime).getTime() >= now)
+            .sort((a, b) => new Date(a.appointment_datetime).getTime() - new Date(b.appointment_datetime).getTime())[0] || null;
+    }, [appointments]);
 
     const handleGoBack = () => {
         navigate(-1);
@@ -143,7 +178,7 @@ export default function PatientDetails() {
             setIsLoading(true);
             const patient = await window.ipcRenderer.getPatientById(Number(id));
             setPatientData(patient);
-            setNotes(patient?.notes || '');
+            setNoteEntries(parseNotes(patient?.notes));
 
             const docs = await window.ipcRenderer.getDocumentsByPatientId(Number(id));
             setDocuments(docs || []);
@@ -169,7 +204,7 @@ export default function PatientDetails() {
 
 
     const handleDeleteDoc = async (docId: number) => {
-        if (!confirm("Voulez-vous supprimer ce document ?")) return;
+        if (!confirm(t('patient_details.documents.confirm_delete'))) return;
         try {
             await window.ipcRenderer.deleteDocument(docId);
             // Refresh documents
@@ -180,18 +215,57 @@ export default function PatientDetails() {
         }
     };
 
-    const handleSaveNotes = async () => {
+    const handleAddNote = async () => {
         if (!patientData) return;
+        const text = newNote.trim();
+        if (!text) return;
+        // Confirm each addition so the log isn't spammed by accident.
+        if (!confirm(t('patient_details.notes.confirm_add'))) return;
+
+        setNotesError('');
+        setNotesSaved(false);
+        const updatedEntries = [...noteEntries, { date: new Date().toISOString(), text }];
         try {
             setIsSavingNotes(true);
             const updatedPatient = {
                 ...patientData,
-                notes: notes
+                notes: JSON.stringify(updatedEntries)
+            };
+            await window.ipcRenderer.updatePatient(updatedPatient);
+            // Update in real time so the new note appears immediately.
+            setPatientData(updatedPatient);
+            setNoteEntries(updatedEntries);
+            setNewNote('');
+            setNotesSaved(true);
+            setTimeout(() => setNotesSaved(false), 2500);
+        } catch (error) {
+            console.error("Error updating patient notes:", error);
+            setNotesError(t('patient_details.notes.save_error'));
+        } finally {
+            setIsSavingNotes(false);
+        }
+    };
+
+    // index is the position in noteEntries, not in the reversed display order.
+    const handleDeleteNote = async (index: number) => {
+        if (!patientData) return;
+        if (!confirm(t('patient_details.notes.confirm_delete'))) return;
+
+        setNotesError('');
+        setNotesSaved(false);
+        const updatedEntries = noteEntries.filter((_, i) => i !== index);
+        try {
+            setIsSavingNotes(true);
+            const updatedPatient = {
+                ...patientData,
+                notes: JSON.stringify(updatedEntries)
             };
             await window.ipcRenderer.updatePatient(updatedPatient);
             setPatientData(updatedPatient);
+            setNoteEntries(updatedEntries);
         } catch (error) {
-            console.error("Error updating patient notes:", error);
+            console.error("Error deleting patient note:", error);
+            setNotesError(t('patient_details.notes.delete_error'));
         } finally {
             setIsSavingNotes(false);
         }
@@ -237,7 +311,7 @@ export default function PatientDetails() {
                 id: `presc-${p.id}`,
                 dateStr: p.createdAt,
                 dateObj: new Date(p.createdAt),
-                title: `Ordonnance emise (Numero ${p.id})`,
+                title: t('patient_details.activity_prescription', { id: p.id }),
                 type: 'prescription',
                 details: p.medicines.map(m => m.medicineName).join(', ')
             });
@@ -248,14 +322,14 @@ export default function PatientDetails() {
                 id: `doc-${d.id}`,
                 dateStr: d.uploadDate,
                 dateObj: new Date(d.uploadDate),
-                title: `Document televerse (${d.fileName.split('_').slice(1).join('_') || d.fileName})`,
+                title: t('patient_details.activity_document', { name: d.fileName.split('_').slice(1).join('_') || d.fileName }),
                 type: 'document',
-                details: `Categorie : ${d.fileCategory}`
+                details: t('patient_details.activity_category', { value: d.fileCategory })
             });
         });
 
         return items.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-    }, [prescriptions, documents]);
+    }, [prescriptions, documents, t]);
 
     if (isLoading) {
         return (
@@ -273,7 +347,7 @@ export default function PatientDetails() {
                     {t('patient_details.back')}
                 </button>
                 <div className="bg-white p-6 rounded-2xl text-center text-navy/40 font-medium shadow-[0_2px_12px_rgba(30,42,86,0.06)]">
-                    Patient non trouve
+                    {t('patient_details.not_found_body')}
                 </div>
             </div>
         );
@@ -295,7 +369,7 @@ export default function PatientDetails() {
 
                 <button
                     className="p-2.5 rounded-xl border border-navy/10 text-navy/60 hover:text-navy hover:bg-navy/[0.04] transition-all cursor-pointer bg-white shadow-sm"
-                    title="Modifier le patient"
+                    title={t('patient_details.edit')}
                 >
                     {icons.edit}
                 </button>
@@ -314,26 +388,28 @@ export default function PatientDetails() {
                         <h2 className="text-xl font-bold text-navy truncate">{patientData.fullName}</h2>
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Actif
+                            {t('patient_details.active')}
                         </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-2 text-xs text-navy/50 font-medium">
-                        <span>Age {calculateAge(patientData.dateOfBirth)} ans</span>
+                        <span>{t('patient_details.age', { age: calculateAge(patientData.dateOfBirth) })}</span>
                         <span>•</span>
-                        <span>Gr. Sanguin: {patientData.bloodType || '—'}</span>
+                        <span>{t('patient_details.blood_type', { value: patientData.bloodType || '—' })}</span>
                         <span>•</span>
-                        <span>N Secu: {patientData.ssn || '—'}</span>
+                        <span>{t('patient_details.ssn', { value: patientData.ssn || '—' })}</span>
                     </div>
 
                     <div className="flex flex-wrap gap-4 pt-1.5 text-xs text-navy/40 font-medium">
                         <span className="flex items-center gap-1.5">
                             <svg className="w-3.5 h-3.5 text-navy/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                            Ajoute le {formatDate(patientData.createdAt, i18n.language)}
+                            {t('patient_details.added_on', { date: formatDate(patientData.createdAt, i18n.language) })}
                         </span>
                         <span className="flex items-center gap-1.5">
                             <svg className="w-3.5 h-3.5 text-navy/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                            Rendez-vous : Aucun rendez-vous
+                            {appointments.length === 0
+                                ? t('patient_details.appt_meta_none')
+                                : t('patient_details.appt_meta_count', { count: appointments.length })}
                         </span>
                     </div>
                 </div>
@@ -363,8 +439,8 @@ export default function PatientDetails() {
                             {icons.pill}
                         </div>
                         <div>
-                            <span className="block text-[10px] font-bold uppercase tracking-wider text-navy/35">Ordonnances</span>
-                            <span className="text-lg font-bold text-navy">{prescriptions.length} emise{prescriptions.length !== 1 ? 's' : ''}</span>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-navy/35">{t('patient_details.stat_prescriptions')}</span>
+                            <span className="text-lg font-bold text-navy">{t(prescriptions.length === 1 ? 'patient_details.prescriptions_one' : 'patient_details.prescriptions_other', { count: prescriptions.length })}</span>
                         </div>
                     </div>
                 </div>
@@ -375,8 +451,8 @@ export default function PatientDetails() {
                             {icons.fileDoc}
                         </div>
                         <div>
-                            <span className="block text-[10px] font-bold uppercase tracking-wider text-navy/35">Documents</span>
-                            <span className="text-lg font-bold text-navy">{documents.length} fichier{documents.length !== 1 ? 's' : ''}</span>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-navy/35">{t('patient_details.stat_documents')}</span>
+                            <span className="text-lg font-bold text-navy">{t(documents.length === 1 ? 'patient_details.documents_one' : 'patient_details.documents_other', { count: documents.length })}</span>
                         </div>
                     </div>
                 </div>
@@ -387,8 +463,12 @@ export default function PatientDetails() {
                             {icons.calendar}
                         </div>
                         <div>
-                            <span className="block text-[10px] font-bold uppercase tracking-wider text-navy/35">Prochain Rendez-vous</span>
-                            <span className="text-sm font-semibold text-navy/55">Aucun planifie</span>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-navy/35">{t('patient_details.stat_next_appt')}</span>
+                            <span className="text-sm font-semibold text-navy/55">
+                                {nextAppointment
+                                    ? new Date(nextAppointment.appointment_datetime).toLocaleString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                    : t('patient_details.next_appt_none_value')}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -397,11 +477,11 @@ export default function PatientDetails() {
             {/* Tab navigation */}
             <div className="border-b border-navy/[0.06] flex items-center gap-6 pt-2">
                 {[
-                    { key: 'activity', label: 'Activite' },
-                    { key: 'prescriptions', label: `Ordonnances (${prescriptions.length})` },
-                    { key: 'documents', label: `Documents (${documents.length})` },
-                    { key: 'appointments', label: 'Rendez-vous' },
-                    { key: 'notes', label: 'Notes de suivi' },
+                    { key: 'activity', label: t('patient_details.tabs.activity') },
+                    { key: 'prescriptions', label: t('patient_details.tab_prescriptions', { count: prescriptions.length }) },
+                    { key: 'documents', label: t('patient_details.tabs.documents', { count: documents.length }) },
+                    { key: 'appointments', label: t('patient_details.tab_appointments') },
+                    { key: 'notes', label: t('patient_details.tabs.notes') },
                 ].map((tab) => (
                     <button
                         key={tab.key}
@@ -422,7 +502,7 @@ export default function PatientDetails() {
                     <div className="relative pl-6 border-l border-navy/[0.06] space-y-6 ml-2">
                         {timelineItems.length === 0 ? (
                             <div className="text-center py-6 text-navy/35 text-sm font-medium">
-                                Aucune activite recente
+                                {t('patient_details.activity_empty')}
                             </div>
                         ) : (
                             timelineItems.map((item) => (
@@ -448,15 +528,15 @@ export default function PatientDetails() {
                 {activeTab === 'prescriptions' && (
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-navy">Historique des ordonnances</h4>
+                            <h4 className="text-sm font-bold text-navy">{t('patient_details.presc_history')}</h4>
                             <span className="text-xs text-navy/40 font-semibold">
-                                {prescriptions.length} ordonnance{prescriptions.length !== 1 ? 's' : ''} au total
+                                {t(prescriptions.length === 1 ? 'patient_details.presc_total_one' : 'patient_details.presc_total_other', { count: prescriptions.length })}
                             </span>
                         </div>
 
                         {prescriptions.length === 0 ? (
                             <div className="text-center py-10 text-navy/35 text-sm font-medium">
-                                Aucune ordonnance redigee pour ce patient
+                                {t('patient_details.presc_empty')}
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -464,7 +544,7 @@ export default function PatientDetails() {
                                     <div key={presc.id} className="p-4 bg-navy/[0.01] border border-navy/[0.06] rounded-2xl space-y-3 hover:border-pink/20 transition-all duration-200">
                                         <div className="flex items-center justify-between border-b border-navy/[0.04] pb-2">
                                             <div>
-                                                <span className="text-sm font-bold text-navy">Ordonnance #{presc.id}</span>
+                                                <span className="text-sm font-bold text-navy">{t('patient_details.presc_item', { id: presc.id })}</span>
                                                 <span className="text-xs text-navy/40 ml-3">
                                                     {formatDate(presc.createdAt, i18n.language)}
                                                 </span>
@@ -479,15 +559,15 @@ export default function PatientDetails() {
                                                                 if (err) console.error('[open-document] error:', err);
                                                             }}
                                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
-                                                            title="Voir le PDF de l'ordonnance"
+                                                            title={t('patient_details.presc_view_title')}
                                                         >
                                                             {icons.open}
-                                                            Voir l'ordonnance
+                                                            {t('patient_details.presc_view')}
                                                         </button>
                                                     );
                                                 }
                                                 return (
-                                                    <span className="text-xs text-navy/30 italic">Aucun PDF</span>
+                                                    <span className="text-xs text-navy/30 italic">{t('patient_details.presc_no_pdf')}</span>
                                                 );
                                             })()}
                                         </div>
@@ -508,7 +588,7 @@ export default function PatientDetails() {
 
                                         {presc.notes && (
                                             <div className="text-xs text-navy/45 italic bg-navy/[0.02] p-2.5 rounded-xl border border-navy/[0.03]">
-                                                Note : {presc.notes}
+                                                {t('patient_details.presc_note', { value: presc.notes })}
                                             </div>
                                         )}
                                     </div>
@@ -522,20 +602,20 @@ export default function PatientDetails() {
                     <div className="space-y-5">
                         {/* Header & Upload Button */}
                         <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-navy">Documents du patient</h4>
+                            <h4 className="text-sm font-bold text-navy">{t('patient_details.documents.title')}</h4>
                             <button
                                 onClick={() => navigate('/documents', { state: { patient: patientData } })}
                                 className="flex items-center gap-1.5 bg-navy/5 text-navy hover:bg-navy/10 text-xs font-semibold px-4.5 py-2 rounded-xl transition-all cursor-pointer border-none"
                             >
                                 {icons.plus}
-                                Ajouter un document
+                                {t('patient_details.doc_add')}
                             </button>
                         </div>
 
                         {/* Document List */}
                         {documents.length === 0 ? (
                             <div className="text-center py-10 text-navy/35 text-sm font-medium">
-                                Aucun document disponible.
+                                {t('patient_details.documents.empty')}
                             </div>
                         ) : (
                             <div className="divide-y divide-navy/[0.04]">
@@ -547,7 +627,7 @@ export default function PatientDetails() {
                                             </div>
                                             <div>
                                                 <span className="text-sm font-semibold text-navy block truncate max-w-[200px] sm:max-w-md">{doc.fileName}</span>
-                                                <span className="text-[10px] text-navy/40 font-medium">Ajoute le {formatDate(doc.uploadDate, i18n.language)}</span>
+                                                <span className="text-[10px] text-navy/40 font-medium">{t('patient_details.documents.added_on', { date: formatDate(doc.uploadDate, i18n.language) })}</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
@@ -557,14 +637,14 @@ export default function PatientDetails() {
                                                     if (err) console.error('[open-document] error:', err);
                                                 }}
                                                 className="p-1.5 text-navy/20 hover:text-navy rounded-lg hover:bg-navy/5 transition-colors cursor-pointer"
-                                                title="Ouvrir le document"
+                                                title={t('patient_details.documents.open')}
                                             >
                                                 {icons.open}
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteDoc(doc.id)}
                                                 className="p-1.5 text-navy/20 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                                title="Supprimer le document"
+                                                title={t('patient_details.documents.delete')}
                                             >
                                                 {icons.trash}
                                             </button>
@@ -579,13 +659,13 @@ export default function PatientDetails() {
                 {activeTab === 'appointments' && (
                     <div className="space-y-5">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-navy">Rendez-vous du patient</h4>
+                            <h4 className="text-sm font-bold text-navy">{t('patient_details.appt_title')}</h4>
                             <button
                                 onClick={() => navigate('/appointments', { state: { patient: patientData } })}
                                 className="flex items-center gap-1.5 bg-navy/5 text-navy hover:bg-navy/10 text-xs font-semibold px-4.5 py-2 rounded-xl transition-all cursor-pointer border-none"
                             >
                                 {icons.plus}
-                                Planifier un rendez-vous
+                                {t('patient_details.appt_schedule')}
                             </button>
                         </div>
 
@@ -594,9 +674,9 @@ export default function PatientDetails() {
                                 <div className="mx-auto w-12 h-12 bg-pink/5 rounded-full flex items-center justify-center text-pink mb-3">
                                     {icons.calendar}
                                 </div>
-                                <p className="text-sm font-bold text-navy mb-1">Aucun rendez-vous planifie</p>
+                                <p className="text-sm font-bold text-navy mb-1">{t('patient_details.appt_empty_title')}</p>
                                 <p className="text-xs text-navy/40 max-w-xs mx-auto">
-                                    Il n'y a pas de rendez-vous futur ou passe enregistre pour ce patient. Vous pouvez planifier une nouvelle consultation depuis l'onglet Rendez-vous de la barre latérale.
+                                    {t('patient_details.appt_empty_desc')}
                                 </p>
                             </div>
                         ) : (
@@ -640,24 +720,72 @@ export default function PatientDetails() {
                 )}
 
                 {activeTab === 'notes' && (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-navy">Notes & Antecedents</h4>
-                            <button
-                                onClick={handleSaveNotes}
-                                disabled={isSavingNotes}
-                                className="bg-pink hover:bg-pink-dark text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-[0_2px_8px_rgba(233,30,140,0.2)] disabled:opacity-50 cursor-pointer"
-                            >
-                                {isSavingNotes ? 'Enregistrement...' : 'Enregistrer'}
-                            </button>
+                    <div className="space-y-5">
+                        {/* New note composer */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-navy">{t('patient_details.notes.title')}</h4>
+                                {notesSaved && (
+                                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600" style={{ animation: 'scaleIn 0.2s ease-out' }}>
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                        {t('patient_details.notes.saved')}
+                                    </span>
+                                )}
+                                {notesError && (
+                                    <span className="text-xs font-semibold text-red-500">{notesError}</span>
+                                )}
+                            </div>
+                            <textarea
+                                value={newNote}
+                                onChange={(e) => setNewNote(e.target.value)}
+                                placeholder={t('patient_details.notes.placeholder')}
+                                rows={4}
+                                className="w-full p-4 text-sm bg-navy/[0.01] border border-navy/[0.08] rounded-2xl focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30 text-navy placeholder:text-navy/30 resize-none transition-all duration-200"
+                            />
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleAddNote}
+                                    disabled={isSavingNotes || !newNote.trim()}
+                                    className="flex items-center gap-1.5 bg-pink hover:bg-pink-dark text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-[0_2px_8px_rgba(233,30,140,0.2)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                    {icons.plus}
+                                    {isSavingNotes ? t('patient_details.notes.saving') : t('patient_details.notes.add_button')}
+                                </button>
+                            </div>
                         </div>
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Saisissez vos observations medicales, antecedents, allergies ou traitements habituels..."
-                            rows={6}
-                            className="w-full p-4 text-sm bg-navy/[0.01] border border-navy/[0.08] rounded-2xl focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30 text-navy placeholder:text-navy/30 resize-none transition-all duration-200"
-                        />
+
+                        {/* Past notes (newest first) */}
+                        <div className="border-t border-navy/[0.06] pt-4 space-y-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-navy/30">{t('patient_details.notes.history_title')}</p>
+                            {noteEntries.length === 0 ? (
+                                <div className="text-center py-6 text-navy/35 text-sm font-medium">
+                                    {t('patient_details.notes.empty')}
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {noteEntries.map((entry, index) => ({ entry, index })).reverse().map(({ entry, index }) => (
+                                        <div key={index} className="flex items-start justify-between gap-2 p-3.5 rounded-2xl bg-navy/[0.02] border border-navy/[0.05] group">
+                                            <div className="min-w-0">
+                                                {entry.date && (
+                                                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-navy/30 mb-1">
+                                                        {formatDate(entry.date, i18n.language)}
+                                                    </span>
+                                                )}
+                                                <p className="text-sm text-navy whitespace-pre-wrap">{entry.text}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteNote(index)}
+                                                disabled={isSavingNotes}
+                                                className="shrink-0 p-1.5 text-navy/20 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={t('patient_details.notes.delete')}
+                                            >
+                                                {icons.trash}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

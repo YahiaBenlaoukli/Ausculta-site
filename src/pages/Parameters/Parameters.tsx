@@ -13,7 +13,7 @@ export default function Parameters() {
   const [activeTab, setActiveTab] = useState<"profile" | "consultation" | "security" | "data" | "license">("profile");
 
   // User Session & Doctor Profile States
-  const [currentUser, setCurrentUser] = useState<{ id: number; fullName: string; role: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: number; fullName: string } | null>(null);
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -521,24 +521,12 @@ export default function Parameters() {
               </div>
 
               {currentUser && (
-                <div className="p-5 bg-navy/[0.02] border border-navy/[0.06] rounded-3xl space-y-4">
+                <div className="p-5 bg-navy/[0.02] border border-navy/[0.06] rounded-3xl">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-navy text-white font-extrabold text-lg flex items-center justify-center">
                       {currentUser.fullName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h4 className="text-base font-bold text-navy">{currentUser.fullName}</h4>
-                      <p className="text-xs font-semibold text-pink-500 uppercase tracking-widest mt-0.5">
-                        {currentUser.role === "doctor" ? "Médecin" : currentUser.role}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-navy/[0.06]" />
-
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-navy/55">{t("settings.security.role")} :</span>
-                    <span className="text-navy uppercase tracking-wider">{currentUser.role}</span>
+                    <h4 className="text-base font-bold text-navy">{currentUser.fullName}</h4>
                   </div>
                 </div>
               )}

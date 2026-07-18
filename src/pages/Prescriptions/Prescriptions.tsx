@@ -118,6 +118,8 @@ export default function Prescriptions() {
     });
     const [isSaving, setIsSaving] = useState(false);
     const [weight, setWeight] = useState('');
+    // Free-text comment/advice stored on the prescription (prescriptions.notes).
+    const [notes, setNotes] = useState('');
 
     /* ── Patient's existing prescriptions ── */
     const [patientPrescriptions, setPatientPrescriptions] = useState<Prescription[]>([]);
@@ -258,6 +260,7 @@ export default function Prescriptions() {
         setNewMedications([]);
         setMedForm({ medicineName: '', dosage: '', frequency: '', duration: '', quantity: '' });
         setWeight('');
+        setNotes('');
         await loadPatientPrescriptions(patient.id);
     };
 
@@ -271,6 +274,7 @@ export default function Prescriptions() {
         setPatientDocuments([]);
         setPrescriptionPage(0);
         setWeight('');
+        setNotes('');
     };
 
     /* ── Medication management ── */
@@ -294,6 +298,7 @@ export default function Prescriptions() {
                 currentUserId,
                 selectedPatient.id,
                 newMedications,
+                notes.trim() || undefined,
             );
 
             if (result.status === 'success' && result.data) {
@@ -309,6 +314,7 @@ export default function Prescriptions() {
                 }
 
                 setNewMedications([]);
+                setNotes('');
                 showSuccess(t('prescriptions.alerts.save_success'));
                 await loadPatientPrescriptions(selectedPatient.id);
             } else {
@@ -749,6 +755,18 @@ export default function Prescriptions() {
                                             ))}
                                         </div>
                                     )}
+
+                                    {/* Comment / advice for the whole prescription */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.comment_label')} <span className="text-navy/25 font-normal">{t('prescriptions.workspace.builder.weight_optional')}</span></label>
+                                        <textarea
+                                            value={notes}
+                                            onChange={e => setNotes(e.target.value)}
+                                            placeholder={t('prescriptions.workspace.builder.comment_placeholder')}
+                                            rows={2}
+                                            className={`${inputClass} resize-none`}
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Save ordonnance button */}

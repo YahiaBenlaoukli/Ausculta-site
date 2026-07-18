@@ -53,11 +53,15 @@ export async function createUser(user: Omit<User, "id" | "createdAt" | "updatedA
             return { status: "fail", message: "Nom d'utilisateur déjà existant" };
         }
         const hashedPassword = await bcrypt.hash(user.password, 10);
+        // users.role is a vestige of a multi-user design: the app has one user
+        // (the doctor), and nothing reads the column. It stays NOT NULL in DBs
+        // created by older builds, so keep writing a constant instead of
+        // migrating every existing install.
         const stmt2 = db.prepare(`
             INSERT INTO users (full_name, password, role)
-            VALUES (?, ?, ?)
+            VALUES (?, ?, 'doctor')
         `);
-        const result = stmt2.run(user.fullName, hashedPassword, user.role);
+        const result = stmt2.run(user.fullName, hashedPassword);
         return {
             status: "success",
             data: {
@@ -90,7 +94,6 @@ export async function login(fullName: string, password: string, stayLogged: bool
         const payload = {
             id: result.id,
             fullName: result.full_name,
-            role: result.role,
         };
 
         const expiresIn = stayLogged ? "365d" : "1d";
@@ -127,7 +130,7 @@ export function checkAuth() {
             return { status: "fail", message: "No saved session" };
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: number; fullName: string; role: string };
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: number; fullName: string };
 
         // Verify the user still exists in the database (handles DB reset scenarios)
         const db = getDatabase();

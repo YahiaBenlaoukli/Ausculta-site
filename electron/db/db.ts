@@ -116,6 +116,19 @@ export function initializeDatabase(): Database.Database {
     );
   `);
 
+  // Safety net: guarantee patients.notes exists regardless of how (or whether)
+  // user_version was stamped by older builds. An unversioned legacy DB reads as
+  // version 0 and would be treated as a "fresh install" below, skipping the v6
+  // migration — so the follow-up notes tab would silently fail to persist.
+  try {
+    const hasNotes = db
+      .prepare(`SELECT COUNT(*) AS n FROM pragma_table_info('patients') WHERE name = 'notes'`)
+      .get() as { n: number };
+    if (!hasNotes.n) db.exec(`ALTER TABLE patients ADD COLUMN notes TEXT`);
+  } catch (error) {
+    console.error("ensure patients.notes column:", error);
+  }
+
   // If this is a fresh install, set it to the newest version (6)
   if (version === 0) {
     db.pragma('user_version = 6');

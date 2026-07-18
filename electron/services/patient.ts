@@ -40,7 +40,7 @@ export async function addPatient(patient: Omit<Patient, 'id' | 'createdAt'>): Pr
         INSERT INTO patients (full_name, date_of_birth, address, phone_number, ssn, blood_type)
         VALUES (?, ?, ?, ?, ?, ?)
     `);
-        const result = stmt.run(patient.fullName, patient.dateOfBirth, patient.address, patient.phoneNumber, patient.ssn, patient.bloodType);
+        const result = stmt.run(patient.fullName, patient.dateOfBirth, patient.address, patient.phoneNumber, patient.ssn, patient.bloodType || null);
         return {
             ...patient,
             id: result.lastInsertRowid as number,
@@ -86,7 +86,10 @@ export async function updatePatient(patient: Patient): Promise<Patient> {
         const stmt = db.prepare(`
         UPDATE patients SET full_name = ?, date_of_birth = ?, address = ?, phone_number = ?, ssn = ?, blood_type = ?, notes = ? WHERE id = ?
     `);
-        stmt.run(patient.fullName, patient.dateOfBirth, patient.address, patient.phoneNumber, patient.ssn, patient.bloodType, patient.notes ?? null, patient.id);
+        // blood_type has a CHECK constraint that only allows the 8 valid groups or
+        // NULL — an empty string would throw and silently abort the whole update
+        // (including notes). Coerce falsy values to NULL.
+        stmt.run(patient.fullName, patient.dateOfBirth, patient.address, patient.phoneNumber, patient.ssn, patient.bloodType || null, patient.notes ?? null, patient.id);
         return patient;
     } catch (error) {
         console.error("updatePatient error:", error);

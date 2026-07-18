@@ -3,7 +3,6 @@ export type User = {
     fullName: string;
     phoneNumber: string;
     password: string;
-    role: string;
     createdAt: string;
     updatedAt: string;
 }
