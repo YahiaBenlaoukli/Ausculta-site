@@ -62,7 +62,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   logout: () => ipcRenderer.invoke('logout'),
 
   //Patient prescription
-  generatePatientPrescriptionPDF: (patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string) => ipcRenderer.invoke('generate-patient-prescription-pdf', patientId, prescriptions, doctor, weight),
+  generatePatientPrescriptionPDF: (patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string) => ipcRenderer.invoke('generate-patient-prescription-pdf', patientId, prescriptions, doctor, weight, language),
 
   //gestion des rendez-vous
   bookAppointment: (patientId: number, doctorId: number, datetime: string, duration?: number, reason?: string) => ipcRenderer.invoke('book-appointment', patientId, doctorId, datetime, duration, reason),

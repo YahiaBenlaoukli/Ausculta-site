@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TrialStatus } from "../../../types/trial";
-import type { DoctorProfile } from "../../../types/doctor";
+import type { DoctorProfile, PrescriptionLanguage } from "../../../types/doctor";
 import type { Patient } from "../../../types/patient";
 
 export default function Parameters() {
@@ -29,6 +29,8 @@ export default function Parameters() {
   // Consultation Preferences
   const [defaultPrice, setDefaultPrice] = useState("2000");
   const [defaultDuration, setDefaultDuration] = useState("30");
+  // Default language pre-selected in the prescription-generation popup.
+  const [prescriptionLang, setPrescriptionLang] = useState<PrescriptionLanguage>("fr");
 
   // Alerts
   const [successMsg, setSuccessMsg] = useState("");
@@ -82,6 +84,8 @@ export default function Parameters() {
     // Load LocalStorage Consultation Settings
     setDefaultPrice(localStorage.getItem("default_consultation_price") || "2000");
     setDefaultDuration(localStorage.getItem("default_consultation_duration") || "30");
+    const storedLang = localStorage.getItem("prescription_language");
+    setPrescriptionLang(storedLang === "en" ? "en" : "fr");
 
     // Load trial / license status
     window.ipcRenderer.getTrialStatus()
@@ -164,6 +168,7 @@ export default function Parameters() {
     e.preventDefault();
     localStorage.setItem("default_consultation_price", defaultPrice);
     localStorage.setItem("default_consultation_duration", defaultDuration);
+    localStorage.setItem("prescription_language", prescriptionLang);
     triggerToast("success", t("settings.consultation.success"));
   };
 
@@ -421,27 +426,36 @@ export default function Parameters() {
                 </div>
               </div>
 
-              {/* PDF Preview Attachment path if exist */}
-              {profile?.pdfPath && (
-                <div className="p-4 bg-navy/[0.02] border border-navy/[0.06] rounded-2xl flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                      </svg>
-                    </div>
-                    <div className="truncate">
-                      <span className="text-xs font-bold text-navy block">En-tête PDF Ordonnance</span>
-                      <span className="text-[10px] text-gray-400 block truncate font-medium">{profile.pdfPath}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => window.ipcRenderer.openDocument(profile.pdfPath!)}
-                    className="flex-shrink-0 bg-navy/5 hover:bg-navy/10 text-navy text-xs font-bold px-3.5 py-2 rounded-xl transition-all cursor-pointer select-none"
-                  >
-                    Ouvrir
-                  </button>
+              {/* PDF header previews — one per available language */}
+              {(profile?.pdfPath || profile?.pdfPathEn) && (
+                <div className="space-y-3">
+                  {([
+                    { path: profile?.pdfPath, flag: "🇫🇷", label: t("settings.consultation.language_french") },
+                    { path: profile?.pdfPathEn, flag: "🇬🇧", label: t("settings.consultation.language_english") },
+                  ] as { path?: string; flag: string; label: string }[])
+                    .filter((item) => !!item.path)
+                    .map((item) => (
+                      <div key={item.label} className="p-4 bg-navy/[0.02] border border-navy/[0.06] rounded-2xl flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                            </svg>
+                          </div>
+                          <div className="truncate">
+                            <span className="text-xs font-bold text-navy block">{item.flag} {t("settings.profile.pdf_header")} · {item.label}</span>
+                            <span className="text-[10px] text-gray-400 block truncate font-medium">{item.path}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => window.ipcRenderer.openDocument(item.path!)}
+                          className="flex-shrink-0 bg-navy/5 hover:bg-navy/10 text-navy text-xs font-bold px-3.5 py-2 rounded-xl transition-all cursor-pointer select-none"
+                        >
+                          {t("settings.profile.pdf_open")}
+                        </button>
+                      </div>
+                    ))}
                 </div>
               )}
 
@@ -501,6 +515,35 @@ export default function Parameters() {
                     <option value="60">{t("settings.consultation.duration_minutes", { count: 60 })}</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                    {t("settings.consultation.prescription_language")}
+                  </label>
+                  <div className="flex gap-3 max-w-sm">
+                    {([
+                      { value: "fr" as PrescriptionLanguage, label: t("settings.consultation.language_french"), flag: "🇫🇷" },
+                      { value: "en" as PrescriptionLanguage, label: t("settings.consultation.language_english"), flag: "🇬🇧" },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setPrescriptionLang(opt.value)}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 text-sm font-semibold transition-all cursor-pointer select-none ${
+                          prescriptionLang === opt.value
+                            ? "border-[#e91e8c] bg-[#e91e8c]/[0.04] text-[#e91e8c]"
+                            : "border-navy/[0.08] text-navy/60 hover:border-navy/20"
+                        }`}
+                      >
+                        <span className="text-lg leading-none">{opt.flag}</span>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium mt-1.5 block">
+                    {t("settings.consultation.prescription_language_hint")}
+                  </span>
+                </div>
               </div>
 
               <button
@@ -551,7 +594,7 @@ export default function Parameters() {
 
               {/* Data Export Card */}
               <div className="p-5 bg-bg/30 border border-navy/[0.06] rounded-3xl space-y-4">
-                <h3 className="text-sm font-bold text-navy">Sauvegarde des Patients</h3>
+                <h3 className="text-sm font-bold text-navy">{t("settings.data.backup_title")}</h3>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={handleExportJSON}
@@ -609,7 +652,7 @@ export default function Parameters() {
                           onClick={handleWipeDatabase}
                           className="px-6 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 active:scale-[0.98] transition-all cursor-pointer select-none"
                         >
-                          Confirmer
+                          {t("settings.data.confirm")}
                         </button>
                         <button
                           onClick={() => {
@@ -618,7 +661,7 @@ export default function Parameters() {
                           }}
                           className="px-4 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-navy/70 text-xs font-bold transition-all cursor-pointer select-none"
                         >
-                          Annuler
+                          {t("settings.data.cancel")}
                         </button>
                       </div>
                     </div>

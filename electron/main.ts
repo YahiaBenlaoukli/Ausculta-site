@@ -114,7 +114,7 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-prescription', async (_event, id) => await deletePrescription(id));
   ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
   ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
-  ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight));
+  ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight, language) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight, language));
 
   //gestion authentification
   ipcMain.handle('create-user', async (_event, user) => await createUser(user));

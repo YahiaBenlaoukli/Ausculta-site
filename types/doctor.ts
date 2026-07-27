@@ -1,3 +1,7 @@
+// Language a prescription PDF can be generated in. Each maps to a template
+// file under public/ordonnance/ (templateFr.pdf / templateEn.pdf).
+export type PrescriptionLanguage = "fr" | "en";
+
 export type DoctorProfile = {
     id: number;
     userId: number;
@@ -8,6 +12,8 @@ export type DoctorProfile = {
     speciality: string;
     hasCompletedProfile: boolean;
     pdfPath?: string;
+    // English-language prescription-header preview (templateEn.pdf).
+    pdfPathEn?: string;
 }
 
 export type PrescriptionMedicine = {

@@ -106,7 +106,7 @@ interface AuscultaIpc {
   createDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string): Promise<IpcResult<DoctorProfile>>
   getDoctorProfile(userId: number): Promise<IpcResult<DoctorProfile>>
   updateDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string): Promise<IpcResult<DoctorProfile>>
-  setPrescriptionPdf(doctorId: number): Promise<IpcResult<{ doctor: DoctorProfile; pdfPath: string }>>
+  setPrescriptionPdf(doctorId: number): Promise<IpcResult<{ doctor: DoctorProfile; pdfPath: string; pdfPathEn: string }>>
 
   // gestion des prescriptions
   addPrescription(userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string): Promise<IpcResult<{ prescriptionId: number }>>
@@ -117,7 +117,7 @@ interface AuscultaIpc {
   deletePrescription(id: number): Promise<IpcResult>
   searchPrescription(query: string): Promise<IpcResult<Prescription[]>>
   countPrescriptions(): Promise<IpcResult<number>>
-  generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string): Promise<IpcResult<string>>
+  generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string): Promise<IpcResult<string>>
 
   // gestion authentification
   createUser(user: { fullName: string; password: string }): Promise<IpcResult<{ id: number; fullName: string }>>

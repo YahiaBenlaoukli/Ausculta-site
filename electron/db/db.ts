@@ -48,6 +48,7 @@ export function initializeDatabase(): Database.Database {
       speciality TEXT,
       has_completed_profile INTEGER DEFAULT 0,
       pdf_path TEXT,
+      pdf_path_en TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -129,9 +130,22 @@ export function initializeDatabase(): Database.Database {
     console.error("ensure patients.notes column:", error);
   }
 
-  // If this is a fresh install, set it to the newest version (6)
+  // Safety net for the English prescription-template column, mirroring the
+  // patients.notes guard above: an unversioned legacy DB reads as version 0 and
+  // is treated as a fresh install, skipping the v7 migration — so guarantee the
+  // column exists regardless of the version bookkeeping.
+  try {
+    const hasPdfPathEn = db
+      .prepare(`SELECT COUNT(*) AS n FROM pragma_table_info('doctor_profile') WHERE name = 'pdf_path_en'`)
+      .get() as { n: number };
+    if (!hasPdfPathEn.n) db.exec(`ALTER TABLE doctor_profile ADD COLUMN pdf_path_en TEXT`);
+  } catch (error) {
+    console.error("ensure doctor_profile.pdf_path_en column:", error);
+  }
+
+  // If this is a fresh install, set it to the newest version (7)
   if (version === 0) {
-    db.pragma('user_version = 6');
+    db.pragma('user_version = 7');
   }
 
   // v6: patients.notes — the follow-up notes tab used to write a field that
@@ -144,6 +158,12 @@ export function initializeDatabase(): Database.Database {
       console.error("patients.notes migration:", error);
     }
     db.pragma('user_version = 6');
+  }
+
+  // v7: doctor_profile.pdf_path_en — the English prescription-header preview.
+  // The column is added above by the safety net; here we just stamp the version.
+  if (version > 0 && version < 7) {
+    db.pragma('user_version = 7');
   }
 
   // Run auto-linking for prescriptions that have PDFs but were created before the foreign key link was implemented

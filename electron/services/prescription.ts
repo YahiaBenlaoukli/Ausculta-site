@@ -3,7 +3,7 @@ import { app } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import type { DoctorProfile, Prescription } from "../../types/doctor";
+import type { DoctorProfile, Prescription, PrescriptionLanguage } from "../../types/doctor";
 
 import { uploadDocument, getDocumentsByPatientId } from "./documents";
 
@@ -12,6 +12,38 @@ import type { Patient } from "../../types/patient";
 
 const PDF_OUTPUT_DIR = path.join(app.getPath("userData"), "prescriptions");
 const PATIENTS_PDF_DIR = path.join(app.getPath('userData'), 'records', 'Gestion-cabinet-medicale');
+
+// Static labels drawn by code (not part of the template artwork) per language.
+// The template files themselves (templateFr.pdf / templateEn.pdf) carry the
+// rest of the localized layout; these are only the strings pdf-lib writes on top.
+const PRESCRIPTION_LABELS = {
+    fr: {
+        doctorPrefix: "Dr: ",
+        signature: "Signature :",
+        weight: "Poids:",
+        durationPrefix: "Durée : ",
+        quantityPrefix: "Qté : ",
+        ageSuffix: "ans",
+        moreMeds: (count: number) => `+ ${count} autre(s) médicament(s) — voir dossier`,
+    },
+    en: {
+        doctorPrefix: "Dr: ",
+        signature: "Signature:",
+        weight: "Weight:",
+        durationPrefix: "Duration: ",
+        quantityPrefix: "Qty: ",
+        ageSuffix: "yrs",
+        moreMeds: (count: number) => `+ ${count} more medicine(s) — see file`,
+    },
+} as const;
+
+function normalizeLanguage(language?: string): PrescriptionLanguage {
+    return language === "en" ? "en" : "fr";
+}
+
+function templateFileForLanguage(language: PrescriptionLanguage): string {
+    return language === "en" ? "templateEn.pdf" : "templateFr.pdf";
+}
 
 function mapRowToDoctorProfile(row: Record<string, unknown>): DoctorProfile {
     return {
@@ -24,6 +56,7 @@ function mapRowToDoctorProfile(row: Record<string, unknown>): DoctorProfile {
         speciality: row.speciality as string,
         hasCompletedProfile: Boolean(row.has_completed_profile),
         pdfPath: row.pdf_path as string | undefined,
+        pdfPathEn: row.pdf_path_en as string | undefined,
     };
 }
 
@@ -76,6 +109,16 @@ export async function getDoctorProfileByUserId(userId: number) {
         }
         if (!row) {
             return { status: "not_found", data: null };
+        }
+        // Backfill the English preview for profiles created before language
+        // support (pdf_path exists but pdf_path_en is still null). Runs once —
+        // setPrescriptionPdf populates both columns, so the branch won't re-fire.
+        if (row.pdf_path && !row.pdf_path_en) {
+            await setPrescriptionPdf(row.id as number);
+            row = stmt.get(userId) as Record<string, unknown> | undefined;
+            if (!row) {
+                return { status: "not_found", data: null };
+            }
         }
         const doctor = mapRowToDoctorProfile(row);
         return { status: "success", data: doctor };
@@ -135,20 +178,26 @@ export async function setPrescriptionPdf(doctorId: number) {
         }
         const doctor = mapRowToDoctorProfile(row);
 
-        // 2. Fill the template PDF with doctor info
-        const pdfResult = await fillTemplate(doctor);
-        if (pdfResult.status === "fail") {
-            return pdfResult;
+        // 2. Fill both language templates with the doctor's header info so each
+        //    can be previewed (Settings / Prescriptions page).
+        const frResult = await fillTemplate(doctor, "fr");
+        if (frResult.status === "fail") {
+            return frResult;
+        }
+        const enResult = await fillTemplate(doctor, "en");
+        if (enResult.status === "fail") {
+            return enResult;
         }
 
-        // 3. Update the doctor_profile row with the saved PDF path
-        const updateStmt = db.prepare(`UPDATE doctor_profile SET pdf_path = ? WHERE id = ?`);
-        updateStmt.run(pdfResult.pdfPath, doctorId);
+        // 3. Update the doctor_profile row with both saved PDF paths
+        const updateStmt = db.prepare(`UPDATE doctor_profile SET pdf_path = ?, pdf_path_en = ? WHERE id = ?`);
+        updateStmt.run(frResult.pdfPath, enResult.pdfPath, doctorId);
 
-        // 4. Return the doctor with the attached PDF path
-        doctor.pdfPath = pdfResult.pdfPath;
+        // 4. Return the doctor with the attached PDF paths
+        doctor.pdfPath = frResult.pdfPath;
+        doctor.pdfPathEn = enResult.pdfPath;
 
-        return { status: "success", data: { doctor, pdfPath: pdfResult.pdfPath } };
+        return { status: "success", data: { doctor, pdfPath: frResult.pdfPath, pdfPathEn: enResult.pdfPath } };
     } catch (error) {
         console.error("setPrescriptionPdf error:", error);
         return { status: "fail", message: (error as Error).message };
@@ -225,11 +274,73 @@ function drawFittedText(
     }
 }
 
+// Draws the doctor's header block (name, speciality, contact info, signature
+// label) onto a prescription page. Shared by the settings-preview template and
+// the per-patient prescription so both stay in sync. Positions match the artwork
+// in both templateFr.pdf and templateEn.pdf (identical layout, translated labels).
+function drawDoctorHeader(
+    page: PDFPage,
+    doctor: DoctorProfile,
+    helveticaFont: PDFFont,
+    helveticaFontBold: PDFFont,
+    width: number,
+    height: number,
+    language: PrescriptionLanguage
+) {
+    const labels = PRESCRIPTION_LABELS[language];
+
+    const fullNameText = `${labels.doctorPrefix}${doctor.fullName}`;
+    page.drawText(fullNameText, {
+        x: getCenteredX(fullNameText, helveticaFontBold, 20, width),
+        y: height - 54,
+        size: 20,
+        font: helveticaFontBold,
+        color: rgb(0, 0, 0),
+    });
+    page.drawText(doctor.speciality, {
+        x: getCenteredX(doctor.speciality, helveticaFontBold, 13, width),
+        y: height - 78,
+        size: 13,
+        font: helveticaFontBold,
+        color: rgb(0, 0, 0),
+    });
+    page.drawText(doctor.phoneNumber, {
+        x: 91,
+        y: height - 125,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0, 0, 0),
+    });
+    page.drawText(doctor.email, {
+        x: 240,
+        y: height - 125,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0, 0, 0)
+    });
+    const addressMaxWidth = width - 412 - 15;
+    drawFittedText(page, doctor.address, helveticaFont, 412, height - 125, addressMaxWidth, 10, 7);
+
+    const signatureLabel = labels.signature;
+    const signatureFontSize = 11;
+    const signatureMarginRight = 90;
+    const signatureMarginBottom = 90;
+    const signatureWidth = helveticaFontBold.widthOfTextAtSize(signatureLabel, signatureFontSize);
+    page.drawText(signatureLabel, {
+        x: width - signatureMarginRight - signatureWidth,
+        y: signatureMarginBottom,
+        size: signatureFontSize,
+        font: helveticaFontBold,
+        color: rgb(0, 0, 0),
+    });
+}
+
 async function fillTemplate(
-    doctor: DoctorProfile
+    doctor: DoctorProfile,
+    language: PrescriptionLanguage = "fr"
 ): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
     try {
-        const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", "template.pdf");
+        const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", templateFileForLanguage(language));
         const existingPdfBytes = await fs.readFile(templatePath);
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
 
@@ -239,50 +350,7 @@ async function fillTemplate(
         const helveticaFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const { width, height } = firstPage.getSize();
 
-        const fullNameText = `Dr: ${doctor.fullName}`;
-        firstPage.drawText(fullNameText, {
-            x: getCenteredX(fullNameText, helveticaFontBold, 20, width),
-            y: height - 54,
-            size: 20,
-            font: helveticaFontBold,
-            color: rgb(0, 0, 0),
-        });
-        firstPage.drawText(doctor.speciality, {
-            x: getCenteredX(doctor.speciality, helveticaFontBold, 13, width),
-            y: height - 78,
-            size: 13,
-            font: helveticaFontBold,
-            color: rgb(0, 0, 0),
-        });
-        firstPage.drawText(doctor.phoneNumber, {
-            x: 91,
-            y: height - 125,
-            size: 10,
-            font: helveticaFont,
-            color: rgb(0, 0, 0),
-        });
-        firstPage.drawText(doctor.email, {
-            x: 240,
-            y: height - 125,
-            size: 10,
-            font: helveticaFont,
-            color: rgb(0, 0, 0)
-        })
-        const addressMaxWidth = width - 412 - 15;
-        drawFittedText(firstPage, doctor.address, helveticaFont, 412, height - 125, addressMaxWidth, 10, 7);
-
-        const signatureLabel = "Signature :";
-        const signatureFontSize = 11;
-        const signatureMarginRight = 90;
-        const signatureMarginBottom = 90;
-        const signatureWidth = helveticaFontBold.widthOfTextAtSize(signatureLabel, signatureFontSize);
-        firstPage.drawText(signatureLabel, {
-            x: width - signatureMarginRight - signatureWidth,
-            y: signatureMarginBottom,
-            size: signatureFontSize,
-            font: helveticaFontBold,
-            color: rgb(0, 0, 0),
-        });
+        drawDoctorHeader(firstPage, doctor, helveticaFont, helveticaFontBold, width, height, language);
 
         const modifiedPdfBytes = await pdfDoc.save();
 
@@ -458,7 +526,7 @@ function mapRowToPatient(row: Record<string, unknown>): Patient {
     };
 }
 
-export async function generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string) {
+export async function generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string) {
     try {
         const db = getDatabase();
         const patientStmt = db.prepare(`SELECT * FROM patients WHERE id = ?`);
@@ -469,7 +537,7 @@ export async function generatePatientPrescriptionPDF(patientId: number, prescrip
         const patient = mapRowToPatient(patientResult);
         // Use the first prescription's ID to link the document
         const prescriptionId = prescriptions.length > 0 ? prescriptions[0].id : undefined;
-        const pdfResult = await fillPatientPrescriptionTemplate(patient, prescriptions, doctor, weight, prescriptionId);
+        const pdfResult = await fillPatientPrescriptionTemplate(patient, prescriptions, doctor, normalizeLanguage(language), weight, prescriptionId);
         if (pdfResult.status === "fail") {
             return pdfResult;
         }
@@ -485,11 +553,16 @@ async function fillPatientPrescriptionTemplate(
     patient: Patient,
     prescriptions: Prescription[],
     doctor: DoctorProfile,
+    language: PrescriptionLanguage,
     weight?: string,
     prescriptionId?: number
 ): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
     try {
-        const existingPdfBytes = await fs.readFile(doctor.pdfPath!);
+        // Draw the doctor header fresh onto the chosen-language template rather
+        // than reusing the pre-baked doctor.pdfPath (which is always French), so
+        // the whole prescription — header labels included — matches the language.
+        const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", templateFileForLanguage(language));
+        const existingPdfBytes = await fs.readFile(templatePath);
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const pages = pdfDoc.getPages();
         const firstPage = pages[0];
@@ -497,8 +570,9 @@ async function fillPatientPrescriptionTemplate(
         const helveticaFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const { width, height } = firstPage.getSize();
 
-        drawPatientInformation(firstPage, patient, helveticaFontBold, helveticaFont, width, height, weight);
-        drawPrescriptions(firstPage, prescriptions, helveticaFontBold, helveticaFont, width, height);
+        drawDoctorHeader(firstPage, doctor, helveticaFont, helveticaFontBold, width, height, language);
+        drawPatientInformation(firstPage, patient, helveticaFontBold, helveticaFont, width, height, language, weight);
+        drawPrescriptions(firstPage, prescriptions, helveticaFontBold, helveticaFont, width, height, language);
 
         const modifiedPdfBytes = await pdfDoc.save();
 
@@ -521,30 +595,34 @@ async function fillPatientPrescriptionTemplate(
     }
 }
 
-function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBold: PDFFont, _helveticaFont: PDFFont, _width: number, height: number, weight?: string) {
+function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBold: PDFFont, _helveticaFont: PDFFont, _width: number, height: number, language: PrescriptionLanguage, weight?: string) {
+    const labels = PRESCRIPTION_LABELS[language];
+    // The English template's labels have slightly different widths, so nudge a
+    // few value positions when generating in English only (French unchanged).
+    const isEn = language === "en";
     const dayOfConsultationText = new Date().toLocaleDateString('en-GB');
     page.drawText(dayOfConsultationText, {
-        x: 67,
+        x: 67 + (isEn ? 21 : 0),
         y: height - 209,
         size: 10,
         font: helveticaFontBold,
         color: rgb(0, 0, 0),
     });
     page.drawText(patient.fullName, {
-        x: 434,
+        x: 434 - (isEn ? 15 : 0),
         y: height - 209,
         size: 10,
         font: helveticaFontBold,
         color: rgb(0, 0, 0),
     });
     page.drawText(patient.dateOfBirth, {
-        x: 485,
+        x: 485 - (isEn ? 25 : 0),
         y: height - 238,
         size: 10,
         font: helveticaFontBold,
         color: rgb(0, 0, 0),
     });
-    const ageText = `${calculateAge(patient.dateOfBirth).years} ans`;
+    const ageText = `${calculateAge(patient.dateOfBirth).years} ${labels.ageSuffix}`;
     page.drawText(ageText, {
         x: 401,
         y: height - 270,
@@ -553,7 +631,7 @@ function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBo
         color: rgb(0, 0, 0),
     });
     if (weight) {
-        const weightLabel = "Poids:";
+        const weightLabel = labels.weight;
         const weightLabelX = 455;
         page.drawText(weightLabel, {
             x: weightLabelX,
@@ -573,7 +651,8 @@ function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBo
     }
 }
 
-function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveticaFontBold: PDFFont, helveticaFont: PDFFont, width: number, height: number) {
+function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveticaFontBold: PDFFont, helveticaFont: PDFFont, width: number, height: number, language: PrescriptionLanguage) {
+    const labels = PRESCRIPTION_LABELS[language];
     const marginX = 30;
     const rightMargin = 35;
     // Keep above the signature block: stop before running off the page.
@@ -586,7 +665,7 @@ function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveti
         // Each entry needs ~45pt (name line + detail line + spacing).
         if (currentY - 45 < bottomLimit) {
             const remaining = allMedicines.length - (medIndex - 1);
-            page.drawText(`+ ${remaining} autre(s) médicament(s) — voir dossier`, {
+            page.drawText(labels.moreMeds(remaining), {
                 x: marginX,
                 y: currentY,
                 size: 10,
@@ -605,7 +684,7 @@ function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveti
             color: rgb(0, 0, 0),
         });
 
-        const quantityText = `Qté : ${med.quantity}`;
+        const quantityText = `${labels.quantityPrefix}${med.quantity}`;
         const quantitySize = 11;
         const quantityWidth = helveticaFontBold.widthOfTextAtSize(quantityText, quantitySize);
         page.drawText(quantityText, {
@@ -619,7 +698,7 @@ function drawPrescriptions(page: PDFPage, prescriptions: Prescription[], helveti
         currentY -= 17;
 
         // Detail line: dosage, frequency and duration
-        const detailsLine = `${med.dosage}  -  ${med.frequency}  -  Durée : ${med.duration}`;
+        const detailsLine = `${med.dosage}  -  ${med.frequency}  -  ${labels.durationPrefix}${med.duration}`;
         page.drawText(detailsLine, {
             x: marginX + 16,
             y: currentY,

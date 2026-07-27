@@ -366,7 +366,9 @@
       "save": "Enregistrer le profil",
       "saving": "Enregistrement...",
       "success": "Profil mis à jour avec succès !",
-      "error": "Erreur lors de la mise à jour du profil"
+      "error": "Erreur lors de la mise à jour du profil",
+      "pdf_header": "En-tête PDF Ordonnance",
+      "pdf_open": "Ouvrir"
     },
     "consultation": {
       "title": "Paramètres de Consultation",
@@ -376,7 +378,11 @@
       "duration": "Durée par défaut d'un rendez-vous",
       "duration_minutes": "{{count}} minutes",
       "save": "Enregistrer les paramètres",
-      "success": "Configuration de consultation enregistrée !"
+      "success": "Configuration de consultation enregistrée !",
+      "prescription_language": "Langue par défaut de l’ordonnance",
+      "prescription_language_hint": "Langue présélectionnée dans la fenêtre de génération de l’ordonnance.",
+      "language_french": "Français",
+      "language_english": "Anglais"
     },
     "security": {
       "title": "Sécurité de la Session",
@@ -395,7 +401,10 @@
       "reset_warning": "Attention : cette action supprimera définitivement tous les patients, rendez-vous, ordonnances et documents. Cette action est irréversible !",
       "reset_confirm": "Tapez 'RESET' pour confirmer la suppression définitive :",
       "reset_success": "Base de données réinitialisée avec succès !",
-      "reset_error": "Erreur lors de la réinitialisation"
+      "reset_error": "Erreur lors de la réinitialisation",
+      "backup_title": "Sauvegarde des Patients",
+      "confirm": "Confirmer",
+      "cancel": "Annuler"
     }
   },
   "documents": {
@@ -592,6 +601,18 @@
         "radio": "Radiologie",
         "surgery": "Chirurgie"
       }
+    },
+    "language_modal": {
+      "title": "Langue de l’ordonnance",
+      "subtitle": "Choisissez la langue du PDF à générer.",
+      "french": "Français",
+      "english": "Anglais",
+      "cancel": "Annuler",
+      "confirm": "Générer le PDF"
+    },
+    "view_template_modal": {
+      "title": "Voir le modèle",
+      "subtitle": "Choisissez la langue du modèle à ouvrir."
     }
   },
   "trial": {

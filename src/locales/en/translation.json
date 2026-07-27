@@ -366,7 +366,9 @@
       "save": "Save Profile",
       "saving": "Saving...",
       "success": "Profile successfully updated!",
-      "error": "Error updating profile"
+      "error": "Error updating profile",
+      "pdf_header": "Prescription header PDF",
+      "pdf_open": "Open"
     },
     "consultation": {
       "title": "Consultation Settings",
@@ -376,7 +378,11 @@
       "duration": "Default Appointment Duration",
       "duration_minutes": "{{count}} minutes",
       "save": "Save Settings",
-      "success": "Consultation settings saved!"
+      "success": "Consultation settings saved!",
+      "prescription_language": "Default prescription language",
+      "prescription_language_hint": "Language pre-selected in the prescription generation popup.",
+      "language_french": "French",
+      "language_english": "English"
     },
     "security": {
       "title": "Session Security",
@@ -395,7 +401,10 @@
       "reset_warning": "Warning: this action will permanently delete all patients, appointments, prescriptions, and documents. This cannot be undone!",
       "reset_confirm": "Type 'RESET' to confirm permanent deletion:",
       "reset_success": "Database successfully reset!",
-      "reset_error": "Error resetting database"
+      "reset_error": "Error resetting database",
+      "backup_title": "Patient Backup",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
     }
   },
   "documents": {
@@ -592,6 +601,18 @@
         "radio": "Radiology",
         "surgery": "Surgery"
       }
+    },
+    "language_modal": {
+      "title": "Prescription language",
+      "subtitle": "Choose the language of the PDF to generate.",
+      "french": "French",
+      "english": "English",
+      "cancel": "Cancel",
+      "confirm": "Generate PDF"
+    },
+    "view_template_modal": {
+      "title": "View template",
+      "subtitle": "Choose the language of the template to open."
     }
   },
   "trial": {

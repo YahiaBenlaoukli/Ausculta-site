@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import type { DoctorProfile, Prescription } from '../../../types/doctor';
+import type { DoctorProfile, Prescription, PrescriptionLanguage } from '../../../types/doctor';
 import type { Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
 
@@ -131,6 +131,12 @@ export default function Prescriptions() {
     const [isGeneratingPatientPdf, setIsGeneratingPatientPdf] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
+    /* ── Prescription language (popup asked before every generation) ── */
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
+    // Popup to pick which language template to open (replaces the per-language
+    // view buttons, which overflowed the header card on small screens).
+    const [showViewTemplateModal, setShowViewTemplateModal] = useState(false);
+
     /* ══════════════════════ Effects ══════════════════════ */
 
     /* ── Load auth ── */
@@ -224,8 +230,8 @@ export default function Prescriptions() {
             setIsGeneratingPdf(true);
             const result = await window.ipcRenderer.setPrescriptionPdf(doctorProfile.id);
             if (result.status === 'success' && result.data) {
-                const pdfPath = result.data.pdfPath;
-                setDoctorProfile(prev => prev ? { ...prev, pdfPath } : null);
+                const { pdfPath, pdfPathEn } = result.data;
+                setDoctorProfile(prev => prev ? { ...prev, pdfPath, pdfPathEn } : null);
                 setStep('prescriptions');
                 showSuccess(t('prescriptions.alerts.pdf_success'));
             }
@@ -289,7 +295,15 @@ export default function Prescriptions() {
     };
 
     /* ── Save ordonnance ── */
-    const handleSaveOrdonnance = async () => {
+    // The save button first asks which language the PDF should be generated in
+    // (popup), then runs the actual save + generation with that choice.
+    const handleRequestSave = () => {
+        if (!selectedPatient || !currentUserId || newMedications.length === 0) return;
+        setShowLanguageModal(true);
+    };
+
+    const handleSaveOrdonnance = async (language: PrescriptionLanguage) => {
+        setShowLanguageModal(false);
         if (!selectedPatient || !currentUserId || newMedications.length === 0) return;
         setIsSaving(true);
         try {
@@ -308,9 +322,9 @@ export default function Prescriptions() {
                     selectedPatient.id
                 );
 
-                // Generate PDF automatically after saving
+                // Generate PDF automatically after saving, in the chosen language
                 if (doctorProfile && prescriptionResult.status === 'success' && prescriptionResult.data) {
-                    await handleGeneratePatientPdf([prescriptionResult.data.prescription]);
+                    await handleGeneratePatientPdf([prescriptionResult.data.prescription], language);
                 }
 
                 setNewMedications([]);
@@ -329,7 +343,7 @@ export default function Prescriptions() {
     };
 
     /* ── Generate patient prescription PDF ── */
-    const handleGeneratePatientPdf = async (prescriptions?: Prescription[]) => {
+    const handleGeneratePatientPdf = async (prescriptions?: Prescription[], language: PrescriptionLanguage = 'fr') => {
         if (!selectedPatient || !doctorProfile) return;
         const medsToUse = prescriptions || patientPrescriptions;
         if (medsToUse.length === 0) {
@@ -342,7 +356,8 @@ export default function Prescriptions() {
                 selectedPatient.id,
                 medsToUse,
                 doctorProfile,
-                weight || undefined
+                weight || undefined,
+                language
             );
             if (result.status === 'success' && result.data) {
                 showSuccess(t('prescriptions.alerts.pdf_generate_success'));
@@ -534,18 +549,18 @@ export default function Prescriptions() {
                 <>
                     {/* ── Doctor profile summary card ── */}
                     {doctorProfile && (
-                        <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(30,42,86,0.06)] border border-navy/[0.04] flex items-center gap-4">
+                        <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(30,42,86,0.06)] border border-navy/[0.04] flex flex-wrap items-center gap-x-4 gap-y-3">
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink to-pink-light flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                                 {getInitials(doctorProfile.fullName)}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-navy">Dr. {doctorProfile.fullName}</p>
-                                <p className="text-xs text-navy/40">{doctorProfile.speciality} • {doctorProfile.email} • {doctorProfile.phoneNumber}</p>
+                                <p className="text-xs text-navy/40 truncate">{doctorProfile.speciality} • {doctorProfile.email} • {doctorProfile.phoneNumber}</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {doctorProfile.pdfPath && (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                {(doctorProfile.pdfPath || doctorProfile.pdfPathEn) && (
                                     <button
-                                        onClick={() => window.ipcRenderer.openDocument(doctorProfile.pdfPath!)}
+                                        onClick={() => setShowViewTemplateModal(true)}
                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-navy/[0.04] text-navy/60 text-xs font-semibold hover:bg-navy/[0.08] hover:text-navy transition-all duration-200 cursor-pointer"
                                     >
                                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -773,7 +788,7 @@ export default function Prescriptions() {
                                 {newMedications.length > 0 && (
                                     <div className="px-5 py-3.5 border-t border-navy/[0.06] flex justify-end">
                                         <button
-                                            onClick={handleSaveOrdonnance}
+                                            onClick={handleRequestSave}
                                             disabled={isSaving || isGeneratingPatientPdf}
                                             className="flex items-center gap-2 bg-gradient-to-r from-pink to-pink-light text-white text-sm font-semibold px-6 py-2.5 rounded-xl shadow-[0_4px_14px_rgba(233,30,140,0.25)] hover:shadow-[0_6px_20px_rgba(233,30,140,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
@@ -997,6 +1012,155 @@ export default function Prescriptions() {
                     onSave={handleCreateProfile}
                 />
             )}
+
+            {/* ═══════ Prescription Language Modal ═══════ */}
+            {showLanguageModal && (
+                <LanguageModal
+                    onClose={() => setShowLanguageModal(false)}
+                    onConfirm={handleSaveOrdonnance}
+                />
+            )}
+
+            {/* ═══════ View Template Modal ═══════ */}
+            {showViewTemplateModal && doctorProfile && (
+                <ViewTemplateModal
+                    frPath={doctorProfile.pdfPath}
+                    enPath={doctorProfile.pdfPathEn}
+                    onClose={() => setShowViewTemplateModal(false)}
+                    onOpen={(path) => {
+                        window.ipcRenderer.openDocument(path);
+                        setShowViewTemplateModal(false);
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*            View Prescription Template (language picker)             */
+/* ─────────────────────────────────────────────────────────────────── */
+function ViewTemplateModal({
+    frPath,
+    enPath,
+    onClose,
+    onOpen,
+}: {
+    frPath?: string;
+    enPath?: string;
+    onClose: () => void;
+    onOpen: (path: string) => void;
+}) {
+    const { t } = useTranslation();
+    const options: { path?: string; label: string; flag: string }[] = [
+        { path: frPath, label: t('prescriptions.language_modal.french'), flag: '🇫🇷' },
+        { path: enPath, label: t('prescriptions.language_modal.english'), flag: '🇬🇧' },
+    ];
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-navy/30 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_24px_80px_rgba(30,42,86,0.18)] p-7 animate-[scaleIn_0.25s_ease-out]">
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-bold text-navy">{t('prescriptions.view_template_modal.title')}</h2>
+                    <button onClick={onClose} className="p-2 rounded-xl text-navy/30 hover:text-navy hover:bg-navy/[0.04] transition-colors cursor-pointer">
+                        {icons.close}
+                    </button>
+                </div>
+                <p className="text-xs text-navy/40 mb-6">{t('prescriptions.view_template_modal.subtitle')}</p>
+
+                <div className="grid grid-cols-2 gap-3">
+                    {options.filter(opt => !!opt.path).map(opt => (
+                        <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => onOpen(opt.path!)}
+                            className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-navy/[0.08] hover:border-pink hover:bg-pink/[0.04] transition-all duration-200 cursor-pointer"
+                        >
+                            <span className="text-3xl leading-none">{opt.flag}</span>
+                            <span className="text-sm font-semibold text-navy/70">{opt.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*              Prescription Language Selection Modal                  */
+/* ─────────────────────────────────────────────────────────────────── */
+function LanguageModal({
+    onClose,
+    onConfirm,
+}: {
+    onClose: () => void;
+    onConfirm: (language: PrescriptionLanguage) => void;
+}) {
+    const { t } = useTranslation();
+    // Pre-select the default configured in Settings (falls back to French).
+    const storedDefault = (localStorage.getItem('prescription_language') as PrescriptionLanguage | null);
+    const [selected, setSelected] = useState<PrescriptionLanguage>(
+        storedDefault === 'en' || storedDefault === 'fr' ? storedDefault : 'fr'
+    );
+
+    const options: { value: PrescriptionLanguage; label: string; flag: string }[] = [
+        { value: 'fr', label: t('prescriptions.language_modal.french'), flag: '🇫🇷' },
+        { value: 'en', label: t('prescriptions.language_modal.english'), flag: '🇬🇧' },
+    ];
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-navy/30 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_24px_80px_rgba(30,42,86,0.18)] p-7 animate-[scaleIn_0.25s_ease-out]">
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-bold text-navy">{t('prescriptions.language_modal.title')}</h2>
+                    <button onClick={onClose} className="p-2 rounded-xl text-navy/30 hover:text-navy hover:bg-navy/[0.04] transition-colors cursor-pointer">
+                        {icons.close}
+                    </button>
+                </div>
+                <p className="text-xs text-navy/40 mb-6">{t('prescriptions.language_modal.subtitle')}</p>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                    {options.map(opt => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setSelected(opt.value)}
+                            className={`flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${
+                                selected === opt.value
+                                    ? 'border-pink bg-pink/[0.04] shadow-[0_4px_14px_rgba(233,30,140,0.12)]'
+                                    : 'border-navy/[0.08] hover:border-navy/20 hover:bg-navy/[0.02]'
+                            }`}
+                        >
+                            <span className="text-3xl leading-none">{opt.flag}</span>
+                            <span className={`text-sm font-semibold ${selected === opt.value ? 'text-pink' : 'text-navy/70'}`}>
+                                {opt.label}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-5 py-2.5 text-sm font-medium text-navy/50 hover:text-navy hover:bg-navy/[0.04] rounded-xl transition-colors cursor-pointer"
+                    >
+                        {t('prescriptions.language_modal.cancel')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onConfirm(selected)}
+                        className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-pink to-pink-light text-white rounded-xl shadow-[0_4px_14px_rgba(233,30,140,0.25)] hover:shadow-[0_6px_20px_rgba(233,30,140,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                    >
+                        {icons.check}
+                        {t('prescriptions.language_modal.confirm')}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
