@@ -204,12 +204,12 @@ export async function setPrescriptionPdf(doctorId: number) {
     }
 }
 
-export function addPrescription(userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string) {
+export function addPrescription(userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string, consultationId?: number) {
     try {
         const db = getDatabase();
         const insertPrescription = db.prepare(`
-            INSERT INTO prescriptions (user_id, patient_id, notes)
-            VALUES (?, ?, ?)
+            INSERT INTO prescriptions (user_id, patient_id, notes, consultation_id)
+            VALUES (?, ?, ?, ?)
         `);
         const insertMedicine = db.prepare(`
             INSERT INTO prescription_medicines (prescription_id, medicine_name, dosage, frequency, duration, quantity)
@@ -217,7 +217,7 @@ export function addPrescription(userId: number, patientId: number, medicines: { 
         `);
 
         const transaction = db.transaction(() => {
-            const result = insertPrescription.run(userId, patientId, notes || null);
+            const result = insertPrescription.run(userId, patientId, notes || null, consultationId ?? null);
             const prescriptionId = result.lastInsertRowid as number;
             for (const med of medicines) {
                 insertMedicine.run(prescriptionId, med.medicineName, med.dosage, med.frequency, med.duration, med.quantity);
@@ -374,6 +374,7 @@ function hydratePrescription(db: ReturnType<typeof getDatabase>, prescriptionRow
         id: prescriptionRow.id as number,
         userId: prescriptionRow.user_id as number,
         patientId: prescriptionRow.patient_id as number,
+        consultationId: (prescriptionRow.consultation_id ?? null) as number | null,
         notes: prescriptionRow.notes as string | null,
         medicines: medicineRows.map(m => ({
             id: m.id as number,
@@ -526,7 +527,19 @@ function mapRowToPatient(row: Record<string, unknown>): Patient {
     };
 }
 
-export async function generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string) {
+export function getPrescriptionsByConsultationId(consultationId: number) {
+    try {
+        const db = getDatabase();
+        const stmt = db.prepare(`SELECT * FROM prescriptions WHERE consultation_id = ? ORDER BY created_at DESC`);
+        const rows = stmt.all(consultationId) as Record<string, unknown>[];
+        return rows.map(row => hydratePrescription(db, row));
+    } catch (error) {
+        console.error("getPrescriptionsByConsultationId error:", error);
+        return [];
+    }
+}
+
+export async function generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string, consultationId?: number) {
     try {
         const db = getDatabase();
         const patientStmt = db.prepare(`SELECT * FROM patients WHERE id = ?`);
@@ -537,7 +550,11 @@ export async function generatePatientPrescriptionPDF(patientId: number, prescrip
         const patient = mapRowToPatient(patientResult);
         // Use the first prescription's ID to link the document
         const prescriptionId = prescriptions.length > 0 ? prescriptions[0].id : undefined;
-        const pdfResult = await fillPatientPrescriptionTemplate(patient, prescriptions, doctor, normalizeLanguage(language), weight, prescriptionId);
+        // Fall back to the prescription's own consultation when the caller did
+        // not pass one, so a PDF regenerated later from the Prescriptions page
+        // still lands in the right visit.
+        const visitId = consultationId ?? (prescriptions.length > 0 ? prescriptions[0].consultationId ?? undefined : undefined);
+        const pdfResult = await fillPatientPrescriptionTemplate(patient, prescriptions, doctor, normalizeLanguage(language), weight, prescriptionId, visitId);
         if (pdfResult.status === "fail") {
             return pdfResult;
         }
@@ -555,7 +572,8 @@ async function fillPatientPrescriptionTemplate(
     doctor: DoctorProfile,
     language: PrescriptionLanguage,
     weight?: string,
-    prescriptionId?: number
+    prescriptionId?: number,
+    consultationId?: number
 ): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
     try {
         // Draw the doctor header fresh onto the chosen-language template rather
@@ -584,6 +602,7 @@ async function fillPatientPrescriptionTemplate(
         await uploadDocument({
             patientId: patient.id,
             prescriptionId: prescriptionId ?? null,
+            consultationId: consultationId ?? null,
             fileCategory: "prescription",
             localPath: outputPath,
             fileName: outputFileName,

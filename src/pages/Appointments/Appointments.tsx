@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import type { Patient } from "../../../types/patient"
 import type { DoctorProfile } from "../../../types/doctor"
@@ -24,6 +24,7 @@ const TIME_SLOTS = [
 
 export default function Appointments() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const locale = i18n.language || 'fr';
 
@@ -238,6 +239,18 @@ export default function Appointments() {
         }
     };
 
+    // Hand the booking over to the consultation page, which opens the visit
+    // record linked to it and completes the appointment when the doctor is done.
+    const handleStartConsultation = async (appointment: Appointment) => {
+        try {
+            const patient = await window.ipcRenderer.getPatientById(appointment.patient_id);
+            if (!patient) return;
+            navigate('/consultation', { state: { patient, appointmentId: appointment.id } });
+        } catch (error) {
+            console.error("Failed to start consultation:", error);
+        }
+    };
+
     // Delete Appointment
     const handleDeleteAppointment = async (id: number) => {
         if (!confirm(t('appointments.confirm_delete'))) return;
@@ -401,6 +414,22 @@ export default function Appointments() {
                                             }`}>
                                                 {app.status === 'Scheduled' ? t('appointments.status.scheduled') : app.status === 'Completed' ? t('appointments.status.completed') : app.status === 'Cancelled' ? t('appointments.status.cancelled') : t('appointments.status.no_show')}
                                             </span>
+
+                                            {/* Opening the consultation records the visit itself and
+                                                marks the appointment completed on finish. */}
+                                            {!isPastDay && app.status === 'Scheduled' && (
+                                                <button
+                                                    onClick={() => handleStartConsultation(app)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#e91e8c]/10 text-[#e91e8c] hover:bg-[#e91e8c] hover:text-white text-[11px] font-bold transition-colors cursor-pointer border-none"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+                                                        <path d="M8 15v1a6 6 0 0 0 6 6 6 6 0 0 0 6-6v-4" />
+                                                        <circle cx="20" cy="10" r="2" />
+                                                    </svg>
+                                                    {t('appointments.start_consultation')}
+                                                </button>
+                                            )}
 
                                             {!isPastDay && (
                                                 <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-full p-0.5">

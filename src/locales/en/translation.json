@@ -12,7 +12,8 @@
       "documents": "Documents",
       "prescriptions": "Prescriptions",
       "statistics": "Statistics",
-      "settings": "Settings"
+      "settings": "Settings",
+      "consultation": "Consultation"
     },
     "user": {
       "role": "General Practitioner"
@@ -56,7 +57,8 @@
       "phone": "phone number",
       "address": "address",
       "action": "Complete now"
-    }
+    },
+    "walk_in_action": "Walk-in consultation"
   },
   "patients": {
     "title": "Patients",
@@ -121,6 +123,12 @@
     "title": "Patient Details for ID: {{id}}",
     "not_found": "Patient not found",
     "edit": "Edit patient",
+    "edit_modal": {
+      "title": "Edit Patient",
+      "subtitle": "Update the patient's information.",
+      "saving": "Saving...",
+      "save_error": "Could not save the changes. Please try again."
+    },
     "active": "Active",
     "age": "Age {{age}} yrs",
     "blood_type": "Blood Type: {{value}}",
@@ -167,7 +175,8 @@
     "tabs": {
       "activity": "Activity",
       "documents": "Documents ({{count}})",
-      "notes": "Follow-up Notes"
+      "notes": "Follow-up Notes",
+      "consultations": "Consultations"
     },
     "activity": {
       "consultation_done": "General consultation completed",
@@ -197,7 +206,18 @@
       "history_title": "Notes history",
       "empty": "No notes yet",
       "placeholder": "Enter your medical observations, history, allergies or usual treatments..."
-    }
+    },
+    "consultations": {
+      "title": "Recorded visits",
+      "empty": "No consultation recorded for this patient yet.",
+      "start": "New consultation",
+      "walk_in": "Walk-in",
+      "in_progress": "In progress",
+      "no_diagnosis": "No diagnosis recorded",
+      "open": "Open",
+      "vitals": "Weight {{weight}} · BP {{bloodPressure}}"
+    },
+    "activity_consultation": "Consultation — {{label}}"
   },
   "time": {
     "today": "Today",
@@ -279,7 +299,8 @@
       "cancel": "Cancel",
       "delete": "Delete"
     },
-    "book_button": "Book an appointment"
+    "book_button": "Book an appointment",
+    "start_consultation": "Start consultation"
   },
   "statistics": {
     "title": "Statistics & Analytics",
@@ -303,16 +324,19 @@
       "absents": "absent",
       "noshow_sub": "Ratio of patients who missed their appointment",
       "cancelled": "Cancelled Appts",
-      "cancelled_sub": "Cancelled or rescheduled appointments"
+      "cancelled_sub": "Cancelled or rescheduled appointments",
+      "walk_ins": "walk-in",
+      "revenue_unpaid": "{{amount}} DA still unpaid"
     },
     "charts": {
       "volume_title": "Consultations Volume",
       "volume_subtitle": "Trends by month",
       "no_data": "No consultation data for this period.",
-      "legend_total": "Total Appts",
+      "legend_total": "Consultations",
       "legend_completed": "Completed",
       "distribution_title": "Appointments Distribution",
-      "total": "Total Appts"
+      "total": "Total Appts",
+      "legend_walk_in": "Walk-ins"
     },
     "table": {
       "top_absents_title": "Most Absent Patients",
@@ -630,5 +654,142 @@
     "activate_title": "Activate your license",
     "activate_now": "Activate now",
     "login_required": "Create an account and sign in first, then activate from Settings."
+  },
+  "consultation": {
+    "title": "Consultation",
+    "subtitle": "Record a visit — with or without an appointment.",
+    "walk_in_badge": "Walk-in",
+    "completed_badge": "Completed",
+    "finished": "Consultation recorded.",
+    "finish_confirm": "Finish this consultation? It will be saved to the patient's file and counted in your statistics.",
+    "discard_confirm": "Discard this consultation? Prescriptions and documents already generated are kept in the patient's file.",
+    "no_profile_title": "Doctor profile required",
+    "no_profile_body": "Complete your doctor profile before recording consultations — it identifies the practitioner on every visit and prescription.",
+    "no_profile_action": "Go to settings",
+    "header": {
+      "age": "{{age}} years",
+      "no_blood_type": "Blood type unknown",
+      "open_file": "Patient file",
+      "discard": "Discard",
+      "finish": "Finish consultation",
+      "finishing": "Finishing…"
+    },
+    "autosave": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "error": "Not saved"
+    },
+    "select": {
+      "walk_in_title": "Patient without an appointment",
+      "walk_in_hint": "Search an existing patient, or register them on the spot.",
+      "search_placeholder": "Search by name, phone or SSN…",
+      "searching": "Searching…",
+      "no_results": "No patient found.",
+      "start": "Start",
+      "age_years": "{{age}} years",
+      "cancel": "Cancel",
+      "quick_add_open": "New patient",
+      "quick_add_title": "Register a new patient",
+      "quick_add_name": "Full name",
+      "quick_add_dob": "Date of birth",
+      "quick_add_phone": "Phone",
+      "quick_add_ssn": "SSN (optional)",
+      "quick_add_action": "Create and start",
+      "today_title": "Today's appointments",
+      "today_empty": "No appointment left for today."
+    },
+    "vitals": {
+      "title": "Reason and vitals",
+      "reason": "Reason for visit",
+      "reason_placeholder": "What brings the patient in today?",
+      "weight": "Weight (kg)",
+      "weight_placeholder": "e.g. 72.5",
+      "height": "Height (cm)",
+      "height_placeholder": "e.g. 175",
+      "temperature": "Temp. (°C)",
+      "temperature_placeholder": "e.g. 37.0",
+      "blood_pressure": "Blood pressure",
+      "heart_rate": "Heart rate (bpm)",
+      "heart_rate_placeholder": "e.g. 72",
+      "bmi": "BMI: {{value}}"
+    },
+    "clinical": {
+      "title": "Clinical record",
+      "exam": "Examination",
+      "exam_placeholder": "Observations, findings on examination…",
+      "diagnosis": "Diagnosis",
+      "diagnosis_placeholder": "Confirmed or suspected condition…",
+      "plan": "Treatment plan",
+      "plan_placeholder": "Treatment, instructions, advice given…",
+      "follow_up_notes": "Follow-up notes",
+      "follow_up_placeholder": "What to check at the next visit…"
+    },
+    "prescription": {
+      "title": "Prescription",
+      "medicine": "Medicine",
+      "dosage": "Dosage",
+      "frequency": "Frequency",
+      "duration": "Duration",
+      "quantity": "Quantity",
+      "add_medicine": "Add medicine",
+      "notes": "Advice",
+      "notes_placeholder": "General advice for the patient…",
+      "save_and_print": "Save and generate PDF",
+      "generating": "Generating…",
+      "saved": "Prescription saved and generated.",
+      "issued": "Issued during this visit",
+      "item": "Prescription #{{id}}",
+      "none": "No prescription was issued during this visit."
+    },
+    "documents": {
+      "title": "Documents",
+      "category": "Type",
+      "category_report": "Report",
+      "choose_file": "Choose a file…",
+      "attach": "Attach",
+      "uploading": "Uploading…",
+      "uploaded": "Document attached to this visit.",
+      "empty": "No document attached to this visit.",
+      "open": "Open"
+    },
+    "billing": {
+      "title": "Fee",
+      "fee": "Amount (DA)",
+      "fee_placeholder": "Practice default",
+      "paid": "Paid",
+      "hint": "Leave empty to bill at the default price set on the statistics page."
+    },
+    "follow_up": {
+      "title": "Next appointment",
+      "date": "Date",
+      "time": "Time",
+      "duration": "Duration",
+      "minutes": "{{value}} min",
+      "reason": "Reason",
+      "default_reason": "Follow-up",
+      "book": "Book",
+      "booking": "Booking…",
+      "booked": "Follow-up appointment booked.",
+      "confirmed": "Appointment booked"
+    },
+    "history": {
+      "title": "Patient history",
+      "patient_notes": "Latest note",
+      "empty": "First recorded visit for this patient.",
+      "no_diagnosis": "No diagnosis recorded",
+      "artifacts": "{{prescriptions}} prescription(s) · {{documents}} document(s)"
+    },
+    "errors": {
+      "start_failed": "Could not start the consultation.",
+      "quick_add_required": "Full name and date of birth are required.",
+      "quick_add_failed": "Could not register the patient. The SSN may already exist.",
+      "no_template": "Generate your prescription template in settings first.",
+      "prescription_failed": "Could not save the prescription.",
+      "pdf_failed": "Could not generate the prescription PDF.",
+      "upload_failed": "Could not attach the document.",
+      "booking_failed": "Could not book the follow-up appointment.",
+      "finish_failed": "Could not finish the consultation.",
+      "discard_failed": "Could not discard the consultation."
+    }
   }
 }

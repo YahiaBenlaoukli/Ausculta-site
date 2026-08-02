@@ -15,7 +15,9 @@ export type Patient = {
     dateOfBirth: string;
     address: string;
     phoneNumber: string;
-    ssn: string;
+    /** Nullable: a walk-in is often registered before their SSN is known, and
+     *  the column is UNIQUE — so absent must be NULL, not an empty string. */
+    ssn: string | null;
     bloodType: BloodType | null;
     notes?: string | null;
     createdAt: string;

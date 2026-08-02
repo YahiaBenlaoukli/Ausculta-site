@@ -36,10 +36,18 @@ type NoShowRateData = {
   top_no_show_patients: TopPatient[];
 };
 
+type ConsultationStats = {
+  total_consultations: number;
+  total_walk_ins: number;
+  total_scheduled_visits: number;
+  total_revenue: number;
+  total_unpaid: number;
+};
+
 type MonthlyVolume = {
   month: string;
-  total_appointments: number;
-  completed_appointments: number;
+  total_consultations: number;
+  walk_in_consultations: number;
 };
 
 export default function Statistics() {
@@ -111,6 +119,15 @@ export default function Statistics() {
     top_no_show_patients: []
   });
 
+  // Visits actually carried out (walk-ins included) and what they are worth.
+  const [consultationStats, setConsultationStats] = useState<ConsultationStats>({
+    total_consultations: 0,
+    total_walk_ins: 0,
+    total_scheduled_visits: 0,
+    total_revenue: 0,
+    total_unpaid: 0
+  });
+
   const [consultationVolume, setConsultationVolume] = useState<MonthlyVolume[]>([]);
 
   // Load all statistics from backend APIs
@@ -119,14 +136,18 @@ export default function Statistics() {
     try {
       const parsedPrice = parseFloat(priceInput) || 0;
 
-      const [appStatsResult, noShowResult, volumeResult] = await Promise.all([
+      const [appStatsResult, consultStatsResult, noShowResult, volumeResult] = await Promise.all([
         window.ipcRenderer.getAppointmentStatistics(startDate, endDate, parsedPrice),
+        window.ipcRenderer.getConsultationStatistics(startDate, endDate, parsedPrice),
         window.ipcRenderer.getNoShowRate(startDate, endDate),
         window.ipcRenderer.getConsultationVolume(startDate, endDate),
       ]);
 
       if (appStatsResult) {
         setAppointmentStats(appStatsResult);
+      }
+      if (consultStatsResult) {
+        setConsultationStats(consultStatsResult);
       }
       if (noShowResult) {
         setNoShowRateData(noShowResult);
@@ -255,10 +276,10 @@ export default function Statistics() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-extrabold tracking-tight text-[#1E2A56]">
-                  {appointmentStats.total_completed}
+                  {consultationStats.total_consultations}
                 </span>
                 <span className="text-xs font-bold text-green-500 flex items-center gap-0.5">
-                  ▲ {appointmentStats.total_appointments > 0 ? Math.round((appointmentStats.total_completed / appointmentStats.total_appointments) * 100) : 0}%
+                  ▲ {consultationStats.total_walk_ins} {t("statistics.metrics.walk_ins", "sans RDV")}
                 </span>
               </div>
               {/* Card Illustration */}
@@ -280,7 +301,7 @@ export default function Statistics() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold tracking-tight text-[#1E2A56] truncate max-w-[85%]">
-                  {appointmentStats.total_revenue.toLocaleString()}
+                  {consultationStats.total_revenue.toLocaleString()}
                 </span>
                 <span className="text-sm font-extrabold text-[#e91e8c]">DA</span>
               </div>
@@ -291,7 +312,9 @@ export default function Statistics() {
                 </svg>
               </div>
               <p className="text-[11px] text-gray-400 font-medium mt-3">
-                {t("statistics.metrics.revenue_sub", "Total estimé des honoraires")}
+                {consultationStats.total_unpaid > 0
+                  ? t("statistics.metrics.revenue_unpaid", { amount: consultationStats.total_unpaid.toLocaleString() })
+                  : t("statistics.metrics.revenue_sub", "Total estimé des honoraires")}
               </p>
             </div>
 
@@ -410,8 +433,8 @@ export default function Statistics() {
                         />
                         <Area
                           type="monotone"
-                          dataKey="total_appointments"
-                          name={t("statistics.charts.legend_total", "Total RDV")}
+                          dataKey="total_consultations"
+                          name={t("statistics.charts.legend_total", "Total consultations")}
                           stroke="#1E2A56"
                           strokeWidth={2}
                           fillOpacity={1}
@@ -419,8 +442,8 @@ export default function Statistics() {
                         />
                         <Area
                           type="monotone"
-                          dataKey="completed_appointments"
-                          name={t("statistics.charts.legend_completed", "Complétés")}
+                          dataKey="walk_in_consultations"
+                          name={t("statistics.charts.legend_walk_in", "Sans rendez-vous")}
                           stroke="#e91e8c"
                           strokeWidth={2.5}
                           fillOpacity={1}

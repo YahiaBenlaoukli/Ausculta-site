@@ -8,7 +8,8 @@ import { uploadDocument, getDocumentsByPatientId, getAllDocuments, deleteDocumen
 import { addPrescription, getPrescriptionById, getPatientPrescriptions, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, updateDoctorProfile, setPrescriptionPdf, generatePatientPrescriptionPDF } from './services/prescription'
 import { createUser, login, checkAuth, logout } from './services/auth'
 import { bookAppointment, cancelAppointment, deleteAppointment, updateAppointment, getAppointmentsByDay, getAppointmentsByPatientId, getAppointmentsByDateRange } from './services/appointments'
-import { getFinancialStatistics, getAppointmentStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
+import { getFinancialStatistics, getAppointmentStatistics, getConsultationStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
+import { startConsultation, getConsultationById, getActiveConsultation, updateConsultation, completeConsultation, deleteConsultation, getConsultationArtifacts, getConsultationsByPatientId, getConsultationsByDay, getConsultationsByDateRange } from './services/consultations'
 import { getTrialStatus, activateLicense } from './services/trial'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -106,7 +107,7 @@ app.whenReady().then(() => {
   ipcMain.handle('set-prescription-pdf', async (_event, doctorId) => await setPrescriptionPdf(doctorId));
 
   //gestion des prescriptions 
-  ipcMain.handle('add-prescription', async (_event, userId, patientId, medicines, notes) => await addPrescription(userId, patientId, medicines, notes));
+  ipcMain.handle('add-prescription', async (_event, userId, patientId, medicines, notes, consultationId) => await addPrescription(userId, patientId, medicines, notes, consultationId));
   ipcMain.handle('get-prescription-by-id', async (_event, id, patientId) => getPrescriptionById(id, patientId));
   ipcMain.handle('get-patient-prescriptions', async (_event, patientId) => getPatientPrescriptions(patientId));
   ipcMain.handle('get-all-prescriptions', async () => await getAllPrescriptions());
@@ -114,7 +115,7 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-prescription', async (_event, id) => await deletePrescription(id));
   ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
   ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
-  ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight, language) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight, language));
+  ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight, language, consultationId) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight, language, consultationId));
 
   //gestion authentification
   ipcMain.handle('create-user', async (_event, user) => await createUser(user));
@@ -131,8 +132,21 @@ app.whenReady().then(() => {
   ipcMain.handle('get-appointments-by-patient-id', async (_event, patientId) => getAppointmentsByPatientId(patientId));
   ipcMain.handle('get-appointments-by-date-range', async (_event, doctorId, startDate, endDate) => getAppointmentsByDateRange(doctorId, startDate, endDate));
 
+  //gestion des consultations
+  ipcMain.handle('start-consultation', async (_event, patientId, doctorId, appointmentId) => startConsultation(patientId, doctorId, appointmentId));
+  ipcMain.handle('get-consultation-by-id', async (_event, id) => getConsultationById(id));
+  ipcMain.handle('get-active-consultation', async (_event, doctorId) => getActiveConsultation(doctorId));
+  ipcMain.handle('update-consultation', async (_event, id, draft) => updateConsultation(id, draft));
+  ipcMain.handle('complete-consultation', async (_event, id, draft) => completeConsultation(id, draft));
+  ipcMain.handle('delete-consultation', async (_event, id) => deleteConsultation(id));
+  ipcMain.handle('get-consultation-artifacts', async (_event, consultationId) => getConsultationArtifacts(consultationId));
+  ipcMain.handle('get-consultations-by-patient-id', async (_event, patientId) => getConsultationsByPatientId(patientId));
+  ipcMain.handle('get-consultations-by-day', async (_event, doctorId, date) => getConsultationsByDay(doctorId, date));
+  ipcMain.handle('get-consultations-by-date-range', async (_event, doctorId, startDate, endDate) => getConsultationsByDateRange(doctorId, startDate, endDate));
+
   //gestion des statistiques
   ipcMain.handle('get-financial-statistics', async (_event, startDate, endDate, appointmentPrice) => getFinancialStatistics(startDate, endDate, appointmentPrice));
+  ipcMain.handle('get-consultation-statistics', async (_event, startDate, endDate, defaultFee) => getConsultationStatistics(startDate, endDate, defaultFee));
   ipcMain.handle('get-appointment-statistics', async (_event, startDate, endDate, appointmentPrice) => getAppointmentStatistics(startDate, endDate, appointmentPrice));
   ipcMain.handle('get-noshow-rate', async (_event, startDate, endDate) => getNoShowRate(startDate, endDate));
   ipcMain.handle('get-consultation-volume', async (_event, startDate, endDate) => getConsultationVolume(startDate, endDate));

@@ -12,7 +12,8 @@
       "documents": "المستندات",
       "prescriptions": "الوصفات الطبية",
       "statistics": "الإحصائيات",
-      "settings": "الإعدادات"
+      "settings": "الإعدادات",
+      "consultation": "الاستشارة"
     },
     "user": {
       "role": "طبيب عام"
@@ -56,7 +57,8 @@
       "phone": "رقم الهاتف",
       "address": "العنوان",
       "action": "أكمل الآن"
-    }
+    },
+    "walk_in_action": "استشارة بدون موعد"
   },
   "patients": {
     "title": "المرضى",
@@ -121,6 +123,12 @@
     "title": "تفاصيل المريض للمعرف: {{id}}",
     "not_found": "المريض غير موجود",
     "edit": "تعديل المريض",
+    "edit_modal": {
+      "title": "تعديل المريض",
+      "subtitle": "قم بتحديث معلومات المريض.",
+      "saving": "جارٍ الحفظ...",
+      "save_error": "تعذّر حفظ التعديلات. يرجى المحاولة مرة أخرى."
+    },
     "active": "نشط",
     "age": "العمر {{age}} سنة",
     "blood_type": "فصيلة الدم: {{value}}",
@@ -167,7 +175,8 @@
     "tabs": {
       "activity": "النشاط",
       "documents": "المستندات ({{count}})",
-      "notes": "ملاحظات المتابعة"
+      "notes": "ملاحظات المتابعة",
+      "consultations": "الاستشارات"
     },
     "activity": {
       "consultation_done": "تمت الاستشارة العامة",
@@ -197,7 +206,18 @@
       "history_title": "سجل الملاحظات",
       "empty": "لا توجد ملاحظات بعد",
       "placeholder": "أدخل ملاحظاتك الطبية والتاريخ والحساسية أو العلاجات المعتادة..."
-    }
+    },
+    "consultations": {
+      "title": "الزيارات المسجّلة",
+      "empty": "لا توجد استشارات مسجّلة لهذا المريض.",
+      "start": "استشارة جديدة",
+      "walk_in": "بدون موعد",
+      "in_progress": "قيد التنفيذ",
+      "no_diagnosis": "لا يوجد تشخيص مسجّل",
+      "open": "فتح",
+      "vitals": "الوزن {{weight}} · الضغط {{bloodPressure}}"
+    },
+    "activity_consultation": "استشارة — {{label}}"
   },
   "time": {
     "today": "اليوم",
@@ -279,7 +299,8 @@
       "cancel": "إلغاء",
       "delete": "حذف"
     },
-    "book_button": "حجز موعد"
+    "book_button": "حجز موعد",
+    "start_consultation": "بدء الاستشارة"
   },
   "statistics": {
     "title": "الإحصائيات والتحليلات",
@@ -303,16 +324,19 @@
       "absents": "غائب",
       "noshow_sub": "نسبة المرضى الذين تخلفوا عن موعدهم",
       "cancelled": "المواعيد الملغاة",
-      "cancelled_sub": "المواعيد الملغاة أو المؤجلة"
+      "cancelled_sub": "المواعيد الملغاة أو المؤجلة",
+      "walk_ins": "بدون موعد",
+      "revenue_unpaid": "{{amount}} دج غير مدفوعة"
     },
     "charts": {
       "volume_title": "حجم الاستشارات",
       "volume_subtitle": "تطور الحجم حسب الأشهر",
       "no_data": "لا توجد بيانات استشارات لهذه الفترة.",
-      "legend_total": "إجمالي المواعيد",
+      "legend_total": "الاستشارات",
       "legend_completed": "المكتملة",
       "distribution_title": "توزيع المواعيد",
-      "total": "إجمالي المواعيد"
+      "total": "إجمالي المواعيد",
+      "legend_walk_in": "بدون موعد"
     },
     "table": {
       "top_absents_title": "المرضى الأكثر غياباً",
@@ -630,5 +654,142 @@
     "activate_title": "تفعيل الترخيص",
     "activate_now": "فعّل الآن",
     "login_required": "أنشئ حسابًا وسجّل الدخول أولاً، ثم فعّل من الإعدادات."
+  },
+  "consultation": {
+    "title": "الاستشارة",
+    "subtitle": "سجّل زيارة — بموعد أو بدون موعد.",
+    "walk_in_badge": "بدون موعد",
+    "completed_badge": "منتهية",
+    "finished": "تم تسجيل الاستشارة.",
+    "finish_confirm": "إنهاء هذه الاستشارة؟ سيتم حفظها في ملف المريض واحتسابها ضمن إحصائياتك.",
+    "discard_confirm": "حذف هذه الاستشارة؟ الوصفات والمستندات التي تم إنشاؤها تبقى في ملف المريض.",
+    "no_profile_title": "الملف الشخصي للطبيب مطلوب",
+    "no_profile_body": "أكمل ملفك الشخصي قبل تسجيل الاستشارات — فهو يحدّد الطبيب في كل زيارة ووصفة.",
+    "no_profile_action": "الذهاب إلى الإعدادات",
+    "header": {
+      "age": "{{age}} سنة",
+      "no_blood_type": "فصيلة الدم غير معروفة",
+      "open_file": "ملف المريض",
+      "discard": "حذف",
+      "finish": "إنهاء الاستشارة",
+      "finishing": "جارٍ الإنهاء…"
+    },
+    "autosave": {
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم الحفظ",
+      "error": "لم يتم الحفظ"
+    },
+    "select": {
+      "walk_in_title": "مريض بدون موعد",
+      "walk_in_hint": "ابحث عن مريض مسجّل، أو سجّله فوراً.",
+      "search_placeholder": "ابحث بالاسم أو الهاتف أو رقم الضمان…",
+      "searching": "جارٍ البحث…",
+      "no_results": "لم يتم العثور على مريض.",
+      "start": "بدء",
+      "age_years": "{{age}} سنة",
+      "cancel": "إلغاء",
+      "quick_add_open": "مريض جديد",
+      "quick_add_title": "تسجيل مريض جديد",
+      "quick_add_name": "الاسم الكامل",
+      "quick_add_dob": "تاريخ الميلاد",
+      "quick_add_phone": "الهاتف",
+      "quick_add_ssn": "رقم الضمان (اختياري)",
+      "quick_add_action": "إنشاء وبدء",
+      "today_title": "مواعيد اليوم",
+      "today_empty": "لا توجد مواعيد متبقية اليوم."
+    },
+    "vitals": {
+      "title": "سبب الزيارة والعلامات الحيوية",
+      "reason": "سبب الزيارة",
+      "reason_placeholder": "ما سبب زيارة المريض اليوم؟",
+      "weight": "الوزن (كغ)",
+      "weight_placeholder": "مثال: 72.5",
+      "height": "الطول (سم)",
+      "height_placeholder": "مثال: 175",
+      "temperature": "الحرارة (°م)",
+      "temperature_placeholder": "مثال: 37.0",
+      "blood_pressure": "ضغط الدم",
+      "heart_rate": "النبض (ن/د)",
+      "heart_rate_placeholder": "مثال: 72",
+      "bmi": "مؤشر كتلة الجسم: {{value}}"
+    },
+    "clinical": {
+      "title": "الفحص السريري",
+      "exam": "الفحص",
+      "exam_placeholder": "الملاحظات ونتائج الفحص…",
+      "diagnosis": "التشخيص",
+      "diagnosis_placeholder": "المرض المؤكد أو المشتبه به…",
+      "plan": "خطة العلاج",
+      "plan_placeholder": "العلاج والتعليمات والنصائح المقدَّمة…",
+      "follow_up_notes": "ملاحظات المتابعة",
+      "follow_up_placeholder": "ما يجب مراجعته في الزيارة القادمة…"
+    },
+    "prescription": {
+      "title": "الوصفة الطبية",
+      "medicine": "الدواء",
+      "dosage": "الجرعة",
+      "frequency": "التكرار",
+      "duration": "المدة",
+      "quantity": "الكمية",
+      "add_medicine": "إضافة الدواء",
+      "notes": "نصائح",
+      "notes_placeholder": "نصائح عامة للمريض…",
+      "save_and_print": "حفظ وإنشاء PDF",
+      "generating": "جارٍ الإنشاء…",
+      "saved": "تم حفظ الوصفة وإنشاؤها.",
+      "issued": "صادرة خلال هذه الزيارة",
+      "item": "وصفة رقم {{id}}",
+      "none": "لم تصدر أي وصفة خلال هذه الزيارة."
+    },
+    "documents": {
+      "title": "المستندات",
+      "category": "النوع",
+      "category_report": "تقرير",
+      "choose_file": "اختر ملفاً…",
+      "attach": "إرفاق",
+      "uploading": "جارٍ الرفع…",
+      "uploaded": "تم إرفاق المستند بهذه الزيارة.",
+      "empty": "لا توجد مستندات مرفقة بهذه الزيارة.",
+      "open": "فتح"
+    },
+    "billing": {
+      "title": "الأتعاب",
+      "fee": "المبلغ (دج)",
+      "fee_placeholder": "السعر الافتراضي",
+      "paid": "مدفوع",
+      "hint": "اتركه فارغاً للفوترة بالسعر الافتراضي المحدّد في صفحة الإحصائيات."
+    },
+    "follow_up": {
+      "title": "الموعد القادم",
+      "date": "التاريخ",
+      "time": "الوقت",
+      "duration": "المدة",
+      "minutes": "{{value}} د",
+      "reason": "السبب",
+      "default_reason": "متابعة",
+      "book": "حجز",
+      "booking": "جارٍ الحجز…",
+      "booked": "تم حجز موعد المتابعة.",
+      "confirmed": "تم حجز الموعد"
+    },
+    "history": {
+      "title": "السوابق المرضية",
+      "patient_notes": "آخر ملاحظة",
+      "empty": "أول زيارة مسجّلة لهذا المريض.",
+      "no_diagnosis": "لا يوجد تشخيص مسجّل",
+      "artifacts": "{{prescriptions}} وصفة · {{documents}} مستند"
+    },
+    "errors": {
+      "start_failed": "تعذّر بدء الاستشارة.",
+      "quick_add_required": "الاسم الكامل وتاريخ الميلاد مطلوبان.",
+      "quick_add_failed": "تعذّر تسجيل المريض. قد يكون رقم الضمان مستخدماً.",
+      "no_template": "أنشئ نموذج الوصفة في الإعدادات أولاً.",
+      "prescription_failed": "تعذّر حفظ الوصفة.",
+      "pdf_failed": "تعذّر إنشاء ملف الوصفة.",
+      "upload_failed": "تعذّر إرفاق المستند.",
+      "booking_failed": "تعذّر حجز موعد المتابعة.",
+      "finish_failed": "تعذّر إنهاء الاستشارة.",
+      "discard_failed": "تعذّر حذف الاستشارة."
+    }
   }
 }

@@ -12,7 +12,8 @@
       "documents": "Documents",
       "prescriptions": "Ordonnances",
       "statistics": "Statistiques",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "consultation": "Consultation"
     },
     "user": {
       "role": "Médecin Généraliste"
@@ -56,7 +57,8 @@
       "phone": "téléphone",
       "address": "adresse",
       "action": "Compléter maintenant"
-    }
+    },
+    "walk_in_action": "Consultation sans RDV"
   },
   "patients": {
     "title": "Patients",
@@ -121,6 +123,12 @@
     "title": "Détails du patient pour l'ID : {{id}}",
     "not_found": "Patient non trouvé",
     "edit": "Modifier le patient",
+    "edit_modal": {
+      "title": "Modifier le patient",
+      "subtitle": "Mettez à jour les informations du patient.",
+      "saving": "Enregistrement...",
+      "save_error": "Impossible d'enregistrer les modifications. Veuillez réessayer."
+    },
     "active": "Actif",
     "age": "Âge {{age}} ans",
     "blood_type": "Gr. Sanguin: {{value}}",
@@ -167,7 +175,8 @@
     "tabs": {
       "activity": "Activité",
       "documents": "Documents ({{count}})",
-      "notes": "Notes de suivi"
+      "notes": "Notes de suivi",
+      "consultations": "Consultations"
     },
     "activity": {
       "consultation_done": "Consultation générale effectuée",
@@ -197,7 +206,18 @@
       "history_title": "Historique des notes",
       "empty": "Aucune note pour le moment",
       "placeholder": "Saisissez vos observations médicales, antécédents, allergies ou traitements habituels..."
-    }
+    },
+    "consultations": {
+      "title": "Visites enregistrées",
+      "empty": "Aucune consultation enregistrée pour ce patient.",
+      "start": "Nouvelle consultation",
+      "walk_in": "Sans RDV",
+      "in_progress": "En cours",
+      "no_diagnosis": "Aucun diagnostic enregistré",
+      "open": "Ouvrir",
+      "vitals": "Poids {{weight}} · TA {{bloodPressure}}"
+    },
+    "activity_consultation": "Consultation — {{label}}"
   },
   "time": {
     "today": "Aujourd'hui",
@@ -279,7 +299,8 @@
       "cancel": "Annuler",
       "delete": "Supprimer"
     },
-    "book_button": "Prendre un rendez-vous"
+    "book_button": "Prendre un rendez-vous",
+    "start_consultation": "Démarrer la consultation"
   },
   "statistics": {
     "title": "Statistiques & Analyses",
@@ -303,16 +324,19 @@
       "absents": "absents",
       "noshow_sub": "Ratio des patients n'ayant pas honoré le RDV",
       "cancelled": "RDV Annulés",
-      "cancelled_sub": "Rendez-vous annulés ou reportés"
+      "cancelled_sub": "Rendez-vous annulés ou reportés",
+      "walk_ins": "sans RDV",
+      "revenue_unpaid": "{{amount}} DA encore impayés"
     },
     "charts": {
       "volume_title": "Volume des Consultations",
       "volume_subtitle": "Évolution par mois",
       "no_data": "Aucune donnée de consultation pour cette période.",
-      "legend_total": "Total RDV",
+      "legend_total": "Consultations",
       "legend_completed": "Complétés",
       "distribution_title": "Distribution des RDV",
-      "total": "Total RDV"
+      "total": "Total RDV",
+      "legend_walk_in": "Sans rendez-vous"
     },
     "table": {
       "top_absents_title": "Patients les Plus Absents",
@@ -630,5 +654,142 @@
     "activate_title": "Activer votre licence",
     "activate_now": "Activer maintenant",
     "login_required": "Créez un compte et connectez-vous d'abord, puis activez depuis les Paramètres."
+  },
+  "consultation": {
+    "title": "Consultation",
+    "subtitle": "Enregistrez une visite — avec ou sans rendez-vous.",
+    "walk_in_badge": "Sans RDV",
+    "completed_badge": "Terminée",
+    "finished": "Consultation enregistrée.",
+    "finish_confirm": "Terminer cette consultation ? Elle sera enregistrée dans le dossier du patient et comptée dans vos statistiques.",
+    "discard_confirm": "Supprimer cette consultation ? Les ordonnances et documents déjà générés restent dans le dossier du patient.",
+    "no_profile_title": "Profil médecin requis",
+    "no_profile_body": "Complétez votre profil médecin avant d'enregistrer des consultations — il identifie le praticien sur chaque visite et chaque ordonnance.",
+    "no_profile_action": "Aller aux paramètres",
+    "header": {
+      "age": "{{age}} ans",
+      "no_blood_type": "Groupe sanguin inconnu",
+      "open_file": "Dossier patient",
+      "discard": "Supprimer",
+      "finish": "Terminer la consultation",
+      "finishing": "Finalisation…"
+    },
+    "autosave": {
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "error": "Non enregistré"
+    },
+    "select": {
+      "walk_in_title": "Patient sans rendez-vous",
+      "walk_in_hint": "Recherchez un patient existant, ou enregistrez-le immédiatement.",
+      "search_placeholder": "Rechercher par nom, téléphone ou NSS…",
+      "searching": "Recherche…",
+      "no_results": "Aucun patient trouvé.",
+      "start": "Démarrer",
+      "age_years": "{{age}} ans",
+      "cancel": "Annuler",
+      "quick_add_open": "Nouveau patient",
+      "quick_add_title": "Enregistrer un nouveau patient",
+      "quick_add_name": "Nom complet",
+      "quick_add_dob": "Date de naissance",
+      "quick_add_phone": "Téléphone",
+      "quick_add_ssn": "NSS (facultatif)",
+      "quick_add_action": "Créer et démarrer",
+      "today_title": "Rendez-vous du jour",
+      "today_empty": "Plus aucun rendez-vous aujourd'hui."
+    },
+    "vitals": {
+      "title": "Motif et constantes",
+      "reason": "Motif de la visite",
+      "reason_placeholder": "Pourquoi le patient consulte-t-il aujourd'hui ?",
+      "weight": "Poids (kg)",
+      "weight_placeholder": "ex : 72,5",
+      "height": "Taille (cm)",
+      "height_placeholder": "ex : 175",
+      "temperature": "Temp. (°C)",
+      "temperature_placeholder": "ex : 37,0",
+      "blood_pressure": "Tension",
+      "heart_rate": "Pouls (bpm)",
+      "heart_rate_placeholder": "ex : 72",
+      "bmi": "IMC : {{value}}"
+    },
+    "clinical": {
+      "title": "Observation clinique",
+      "exam": "Examen",
+      "exam_placeholder": "Observations, constatations à l'examen…",
+      "diagnosis": "Diagnostic",
+      "diagnosis_placeholder": "Pathologie confirmée ou suspectée…",
+      "plan": "Conduite à tenir",
+      "plan_placeholder": "Traitement, consignes, conseils donnés…",
+      "follow_up_notes": "Notes de suivi",
+      "follow_up_placeholder": "À contrôler lors de la prochaine visite…"
+    },
+    "prescription": {
+      "title": "Ordonnance",
+      "medicine": "Médicament",
+      "dosage": "Dosage",
+      "frequency": "Fréquence",
+      "duration": "Durée",
+      "quantity": "Quantité",
+      "add_medicine": "Ajouter le médicament",
+      "notes": "Conseils",
+      "notes_placeholder": "Conseils généraux pour le patient…",
+      "save_and_print": "Enregistrer et générer le PDF",
+      "generating": "Génération…",
+      "saved": "Ordonnance enregistrée et générée.",
+      "issued": "Délivrée pendant cette visite",
+      "item": "Ordonnance n°{{id}}",
+      "none": "Aucune ordonnance délivrée pendant cette visite."
+    },
+    "documents": {
+      "title": "Documents",
+      "category": "Type",
+      "category_report": "Compte rendu",
+      "choose_file": "Choisir un fichier…",
+      "attach": "Joindre",
+      "uploading": "Envoi…",
+      "uploaded": "Document joint à cette visite.",
+      "empty": "Aucun document joint à cette visite.",
+      "open": "Ouvrir"
+    },
+    "billing": {
+      "title": "Honoraires",
+      "fee": "Montant (DA)",
+      "fee_placeholder": "Tarif par défaut",
+      "paid": "Payé",
+      "hint": "Laissez vide pour facturer au tarif par défaut défini sur la page statistiques."
+    },
+    "follow_up": {
+      "title": "Prochain rendez-vous",
+      "date": "Date",
+      "time": "Heure",
+      "duration": "Durée",
+      "minutes": "{{value}} min",
+      "reason": "Motif",
+      "default_reason": "Suivi",
+      "book": "Planifier",
+      "booking": "Planification…",
+      "booked": "Rendez-vous de suivi planifié.",
+      "confirmed": "Rendez-vous planifié"
+    },
+    "history": {
+      "title": "Antécédents",
+      "patient_notes": "Dernière note",
+      "empty": "Première visite enregistrée pour ce patient.",
+      "no_diagnosis": "Aucun diagnostic enregistré",
+      "artifacts": "{{prescriptions}} ordonnance(s) · {{documents}} document(s)"
+    },
+    "errors": {
+      "start_failed": "Impossible de démarrer la consultation.",
+      "quick_add_required": "Le nom complet et la date de naissance sont obligatoires.",
+      "quick_add_failed": "Impossible d'enregistrer le patient. Le NSS existe peut-être déjà.",
+      "no_template": "Générez d'abord votre modèle d'ordonnance dans les paramètres.",
+      "prescription_failed": "Impossible d'enregistrer l'ordonnance.",
+      "pdf_failed": "Impossible de générer le PDF de l'ordonnance.",
+      "upload_failed": "Impossible de joindre le document.",
+      "booking_failed": "Impossible de planifier le rendez-vous de suivi.",
+      "finish_failed": "Impossible de terminer la consultation.",
+      "discard_failed": "Impossible de supprimer la consultation."
+    }
   }
 }

@@ -3,6 +3,7 @@ import type { Patient } from '../types/patient'
 import type { Prescription } from '../types/doctor'
 import type { DoctorProfile } from '../types/doctor'
 import { PatientDocument } from '../types/documents'
+import type { ConsultationDraft } from '../types/consultation'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -46,7 +47,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   updateDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('update-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
   setPrescriptionPdf: (doctorId: number) => ipcRenderer.invoke('set-prescription-pdf', doctorId),
   //gestion des prescriptions
-  addPrescription: (userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string) => ipcRenderer.invoke('add-prescription', userId, patientId, medicines, notes),
+  addPrescription: (userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string, consultationId?: number) => ipcRenderer.invoke('add-prescription', userId, patientId, medicines, notes, consultationId),
   getPrescriptionById: (id: number, patientId: number) => ipcRenderer.invoke('get-prescription-by-id', id, patientId),
   getPatientPrescriptions: (patientId: number) => ipcRenderer.invoke('get-patient-prescriptions', patientId),
   getAllPrescriptions: () => ipcRenderer.invoke('get-all-prescriptions'),
@@ -62,7 +63,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   logout: () => ipcRenderer.invoke('logout'),
 
   //Patient prescription
-  generatePatientPrescriptionPDF: (patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string) => ipcRenderer.invoke('generate-patient-prescription-pdf', patientId, prescriptions, doctor, weight, language),
+  generatePatientPrescriptionPDF: (patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string, consultationId?: number) => ipcRenderer.invoke('generate-patient-prescription-pdf', patientId, prescriptions, doctor, weight, language, consultationId),
 
   //gestion des rendez-vous
   bookAppointment: (patientId: number, doctorId: number, datetime: string, duration?: number, reason?: string) => ipcRenderer.invoke('book-appointment', patientId, doctorId, datetime, duration, reason),
@@ -73,8 +74,21 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getAppointmentsByPatientId: (patientId: number) => ipcRenderer.invoke('get-appointments-by-patient-id', patientId),
   getAppointmentsByDateRange: (doctorId: number, startDate: string, endDate: string) => ipcRenderer.invoke('get-appointments-by-date-range', doctorId, startDate, endDate),
 
+  //gestion des consultations
+  startConsultation: (patientId: number, doctorId: number, appointmentId?: number) => ipcRenderer.invoke('start-consultation', patientId, doctorId, appointmentId),
+  getConsultationById: (id: number) => ipcRenderer.invoke('get-consultation-by-id', id),
+  getActiveConsultation: (doctorId: number) => ipcRenderer.invoke('get-active-consultation', doctorId),
+  updateConsultation: (id: number, draft: ConsultationDraft) => ipcRenderer.invoke('update-consultation', id, draft),
+  completeConsultation: (id: number, draft?: ConsultationDraft) => ipcRenderer.invoke('complete-consultation', id, draft),
+  deleteConsultation: (id: number) => ipcRenderer.invoke('delete-consultation', id),
+  getConsultationArtifacts: (consultationId: number) => ipcRenderer.invoke('get-consultation-artifacts', consultationId),
+  getConsultationsByPatientId: (patientId: number) => ipcRenderer.invoke('get-consultations-by-patient-id', patientId),
+  getConsultationsByDay: (doctorId: number, date: string) => ipcRenderer.invoke('get-consultations-by-day', doctorId, date),
+  getConsultationsByDateRange: (doctorId: number, startDate: string, endDate: string) => ipcRenderer.invoke('get-consultations-by-date-range', doctorId, startDate, endDate),
+
   //gestion des statistiques
   getFinancialStatistics: (startDate: string, endDate: string, appointmentPrice: number) => ipcRenderer.invoke('get-financial-statistics', startDate, endDate, appointmentPrice),
+  getConsultationStatistics: (startDate: string, endDate: string, defaultFee: number) => ipcRenderer.invoke('get-consultation-statistics', startDate, endDate, defaultFee),
   getAppointmentStatistics: (startDate: string, endDate: string, appointmentPrice: number) => ipcRenderer.invoke('get-appointment-statistics', startDate, endDate, appointmentPrice),
   getNoShowRate: (startDate: string, endDate: string) => ipcRenderer.invoke('get-noshow-rate', startDate, endDate),
   getConsultationVolume: (startDate: string, endDate: string) => ipcRenderer.invoke('get-consultation-volume', startDate, endDate),

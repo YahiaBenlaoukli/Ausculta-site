@@ -60,6 +60,10 @@ export function initializeDatabase(): Database.Database {
       user_id INTEGER NOT NULL, -- The doctor who issued it
       patient_id INTEGER NOT NULL,
       notes TEXT, -- ADDED: Useful for general advice (e.g., "Drink plenty of water")
+      -- Set when the prescription was written during a consultation. SQLite
+      -- resolves foreign keys at DML time, so referencing the consultations
+      -- table before it is declared below is fine.
+      consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES doctor_profile(user_id),
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
@@ -86,6 +90,7 @@ export function initializeDatabase(): Database.Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id INTEGER NOT NULL,
       prescription_id INTEGER,
+      consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL,
       file_name TEXT NOT NULL,
       file_category TEXT,
       local_path TEXT NOT NULL,
@@ -115,37 +120,73 @@ export function initializeDatabase(): Database.Database {
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
       FOREIGN KEY (doctor_id) REFERENCES doctor_profile(id) ON DELETE CASCADE
     );
+
+    -- THE CONSULTATION (the visit that actually happened)
+    -- Separate from appointments on purpose: an appointment is the *intent* to
+    -- see a patient (and can be cancelled or no-showed), a consultation is the
+    -- encounter itself. A walk-in has a consultation with no appointment.
+    -- Must be created after the appointments table: it references it.
+    CREATE TABLE IF NOT EXISTS consultations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER NOT NULL,
+      doctor_id INTEGER NOT NULL,
+
+      -- NULL for a walk-in; set when the visit came from the calendar.
+      appointment_id INTEGER,
+
+      -- Same timezone-naive local format as appointment_datetime.
+      consultation_datetime TEXT NOT NULL,
+      is_walk_in INTEGER DEFAULT 0,
+      reason TEXT,
+
+      -- Vitals. blood_pressure is text because "120/80" is not two numbers.
+      weight REAL,
+      height REAL,
+      temperature REAL,
+      blood_pressure TEXT,
+      heart_rate INTEGER,
+
+      exam_notes TEXT,
+      diagnosis TEXT,
+      treatment_plan TEXT,
+      follow_up_notes TEXT,
+
+      -- NULL fee means "bill at the practice default" (see statistics.ts).
+      fee REAL,
+      is_paid INTEGER DEFAULT 1,
+
+      -- 'InProgress' is a draft opened while the patient is in the room, so
+      -- prescriptions and documents created mid-visit can be linked to it.
+      status TEXT DEFAULT 'InProgress' CHECK(status IN ('InProgress', 'Completed')),
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (doctor_id) REFERENCES doctor_profile(id) ON DELETE CASCADE,
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_consultations_datetime ON consultations(consultation_datetime);
   `);
 
-  // Safety net: guarantee patients.notes exists regardless of how (or whether)
-  // user_version was stamped by older builds. An unversioned legacy DB reads as
-  // version 0 and would be treated as a "fresh install" below, skipping the v6
-  // migration — so the follow-up notes tab would silently fail to persist.
-  try {
-    const hasNotes = db
-      .prepare(`SELECT COUNT(*) AS n FROM pragma_table_info('patients') WHERE name = 'notes'`)
-      .get() as { n: number };
-    if (!hasNotes.n) db.exec(`ALTER TABLE patients ADD COLUMN notes TEXT`);
-  } catch (error) {
-    console.error("ensure patients.notes column:", error);
-  }
+  // Safety net for columns added after the initial release: guarantee they
+  // exist regardless of how (or whether) user_version was stamped by older
+  // builds. An unversioned legacy DB reads as version 0 and would be treated as
+  // a "fresh install" below, skipping its migration — so a feature writing to
+  // one of these columns would silently fail to persist.
+  ensureColumn(db, 'patients', 'notes', 'TEXT');
+  ensureColumn(db, 'doctor_profile', 'pdf_path_en', 'TEXT');
+  // v8 — link a prescription / document back to the visit that produced it.
+  ensureColumn(db, 'prescriptions', 'consultation_id', 'INTEGER REFERENCES consultations(id) ON DELETE SET NULL');
+  ensureColumn(db, 'patient_documents', 'consultation_id', 'INTEGER REFERENCES consultations(id) ON DELETE SET NULL');
 
-  // Safety net for the English prescription-template column, mirroring the
-  // patients.notes guard above: an unversioned legacy DB reads as version 0 and
-  // is treated as a fresh install, skipping the v7 migration — so guarantee the
-  // column exists regardless of the version bookkeeping.
-  try {
-    const hasPdfPathEn = db
-      .prepare(`SELECT COUNT(*) AS n FROM pragma_table_info('doctor_profile') WHERE name = 'pdf_path_en'`)
-      .get() as { n: number };
-    if (!hasPdfPathEn.n) db.exec(`ALTER TABLE doctor_profile ADD COLUMN pdf_path_en TEXT`);
-  } catch (error) {
-    console.error("ensure doctor_profile.pdf_path_en column:", error);
-  }
-
-  // If this is a fresh install, set it to the newest version (7)
+  // If this is a fresh install, set it to the newest version (8). An
+  // unversioned legacy DB also lands here, so run the consultation backfill —
+  // on a genuinely fresh install there are no appointments and it is a no-op.
   if (version === 0) {
-    db.pragma('user_version = 7');
+    backfillConsultationsFromAppointments(db);
+    db.pragma('user_version = 8');
   }
 
   // v6: patients.notes — the follow-up notes tab used to write a field that
@@ -166,6 +207,15 @@ export function initializeDatabase(): Database.Database {
     db.pragma('user_version = 7');
   }
 
+  // v8: consultations. Revenue used to be counted from completed appointments;
+  // it now comes from consultations, so give every historical completed
+  // appointment a consultation with a NULL fee — statistics falls back to the
+  // configured default price for those, keeping past totals identical.
+  if (version > 0 && version < 8) {
+    backfillConsultationsFromAppointments(db);
+    db.pragma('user_version = 8');
+  }
+
   // Run auto-linking for prescriptions that have PDFs but were created before the foreign key link was implemented
   try {
     db.exec(`
@@ -183,7 +233,71 @@ export function initializeDatabase(): Database.Database {
     console.error("Failed to auto-link existing prescriptions to documents:", error);
   }
   syncMissedAppointments();
+  discardAbandonedConsultations();
   return db;
+}
+
+// Adds a column only when it is missing. `ALTER TABLE ... ADD COLUMN` throws if
+// the column already exists, and SQLite has no `IF NOT EXISTS` for columns.
+function ensureColumn(db: Database.Database, table: string, column: string, definition: string) {
+  try {
+    const existing = db
+      .prepare(`SELECT COUNT(*) AS n FROM pragma_table_info(?) WHERE name = ?`)
+      .get(table, column) as { n: number };
+    if (!existing.n) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (error) {
+    console.error(`ensure ${table}.${column} column:`, error);
+  }
+}
+
+// Gives every historical completed appointment the consultation row that the
+// statistics module now bills from. The NOT EXISTS guard makes it idempotent,
+// and the NULL fee means those visits bill at the configured default price —
+// so revenue totals are unchanged by the migration.
+function backfillConsultationsFromAppointments(db: Database.Database) {
+  try {
+    db.exec(`
+      INSERT INTO consultations (
+        patient_id, doctor_id, appointment_id, consultation_datetime,
+        is_walk_in, reason, status, created_at
+      )
+      SELECT a.patient_id, a.doctor_id, a.id, a.appointment_datetime,
+             0, a.reason, 'Completed', a.created_at
+      FROM appointments a
+      WHERE a.status = 'Completed'
+        AND NOT EXISTS (SELECT 1 FROM consultations c WHERE c.appointment_id = a.id);
+    `);
+  } catch (error) {
+    console.error("backfillConsultationsFromAppointments error:", error);
+  }
+}
+
+// A consultation is created as an 'InProgress' draft the moment the doctor
+// opens the page, so anything produced during the visit can be linked to it.
+// Drafts the doctor walked away from would otherwise pile up forever, so drop
+// the ones older than a day that never got any clinical content or artefacts.
+function discardAbandonedConsultations() {
+  try {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      DELETE FROM consultations
+      WHERE status = 'InProgress'
+        AND datetime(created_at) < datetime('now', '-1 day')
+        AND COALESCE(reason, '') = ''
+        AND COALESCE(exam_notes, '') = ''
+        AND COALESCE(diagnosis, '') = ''
+        AND COALESCE(treatment_plan, '') = ''
+        AND COALESCE(follow_up_notes, '') = ''
+        AND weight IS NULL AND height IS NULL AND temperature IS NULL
+        AND blood_pressure IS NULL AND heart_rate IS NULL
+        AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.consultation_id = consultations.id)
+        AND NOT EXISTS (SELECT 1 FROM patient_documents d WHERE d.consultation_id = consultations.id)
+    `);
+    return stmt.run();
+  } catch (error) {
+    console.error("discardAbandonedConsultations error:", error);
+    return { status: "fail", message: (error as Error).message };
+  }
 }
 
 function syncMissedAppointments() {

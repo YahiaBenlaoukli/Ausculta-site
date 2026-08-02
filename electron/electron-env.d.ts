@@ -30,6 +30,9 @@ type Prescription = import('../types/doctor').Prescription
 type DoctorProfile = import('../types/doctor').DoctorProfile
 type PatientDocument = import('../types/documents').PatientDocument
 type TrialStatus = import('../types/trial').TrialStatus
+type Consultation = import('../types/consultation').Consultation
+type ConsultationDraft = import('../types/consultation').ConsultationDraft
+type ConsultationListItem = import('../types/consultation').ConsultationListItem
 
 interface IpcResult<T = unknown> {
   status: 'success' | 'fail' | 'not_found'
@@ -73,10 +76,18 @@ interface NoShowStatistics {
   top_no_show_patients: { id: number; full_name: string; phone_number: string | null; no_show_count: number }[]
 }
 
+interface ConsultationStatistics {
+  total_consultations: number
+  total_walk_ins: number
+  total_scheduled_visits: number
+  total_revenue: number
+  total_unpaid: number
+}
+
 interface ConsultationVolumeRow {
   month: string
-  total_appointments: number
-  completed_appointments: number
+  total_consultations: number
+  walk_in_consultations: number
 }
 
 interface AuscultaIpc {
@@ -109,7 +120,7 @@ interface AuscultaIpc {
   setPrescriptionPdf(doctorId: number): Promise<IpcResult<{ doctor: DoctorProfile; pdfPath: string; pdfPathEn: string }>>
 
   // gestion des prescriptions
-  addPrescription(userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string): Promise<IpcResult<{ prescriptionId: number }>>
+  addPrescription(userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string, consultationId?: number): Promise<IpcResult<{ prescriptionId: number }>>
   getPrescriptionById(id: number, patientId: number): Promise<IpcResult<{ prescription: Prescription; documents: PatientDocument[] }>>
   getPatientPrescriptions(patientId: number): Promise<IpcResult<Prescription[]>>
   getAllPrescriptions(): Promise<IpcResult<Prescription[]>>
@@ -117,7 +128,7 @@ interface AuscultaIpc {
   deletePrescription(id: number): Promise<IpcResult>
   searchPrescription(query: string): Promise<IpcResult<Prescription[]>>
   countPrescriptions(): Promise<IpcResult<number>>
-  generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string): Promise<IpcResult<string>>
+  generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string, consultationId?: number): Promise<IpcResult<string>>
 
   // gestion authentification
   createUser(user: { fullName: string; password: string }): Promise<IpcResult<{ id: number; fullName: string }>>
@@ -134,8 +145,21 @@ interface AuscultaIpc {
   getAppointmentsByPatientId(patientId: number): Promise<AppointmentRow[]>
   getAppointmentsByDateRange(doctorId: number, startDate: string, endDate: string): Promise<AppointmentRow[]>
 
+  // gestion des consultations
+  startConsultation(patientId: number, doctorId: number, appointmentId?: number): Promise<IpcResult<Consultation>>
+  getConsultationById(id: number): Promise<IpcResult<Consultation>>
+  getActiveConsultation(doctorId: number): Promise<IpcResult<Consultation>>
+  updateConsultation(id: number, draft: ConsultationDraft): Promise<IpcResult<{ consultationId: number }>>
+  completeConsultation(id: number, draft?: ConsultationDraft): Promise<IpcResult<Consultation>>
+  deleteConsultation(id: number): Promise<IpcResult<{ changes: number }>>
+  getConsultationArtifacts(consultationId: number): Promise<IpcResult<{ prescriptions: Prescription[]; documents: PatientDocument[] }>>
+  getConsultationsByPatientId(patientId: number): Promise<ConsultationListItem[]>
+  getConsultationsByDay(doctorId: number, date: string): Promise<ConsultationListItem[]>
+  getConsultationsByDateRange(doctorId: number, startDate: string, endDate: string): Promise<ConsultationListItem[]>
+
   // gestion des statistiques
   getFinancialStatistics(startDate: string, endDate: string, appointmentPrice: number): Promise<{ total_completed: number; total_revenue: number }>
+  getConsultationStatistics(startDate: string, endDate: string, defaultFee: number): Promise<ConsultationStatistics>
   getAppointmentStatistics(startDate: string, endDate: string, appointmentPrice: number): Promise<AppointmentStatistics>
   getNoShowRate(startDate: string, endDate: string): Promise<NoShowStatistics>
   getConsultationVolume(startDate: string, endDate: string): Promise<ConsultationVolumeRow[]>

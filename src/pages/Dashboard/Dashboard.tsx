@@ -155,9 +155,23 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 text-[#1E2A56]">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[#1E2A56]">{t('dashboard.title')}</h1>
-        <p className="text-sm text-[#1E2A56]/50 mt-1">{t('dashboard.welcome')}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1E2A56]">{t('dashboard.title')}</h1>
+          <p className="text-sm text-[#1E2A56]/50 mt-1">{t('dashboard.welcome')}</p>
+        </div>
+        {/* The one action that has no calendar entry to start from. */}
+        <Link
+          to="/consultation"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#e91e8c] hover:bg-[#be185d] text-white text-xs font-bold shadow-lg shadow-[#e91e8c]/20 transition-colors no-underline"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+            <path d="M8 15v1a6 6 0 0 0 6 6 6 6 0 0 0 6-6v-4" />
+            <circle cx="20" cy="10" r="2" />
+          </svg>
+          {t('dashboard.walk_in_action')}
+        </Link>
       </div>
 
       {/* Incomplete Profile Notice */}

@@ -7,25 +7,67 @@ function endOfDay(date: string): string {
     return date.length === 10 ? `${date}T23:59:59.999` : date;
 }
 
-export function getFinancialStatistics(startDate: string, endDate: string, appointmentPrice: number = 2000) {
+// Revenue is billed from consultations, not appointments: a walk-in earns money
+// without ever having been on the calendar, and a completed appointment where
+// the patient left before being seen did not. Consultations with a NULL fee —
+// which includes every visit migrated from the pre-v8 schema — fall back to the
+// practice's configured default price, so historical totals are unchanged.
+export function getFinancialStatistics(startDate: string, endDate: string, defaultFee: number = 2000) {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
-            SELECT COUNT(*) AS total_completed
-            FROM appointments
-            WHERE status = 'Completed' AND appointment_datetime BETWEEN ? AND ?
+            SELECT COUNT(*) AS total_completed,
+                   COALESCE(SUM(COALESCE(fee, ?)), 0) AS total_revenue
+            FROM consultations
+            WHERE status = 'Completed' AND consultation_datetime BETWEEN ? AND ?
         `);
-        const result = stmt.get(startDate, endOfDay(endDate)) as { total_completed: number } | undefined;
-        const total_completed = result ? result.total_completed : 0;
-        const total_revenue = total_completed * appointmentPrice;
-        return { total_completed, total_revenue };
+        const result = stmt.get(defaultFee, startDate, endOfDay(endDate)) as { total_completed: number; total_revenue: number } | undefined;
+        return {
+            total_completed: result ? result.total_completed : 0,
+            total_revenue: result ? result.total_revenue : 0,
+        };
     } catch (error) {
         console.error("getFinancialStatistics error:", error);
         return { total_completed: 0, total_revenue: 0 };
     }
 }
 
-export function getAppointmentStatistics(startDate: string, endDate: string, appointmentPrice: number = 2000) {
+// The clinical/financial side of the practice: how many people were actually
+// seen, how many walked in, and what that is worth. Pairs with
+// getAppointmentStatistics below, which stays purely about the calendar funnel.
+export function getConsultationStatistics(startDate: string, endDate: string, defaultFee: number = 2000) {
+    const empty = {
+        total_consultations: 0,
+        total_walk_ins: 0,
+        total_scheduled_visits: 0,
+        total_revenue: 0,
+        total_unpaid: 0,
+    };
+    try {
+        const db = getDatabase();
+        const end = endOfDay(endDate);
+        const stmt = db.prepare(`
+            SELECT COUNT(*) AS total_consultations,
+                   COALESCE(SUM(CASE WHEN is_walk_in = 1 THEN 1 ELSE 0 END), 0) AS total_walk_ins,
+                   COALESCE(SUM(CASE WHEN is_walk_in = 1 THEN 0 ELSE 1 END), 0) AS total_scheduled_visits,
+                   COALESCE(SUM(COALESCE(fee, ?)), 0) AS total_revenue,
+                   COALESCE(SUM(CASE WHEN is_paid = 0 THEN COALESCE(fee, ?) ELSE 0 END), 0) AS total_unpaid
+            FROM consultations
+            WHERE status = 'Completed' AND consultation_datetime BETWEEN ? AND ?
+        `);
+        const result = stmt.get(defaultFee, defaultFee, startDate, end) as typeof empty | undefined;
+        return result ?? empty;
+    } catch (error) {
+        console.error("getConsultationStatistics error:", error);
+        return empty;
+    }
+}
+
+// The calendar funnel: how the scheduled appointments in the range resolved.
+// `total_completed` here counts *appointments*, so it can legitimately differ
+// from getConsultationStatistics().total_consultations — the gap is the
+// walk-ins, who were seen without ever being booked.
+export function getAppointmentStatistics(startDate: string, endDate: string, defaultFee: number = 2000) {
     const empty = {
         total_completed: 0,
         total_no_show: 0,
@@ -62,9 +104,12 @@ export function getAppointmentStatistics(startDate: string, endDate: string, app
             return empty;
         }
 
+        // Revenue comes from consultations so this agrees with
+        // getFinancialStatistics / getConsultationStatistics rather than
+        // silently reporting a second, appointment-based total.
         return {
             ...result,
-            total_revenue: result.total_completed * appointmentPrice
+            total_revenue: getFinancialStatistics(startDate, endDate, defaultFee).total_revenue
         };
     } catch (error) {
         console.error("getAppointmentStatistics error:", error);
@@ -115,16 +160,18 @@ export function getNoShowRate(startDate: string, endDate: string) {
     }
 }
 
+// Monthly volume of visits actually carried out, split by how the patient
+// arrived — a rising walk-in share is a scheduling signal worth seeing.
 export function getConsultationVolume(startDate: string, endDate: string) {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`
             SELECT
-                strftime('%Y-%m', appointment_datetime) AS month,
-                COUNT(*) AS total_appointments,
-                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed_appointments
-            FROM appointments
-            WHERE appointment_datetime BETWEEN ? AND ?
+                strftime('%Y-%m', consultation_datetime) AS month,
+                COUNT(*) AS total_consultations,
+                SUM(CASE WHEN is_walk_in = 1 THEN 1 ELSE 0 END) AS walk_in_consultations
+            FROM consultations
+            WHERE status = 'Completed' AND consultation_datetime BETWEEN ? AND ?
             GROUP BY month
             ORDER BY month ASC
         `);

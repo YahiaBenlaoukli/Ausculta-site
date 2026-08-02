@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Patient } from '../../../types/patient';
+import { BloodType, type Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
 import type { Prescription } from '../../../types/doctor';
+import type { ConsultationListItem } from '../../../types/consultation';
 
 type Appointment = {
     id: number;
@@ -71,6 +72,13 @@ const icons = {
             <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
     ),
+    stethoscope: (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+            <path d="M8 15v1a6 6 0 0 0 6 6 6 6 0 0 0 6-6v-4" />
+            <circle cx="20" cy="10" r="2" />
+        </svg>
+    ),
     edit: (
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -95,6 +103,11 @@ const icons = {
     check: (
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
+        </svg>
+    ),
+    close: (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
         </svg>
     )
 };
@@ -149,8 +162,10 @@ export default function PatientDetails() {
     const [documents, setDocuments] = useState<PatientDocument[]>([]);
     const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [consultations, setConsultations] = useState<ConsultationListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'activity' | 'prescriptions' | 'documents' | 'appointments' | 'notes'>('activity');
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<'activity' | 'consultations' | 'prescriptions' | 'documents' | 'appointments' | 'notes'>('activity');
 
     // Notes are a timestamped log stored as JSON in patients.notes.
     const [noteEntries, setNoteEntries] = useState<NoteEntry[]>([]);
@@ -190,6 +205,9 @@ export default function PatientDetails() {
 
             const appointmentsResult = await window.ipcRenderer.getAppointmentsByPatientId(Number(id));
             setAppointments(Array.isArray(appointmentsResult) ? (appointmentsResult as Appointment[]) : []);
+
+            const consultationsResult = await window.ipcRenderer.getConsultationsByPatientId(Number(id));
+            setConsultations(Array.isArray(consultationsResult) ? consultationsResult : []);
         } catch (error) {
             console.error("Error fetching patient details:", error);
         } finally {
@@ -202,6 +220,16 @@ export default function PatientDetails() {
     }, [fetchPatientData]);
 
 
+
+    /* Persists the edited identity fields. Notes/createdAt are kept from the
+       current record so a concurrent note edit isn't wiped by the form. */
+    const handleUpdatePatient = async (edited: EditablePatientFields) => {
+        if (!patientData) return;
+        const updatedPatient: Patient = { ...patientData, ...edited };
+        await window.ipcRenderer.updatePatient(updatedPatient);
+        setPatientData(updatedPatient);
+        setShowEditModal(false);
+    };
 
     const handleDeleteDoc = async (docId: number) => {
         if (!confirm(t('patient_details.documents.confirm_delete'))) return;
@@ -302,9 +330,22 @@ export default function PatientDetails() {
             dateStr: string;
             dateObj: Date;
             title: string;
-            type: 'prescription' | 'document';
+            type: 'prescription' | 'document' | 'consultation';
             details?: string;
         }[] = [];
+
+        consultations.filter(c => c.status === 'Completed').forEach(c => {
+            items.push({
+                id: `consult-${c.id}`,
+                dateStr: c.consultationDatetime,
+                dateObj: new Date(c.consultationDatetime),
+                title: t('patient_details.activity_consultation', {
+                    label: c.diagnosis || c.reason || t('patient_details.consultations.no_diagnosis'),
+                }),
+                type: 'consultation',
+                details: c.isWalkIn ? t('patient_details.consultations.walk_in') : undefined,
+            });
+        });
 
         prescriptions.forEach(p => {
             items.push({
@@ -329,7 +370,7 @@ export default function PatientDetails() {
         });
 
         return items.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-    }, [prescriptions, documents, t]);
+    }, [consultations, prescriptions, documents, t]);
 
     if (isLoading) {
         return (
@@ -368,6 +409,7 @@ export default function PatientDetails() {
                 </button>
 
                 <button
+                    onClick={() => setShowEditModal(true)}
                     className="p-2.5 rounded-xl border border-navy/10 text-navy/60 hover:text-navy hover:bg-navy/[0.04] transition-all cursor-pointer bg-white shadow-sm"
                     title={t('patient_details.edit')}
                 >
@@ -478,6 +520,7 @@ export default function PatientDetails() {
             <div className="border-b border-navy/[0.06] flex items-center gap-6 pt-2">
                 {[
                     { key: 'activity', label: t('patient_details.tabs.activity') },
+                    { key: 'consultations', label: t('patient_details.tabs.consultations') },
                     { key: 'prescriptions', label: t('patient_details.tab_prescriptions', { count: prescriptions.length }) },
                     { key: 'documents', label: t('patient_details.tabs.documents', { count: documents.length }) },
                     { key: 'appointments', label: t('patient_details.tab_appointments') },
@@ -508,7 +551,7 @@ export default function PatientDetails() {
                             timelineItems.map((item) => (
                                 <div key={item.id} className="relative">
                                     <span className="absolute -left-[31px] top-0.5 bg-pink/10 text-pink w-6 h-6 rounded-full flex items-center justify-center border border-white">
-                                        {item.type === 'prescription' ? icons.pill : icons.fileDoc}
+                                        {item.type === 'prescription' ? icons.pill : item.type === 'consultation' ? icons.stethoscope : icons.fileDoc}
                                     </span>
                                     <div>
                                         <span className="block text-[10px] text-navy/30 font-semibold uppercase tracking-wider">
@@ -521,6 +564,87 @@ export default function PatientDetails() {
                                     </div>
                                 </div>
                             ))
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'consultations' && (
+                    <div className="space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-navy">{t('patient_details.consultations.title')}</h4>
+                            <button
+                                onClick={() => navigate('/consultation', { state: { patient: patientData } })}
+                                className="flex items-center gap-1.5 bg-navy/5 text-navy hover:bg-navy/10 text-xs font-semibold px-4.5 py-2 rounded-xl transition-all cursor-pointer border-none"
+                            >
+                                {icons.plus}
+                                {t('patient_details.consultations.start')}
+                            </button>
+                        </div>
+
+                        {consultations.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="mx-auto w-12 h-12 bg-pink/5 rounded-full flex items-center justify-center text-pink mb-3">
+                                    {icons.stethoscope}
+                                </div>
+                                <p className="text-xs text-navy/40 max-w-xs mx-auto">
+                                    {t('patient_details.consultations.empty')}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {consultations.map((consultation) => (
+                                    <div key={consultation.id} className="p-4 bg-navy/[0.01] border border-navy/[0.06] rounded-2xl space-y-2 hover:border-pink/20 transition-all duration-200">
+                                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-bold text-navy">
+                                                    {new Date(consultation.consultationDatetime).toLocaleString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                {consultation.isWalkIn && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+                                                        {t('patient_details.consultations.walk_in')}
+                                                    </span>
+                                                )}
+                                                {consultation.status === 'InProgress' && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-pink/5 text-pink border border-pink/20">
+                                                        {t('patient_details.consultations.in_progress')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => navigate(`/consultation/${consultation.id}`)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-navy/60 hover:text-navy bg-navy/[0.03] hover:bg-navy/[0.07] transition-colors cursor-pointer border-none"
+                                            >
+                                                {icons.open}
+                                                {t('patient_details.consultations.open')}
+                                            </button>
+                                        </div>
+
+                                        <p className="text-sm text-navy/70">
+                                            {consultation.diagnosis || consultation.reason || t('patient_details.consultations.no_diagnosis')}
+                                        </p>
+
+                                        {(consultation.weight || consultation.bloodPressure) && (
+                                            <p className="text-[11px] text-navy/40 font-medium">
+                                                {t('patient_details.consultations.vitals', {
+                                                    weight: consultation.weight ? `${consultation.weight} kg` : '—',
+                                                    bloodPressure: consultation.bloodPressure || '—',
+                                                })}
+                                            </p>
+                                        )}
+
+                                        {(consultation.prescriptionCount > 0 || consultation.documentCount > 0) && (
+                                            <div className="flex items-center gap-3 text-[11px] text-navy/40 font-semibold pt-1">
+                                                {consultation.prescriptionCount > 0 && (
+                                                    <span className="flex items-center gap-1">{icons.pill}{consultation.prescriptionCount}</span>
+                                                )}
+                                                {consultation.documentCount > 0 && (
+                                                    <span className="flex items-center gap-1">{icons.fileDoc}{consultation.documentCount}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                 )}
@@ -788,6 +912,254 @@ export default function PatientDetails() {
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* ═══════ Edit Patient Modal ═══════ */}
+            {showEditModal && (
+                <EditPatientModal
+                    patient={patientData}
+                    onClose={() => setShowEditModal(false)}
+                    onSave={handleUpdatePatient}
+                />
+            )}
+        </div>
+    );
+}
+
+/* The identity fields the edit form owns — notes and createdAt are deliberately
+   excluded so the notes log can't be clobbered from here. */
+type EditablePatientFields = Pick<Patient, 'fullName' | 'dateOfBirth' | 'address' | 'phoneNumber' | 'ssn' | 'bloodType'>;
+
+/* ─── Edit Patient Modal Component ─── */
+function EditPatientModal({
+    patient,
+    onClose,
+    onSave,
+}: {
+    patient: Patient;
+    onClose: () => void;
+    onSave: (p: EditablePatientFields) => Promise<void>;
+}) {
+    const { t } = useTranslation();
+    const [form, setForm] = useState({
+        fullName: patient.fullName || '',
+        // <input type="date"> only accepts YYYY-MM-DD; trim any stored time part.
+        dateOfBirth: (patient.dateOfBirth || '').slice(0, 10),
+        address: patient.address || '',
+        phoneNumber: patient.phoneNumber || '',
+        ssn: patient.ssn || '',
+        bloodType: (patient.bloodType || '') as string,
+    });
+
+    const [errors, setErrors] = useState({ fullName: '', phoneNumber: '', ssn: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+
+    // Allows letters (any script including Arabic), spaces, hyphens, apostrophes
+    const isValidName = (name: string) => /^[\p{L}\s\-']+$/u.test(name);
+
+    const validateField = (field: string, value: string) => {
+        switch (field) {
+            case 'fullName': {
+                if (value && !isValidName(value)) {
+                    return t('patients.modal.error_name_invalid');
+                }
+                return '';
+            }
+            case 'phoneNumber': {
+                const digits = value.replace(/\D/g, '');
+                if (digits.length > 0 && digits.length !== 10) {
+                    return t('patients.modal.error_phone_length');
+                }
+                return '';
+            }
+            case 'ssn': {
+                const digits = value.replace(/\D/g, '');
+                if (digits.length > 0 && digits.length !== 18) {
+                    return t('patients.modal.error_ssn_length');
+                }
+                return '';
+            }
+            default:
+                return '';
+        }
+    };
+
+    const handleChange = (field: string, value: string) => {
+        let processedValue = value;
+
+        // For phone and SSN, strip non-digit characters
+        if (field === 'phoneNumber') {
+            processedValue = value.replace(/\D/g, '').slice(0, 10);
+        } else if (field === 'ssn') {
+            processedValue = value.replace(/\D/g, '').slice(0, 18);
+        }
+
+        setForm(f => ({ ...f, [field]: processedValue }));
+        setErrors(e => ({ ...e, [field]: validateField(field, processedValue) }));
+    };
+
+    const hasErrors = () => {
+        const nameErr = validateField('fullName', form.fullName);
+        const phoneErr = validateField('phoneNumber', form.phoneNumber);
+        const ssnErr = validateField('ssn', form.ssn);
+        setErrors({ fullName: nameErr, phoneNumber: phoneErr, ssn: ssnErr });
+        return !!(nameErr || phoneErr || ssnErr);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isSaving || hasErrors()) return;
+        setSaveError('');
+        try {
+            setIsSaving(true);
+            await onSave({
+                fullName: form.fullName.trim(),
+                dateOfBirth: form.dateOfBirth,
+                address: form.address.trim(),
+                phoneNumber: form.phoneNumber,
+                // ssn is UNIQUE in the schema, so blank must be NULL — otherwise
+                // two patients without an SSN collide on ''.
+                ssn: form.ssn.trim() || null,
+                bloodType: form.bloodType ? (form.bloodType as BloodType) : null,
+            });
+        } catch (error) {
+            console.error('Error updating patient:', error);
+            setSaveError(t('patient_details.edit_modal.save_error'));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const inputClass =
+        'w-full px-4 py-2.5 text-sm bg-navy/[0.02] border border-navy/[0.08] rounded-xl text-navy placeholder:text-navy/25 focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink/30 transition-all duration-200';
+
+    const inputErrorClass =
+        'w-full px-4 py-2.5 text-sm bg-red-50/30 border border-red-300 rounded-xl text-navy placeholder:text-navy/25 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all duration-200';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-navy/30 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose} />
+
+            {/* Modal */}
+            <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-[0_24px_80px_rgba(30,42,86,0.18)] p-7 animate-[scaleIn_0.25s_ease-out]">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-lg font-bold text-navy">{t('patient_details.edit_modal.title')}</h2>
+                        <p className="text-xs text-navy/40 mt-0.5">{t('patient_details.edit_modal.subtitle')}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-xl text-navy/30 hover:text-navy hover:bg-navy/[0.04] transition-colors cursor-pointer">
+                        {icons.close}
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Full name */}
+                    <div>
+                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('patients.modal.full_name')}</label>
+                        <input
+                            required
+                            value={form.fullName}
+                            onChange={e => handleChange('fullName', e.target.value)}
+                            placeholder={t('patients.modal.full_name_placeholder')}
+                            className={errors.fullName ? inputErrorClass : inputClass}
+                        />
+                        {errors.fullName && (
+                            <p className="text-[11px] text-red-500 mt-1">{errors.fullName}</p>
+                        )}
+                    </div>
+
+                    {/* Date of birth + Blood type */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('patients.modal.dob')}</label>
+                            <input
+                                type="date"
+                                value={form.dateOfBirth}
+                                onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
+                                className={inputClass}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('patients.modal.blood_type')}</label>
+                            <select
+                                value={form.bloodType}
+                                onChange={e => setForm(f => ({ ...f, bloodType: e.target.value }))}
+                                className={inputClass}
+                            >
+                                <option value="">{t('patients.modal.blood_type_unspecified')}</option>
+                                {Object.values(BloodType).map(bt => (
+                                    <option key={bt} value={bt}>{bt}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Phone + SSN */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('patients.modal.phone')}</label>
+                            <input
+                                value={form.phoneNumber}
+                                onChange={e => handleChange('phoneNumber', e.target.value)}
+                                placeholder={t('patients.modal.phone_placeholder')}
+                                maxLength={10}
+                                className={errors.phoneNumber ? inputErrorClass : inputClass}
+                            />
+                            {errors.phoneNumber && (
+                                <p className="text-[11px] text-red-500 mt-1">{errors.phoneNumber}</p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('patients.modal.ssn')}</label>
+                            <input
+                                value={form.ssn}
+                                onChange={e => handleChange('ssn', e.target.value)}
+                                placeholder={t('patients.modal.ssn_placeholder')}
+                                maxLength={18}
+                                className={errors.ssn ? inputErrorClass : inputClass}
+                            />
+                            {errors.ssn && (
+                                <p className="text-[11px] text-red-500 mt-1">{errors.ssn}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                        <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('patients.modal.address')}</label>
+                        <input
+                            value={form.address}
+                            onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                            placeholder={t('patients.modal.address_placeholder')}
+                            className={inputClass}
+                        />
+                    </div>
+
+                    {saveError && (
+                        <p className="text-[11px] text-red-500">{saveError}</p>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex items-center justify-end gap-3 pt-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-5 py-2.5 text-sm font-medium text-navy/50 hover:text-navy hover:bg-navy/[0.04] rounded-xl transition-colors cursor-pointer"
+                        >
+                            {t('patients.modal.cancel')}
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-pink to-pink-light text-white rounded-xl shadow-[0_4px_14px_rgba(233,30,140,0.25)] hover:shadow-[0_6px_20px_rgba(233,30,140,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        >
+                            {isSaving ? t('patient_details.edit_modal.saving') : t('patients.modal.save')}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );

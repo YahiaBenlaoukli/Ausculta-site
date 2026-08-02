@@ -31,6 +31,8 @@ export type Prescription = {
     id: number;
     userId: number;
     patientId: number;
+    /** Set when the prescription was written during a consultation. */
+    consultationId?: number | null;
     notes: string | null;
     medicines: PrescriptionMedicine[];
     createdAt: string;
