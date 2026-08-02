@@ -1,4 +1,129 @@
 {
+  "search": {
+    "title": "Search",
+    "placeholder": "Patient, diagnosis, medicine, document…",
+    "hint": "Type at least 2 characters to search across patients, consultations, prescriptions and documents.",
+    "no_results": "No results for \"{{query}}\"",
+    "count_one": "{{count}} result",
+    "count_other": "{{count}} results",
+    "truncated": "Showing top matches — refine your search",
+    "nav_hint": "↑↓ navigate · ↵ open · esc close",
+    "groups": {
+      "patients": "Patients",
+      "consultations": "Consultations",
+      "prescriptions": "Prescriptions",
+      "documents": "Documents"
+    },
+    "untitled": {
+      "patient": "Unnamed patient",
+      "consultation": "Consultation with no diagnosis",
+      "prescription": "Empty prescription",
+      "document": "Document"
+    }
+  },
+  "billing": {
+    "currency": "DA",
+    "due": "Amount due",
+    "paid": "Paid",
+    "balance": "Remaining",
+    "settled": "This consultation is fully settled.",
+    "amount": "Amount received",
+    "method": "Method",
+    "receipt_no": "Receipt no. {{number}}",
+    "confirm_delete": "Delete the payment of {{amount}} (receipt no. {{receipt}})?",
+    "methods": {
+      "cash": "Cash",
+      "card": "Card",
+      "transfer": "Transfer",
+      "cheque": "Cheque",
+      "other": "Other"
+    },
+    "actions": {
+      "record": "Record",
+      "pay_full": "Settle ({{amount}})",
+      "receipt": "Receipt",
+      "delete": "Delete payment"
+    },
+    "errors": {
+      "invalid_amount": "Enter an amount greater than zero.",
+      "record_failed": "Could not record the payment.",
+      "delete_failed": "Could not delete the payment.",
+      "receipt_failed": "Could not generate the receipt.",
+      "unsupported_characters": "The PDF cannot print these characters: {{characters}}."
+    },
+    "outstanding": {
+      "title": "Outstanding balances",
+      "subtitle": "Money still owed, across all time. Click a row for the individual visits.",
+      "loading": "Loading…",
+      "empty": "Nothing outstanding. Every patient is up to date.",
+      "patient": "Patient",
+      "phone": "Phone",
+      "visits": "Visits",
+      "oldest": "Oldest",
+      "balance": "Balance",
+      "days_ago_one": "{{count}} day",
+      "days_ago_other": "{{count}} days",
+      "of_which": "due {{due}} · paid {{paid}}"
+    },
+    "settled_no_payment": "Marked as settled — no payment recorded."
+  },
+  "certificates": {
+    "title": "Medical certificates",
+    "serial": "No. {{serial}}",
+    "empty": "No certificate issued during this visit.",
+    "types": {
+      "work_leave": "Medical leave",
+      "fitness": "Fitness / Good health",
+      "presence": "Attendance",
+      "free": "Free text"
+    },
+    "fields": {
+      "start": "From",
+      "end": "To",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "invalid_range": "Invalid period",
+      "body": "Certificate text",
+      "body_placeholder": "The text printed on the certificate…"
+    },
+    "body": {
+      "work_leave": "I, the undersigned, certify that the patient's state of health requires {{days}} day(s) of leave from work, from {{start}} to {{end}} inclusive.",
+      "fitness": "I, the undersigned, certify that I examined the above-named patient today, {{date}}, and found no apparent contraindication to the practice of sport.",
+      "presence": "I, the undersigned, certify that the above-named patient attended my practice today, {{date}}, for a medical consultation.",
+      "free": "I, the undersigned, certify that I examined the above-named patient today, {{date}}."
+    },
+    "confirm_delete": "Remove \"{{type}}\" (No. {{serial}}) from the record?\n\nThe PDF that was already generated stays in the patient's documents.",
+    "actions": {
+      "issue": "Issue certificate",
+      "issuing": "Generating…",
+      "reprint": "Reprint",
+      "delete": "Delete certificate",
+      "reset_wording": "Restore suggested wording"
+    },
+    "errors": {
+      "issue_failed": "Could not generate the certificate.",
+      "delete_failed": "Could not delete the certificate.",
+      "unsupported_characters": "The PDF cannot print these characters: {{characters}}. Write the certificate in French or English."
+    }
+  },
+  "prescription_library": {
+    "suggestions": {
+      "frequent": "Your most prescribed medicines",
+      "uses_one": "{{count}}×",
+      "uses_other": "{{count}}×"
+    },
+    "templates": {
+      "apply_one": "Templates ({{count}})",
+      "apply_other": "Templates ({{count}})",
+      "save": "Save as template",
+      "name_placeholder": "Template name (e.g. Sore throat)",
+      "confirm": "Save",
+      "saving": "Saving…",
+      "will_replace": "That name already exists — the template will be replaced.",
+      "delete": "Delete template",
+      "confirm_delete": "Delete the template \"{{name}}\"?"
+    }
+  },
   "sidebar": {
     "sections": {
       "main": "Main",
@@ -367,7 +492,8 @@
       "consultation": "Consultations & Appts",
       "security": "Security & Session",
       "data": "Backup & Database",
-      "license": "License"
+      "license": "License",
+      "activity": "Activity"
     },
     "license": {
       "title": "License",
@@ -790,6 +916,54 @@
       "booking_failed": "Could not book the follow-up appointment.",
       "finish_failed": "Could not finish the consultation.",
       "discard_failed": "Could not discard the consultation."
+    }
+  },
+  "audit": {
+    "title": "Activity journal",
+    "subtitle": "History of changes recorded in the practice.",
+    "loading": "Loading…",
+    "empty": "No activity recorded for these filters.",
+    "prev": "← Previous",
+    "next": "Next →",
+    "pagination": "Page {{current}} of {{total}} · {{count}} entries",
+    "disclaimer": "This journal records changes (not record views). It lives in the local database: anyone with access to this computer can alter it. It supports accountability between colleagues, not tamper-proof evidence.",
+    "filters": {
+      "all": "All activity",
+      "search_placeholder": "Search the journal…"
+    },
+    "table": {
+      "when": "When",
+      "who": "User",
+      "action": "Action",
+      "detail": "Detail"
+    },
+    "groups": {
+      "patients": "Patients",
+      "consultations": "Consultations",
+      "prescriptions": "Prescriptions",
+      "documents": "Documents",
+      "certificates": "Certificates",
+      "payments": "Payments",
+      "access": "Access & data"
+    },
+    "actions": {
+      "auth.login": "Signed in",
+      "auth.login_failed": "Failed sign-in",
+      "auth.logout": "Signed out",
+      "patient.create": "Patient created",
+      "patient.update": "Patient updated",
+      "patient.delete": "Patient deleted",
+      "consultation.complete": "Consultation completed",
+      "consultation.delete": "Consultation deleted",
+      "prescription.create": "Prescription created",
+      "prescription.delete": "Prescription deleted",
+      "document.upload": "Document added",
+      "document.delete": "Document deleted",
+      "certificate.create": "Certificate issued",
+      "certificate.delete": "Certificate deleted",
+      "payment.record": "Payment recorded",
+      "payment.delete": "Payment voided",
+      "database.reset": "Database reset"
     }
   }
 }

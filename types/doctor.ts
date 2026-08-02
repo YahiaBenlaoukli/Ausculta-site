@@ -38,3 +38,32 @@ export type Prescription = {
     createdAt: string;
 }
 
+/** The five fields that describe one prescribed drug, without any row identity. */
+export type MedicineLine = {
+    medicineName: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+    quantity: string;
+}
+
+/**
+ * A drug the doctor has prescribed before, offered as autocomplete. The posology
+ * fields carry the values used the LAST time this drug was prescribed, so
+ * picking a suggestion refills the whole row, not just the name.
+ */
+export type MedicineSuggestion = MedicineLine & {
+    /** Times this drug appears across all prescriptions — drives the ordering. */
+    uses: number;
+}
+
+/** A named, reusable set of medicines. */
+export type PrescriptionTemplate = {
+    id: number;
+    userId: number;
+    name: string;
+    notes: string | null;
+    medicines: MedicineLine[];
+    createdAt: string;
+}
+

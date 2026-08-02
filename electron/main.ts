@@ -11,6 +11,11 @@ import { bookAppointment, cancelAppointment, deleteAppointment, updateAppointmen
 import { getFinancialStatistics, getAppointmentStatistics, getConsultationStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
 import { startConsultation, getConsultationById, getActiveConsultation, updateConsultation, completeConsultation, deleteConsultation, getConsultationArtifacts, getConsultationsByPatientId, getConsultationsByDay, getConsultationsByDateRange } from './services/consultations'
 import { getTrialStatus, activateLicense } from './services/trial'
+import { globalSearch } from './services/search'
+import { suggestMedicines, getPrescriptionTemplates, savePrescriptionTemplate, deletePrescriptionTemplate } from './services/prescriptionLibrary'
+import { createCertificate, getCertificatesByPatientId, getCertificatesByConsultationId, reprintCertificate, deleteCertificate, getCertificateStatistics } from './services/certificates'
+import { recordPayment, getPaymentsByConsultationId, deletePayment, getConsultationBalance, getOutstandingBalances, generateReceiptPdf } from './services/payments'
+import { getAuditLog, getAuditLogForEntity } from './services/audit'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -93,6 +98,9 @@ app.whenReady().then(() => {
   ipcMain.handle('count-patients', async () => await countPatients());
   ipcMain.handle('reset-database', async () => await resetMedicalDatabase());
 
+  //recherche globale
+  ipcMain.handle('global-search', async (_event, query) => globalSearch(query));
+
   //gestion des documents
   ipcMain.handle('get-documents-by-patient-id', async (_event, patientId) => getDocumentsByPatientId(patientId));
   ipcMain.handle('get-all-documents', async () => getAllDocuments());
@@ -115,6 +123,34 @@ app.whenReady().then(() => {
   ipcMain.handle('delete-prescription', async (_event, id) => await deletePrescription(id));
   ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
   ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
+
+  //bibliothèque d'ordonnances (suggestions + modèles)
+  ipcMain.handle('suggest-medicines', async (_event, query, limit) => suggestMedicines(query, limit));
+  ipcMain.handle('get-prescription-templates', async (_event, userId) => getPrescriptionTemplates(userId));
+  ipcMain.handle('save-prescription-template', async (_event, userId, name, medicines, notes) => savePrescriptionTemplate(userId, name, medicines, notes));
+  ipcMain.handle('delete-prescription-template', async (_event, id) => deletePrescriptionTemplate(id));
+
+  //gestion des certificats médicaux
+  ipcMain.handle('create-certificate', async (_event, userId, draft) => await createCertificate(userId, draft));
+  ipcMain.handle('get-certificates-by-patient-id', async (_event, patientId) => getCertificatesByPatientId(patientId));
+  ipcMain.handle('get-certificates-by-consultation-id', async (_event, consultationId) => getCertificatesByConsultationId(consultationId));
+  ipcMain.handle('reprint-certificate', async (_event, id) => await reprintCertificate(id));
+  ipcMain.handle('delete-certificate', async (_event, id) => deleteCertificate(id));
+  ipcMain.handle('get-certificate-statistics', async (_event, userId, year) => getCertificateStatistics(userId, year));
+
+  //gestion des paiements et des impayés
+  ipcMain.handle('record-payment', async (_event, draft, userId, defaultFee) => recordPayment(draft, userId, defaultFee));
+  ipcMain.handle('get-payments-by-consultation-id', async (_event, consultationId) => getPaymentsByConsultationId(consultationId));
+  ipcMain.handle('delete-payment', async (_event, id, defaultFee) => deletePayment(id, defaultFee));
+  ipcMain.handle('get-consultation-balance', async (_event, consultationId, defaultFee) => getConsultationBalance(consultationId, defaultFee));
+  ipcMain.handle('get-outstanding-balances', async (_event, defaultFee) => getOutstandingBalances(defaultFee));
+  ipcMain.handle('generate-receipt-pdf', async (_event, paymentId, language, defaultFee) => await generateReceiptPdf(paymentId, language, defaultFee));
+
+  //journal d'activité (audit)
+  // Read-only on purpose: there is no delete-audit-entry channel, and adding
+  // one would defeat the point of the table.
+  ipcMain.handle('get-audit-log', async (_event, query) => getAuditLog(query));
+  ipcMain.handle('get-audit-log-for-entity', async (_event, entityType, entityId) => getAuditLogForEntity(entityType, entityId));
   ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight, language, consultationId) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight, language, consultationId));
 
   //gestion authentification

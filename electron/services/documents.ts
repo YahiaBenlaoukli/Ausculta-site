@@ -2,6 +2,7 @@ import { getDatabase } from "../db/db";
 import fs from "node:fs";
 import path from "node:path";
 import type { PatientDocument } from "../../types/documents";
+import { recordAudit } from "./audit";
 import { app, shell } from "electron";
 
 const recordsFolder = path.join(app.getPath('userData'), 'records');
@@ -32,6 +33,12 @@ export async function uploadDocument(document: Omit<PatientDocument, 'id' | 'upl
         VALUES (?, ?, ?, ?, ?, ?)
     `);
         const result = stmt.run(document.patientId, document.prescriptionId ?? null, document.consultationId ?? null, uniqueFilename, document.fileCategory, localPath);
+        recordAudit('document.upload', {
+            entityType: 'patient',
+            entityId: document.patientId,
+            summary: `${filename} (${document.fileCategory})`,
+            details: { fileCategory: document.fileCategory },
+        });
         return {
             ...document,
             localPath,
@@ -147,10 +154,13 @@ export function getAllDocuments() {
 export function deleteDocument(id: number): { status: "success" | "fail"; message?: string } {
     try {
         const db = getDatabase();
+        // Read the row before deleting — the log needs the file name, and the
+        // unlink below needs the path.
         const stmt = db.prepare(`
-        SELECT local_path FROM patient_documents WHERE id = ?
+        SELECT local_path, file_name, patient_id FROM patient_documents WHERE id = ?
     `);
-        const result = stmt.get(id) as { local_path: string } | undefined;
+        const result = stmt.get(id) as { local_path: string; file_name: string; patient_id: number } | undefined;
+        const doomed = result;
 
         // Delete the DB row FIRST: if the file is already gone from disk the
         // document must still be removable, so the unlink is best-effort.
@@ -158,6 +168,12 @@ export function deleteDocument(id: number): { status: "success" | "fail"; messag
         DELETE FROM patient_documents WHERE id = ?
     `);
         stmt2.run(id);
+
+        recordAudit('document.delete', {
+            entityType: 'patient',
+            entityId: doomed?.patient_id ?? null,
+            summary: doomed?.file_name ?? `#${id}`,
+        });
 
         if (result) {
             try {

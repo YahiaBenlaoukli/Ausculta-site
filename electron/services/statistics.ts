@@ -46,14 +46,23 @@ export function getConsultationStatistics(startDate: string, endDate: string, de
     try {
         const db = getDatabase();
         const end = endOfDay(endDate);
+        // total_unpaid subtracts anything already received on the visit: since
+        // payments arrived, "unpaid" is the REMAINDER, not the whole fee. A
+        // patient who paid 1500 of 2000 owes 500, and counting the full 2000
+        // here would overstate the practice's receivables.
         const stmt = db.prepare(`
             SELECT COUNT(*) AS total_consultations,
                    COALESCE(SUM(CASE WHEN is_walk_in = 1 THEN 1 ELSE 0 END), 0) AS total_walk_ins,
                    COALESCE(SUM(CASE WHEN is_walk_in = 1 THEN 0 ELSE 1 END), 0) AS total_scheduled_visits,
-                   COALESCE(SUM(COALESCE(fee, ?)), 0) AS total_revenue,
-                   COALESCE(SUM(CASE WHEN is_paid = 0 THEN COALESCE(fee, ?) ELSE 0 END), 0) AS total_unpaid
-            FROM consultations
-            WHERE status = 'Completed' AND consultation_datetime BETWEEN ? AND ?
+                   COALESCE(SUM(COALESCE(c.fee, ?)), 0) AS total_revenue,
+                   COALESCE(SUM(
+                     CASE WHEN c.is_paid = 0
+                       THEN MAX(0, COALESCE(c.fee, ?) - COALESCE(
+                         (SELECT SUM(p.amount) FROM payments p WHERE p.consultation_id = c.id), 0))
+                       ELSE 0 END
+                   ), 0) AS total_unpaid
+            FROM consultations c
+            WHERE c.status = 'Completed' AND c.consultation_datetime BETWEEN ? AND ?
         `);
         const result = stmt.get(defaultFee, defaultFee, startDate, end) as typeof empty | undefined;
         return result ?? empty;

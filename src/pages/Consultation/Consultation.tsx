@@ -5,6 +5,10 @@ import type { Patient } from '../../../types/patient';
 import type { DoctorProfile, Prescription, PrescriptionLanguage } from '../../../types/doctor';
 import type { PatientDocument } from '../../../types/documents';
 import type { Consultation as ConsultationRecord, ConsultationDraft, ConsultationListItem } from '../../../types/consultation';
+import MedicineNameInput from '../../components/Prescription/MedicineNameInput';
+import TemplateBar from '../../components/Prescription/TemplateBar';
+import CertificateForm from '../../components/Prescription/CertificateForm';
+import PaymentPanel from '../../components/Billing/PaymentPanel';
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /*                              ICONS                                  */
@@ -271,6 +275,21 @@ export default function Consultation() {
     const [documents, setDocuments] = useState<PatientDocument[]>([]);
     const [pastConsultations, setPastConsultations] = useState<ConsultationListItem[]>([]);
 
+    /* ── Billing ──
+       Same source the statistics page reads, so a visit stored with a NULL fee
+       resolves to the same amount in both places. */
+    const defaultFee = useMemo(
+        () => parseFloat(localStorage.getItem('default_consultation_price') || '2000') || 0,
+        []
+    );
+
+    /* Keeps the "paid" checkbox in step with the payments actually recorded.
+       Returning the previous state unchanged is what stops the round trip
+       (checkbox -> autosave -> panel reload -> checkbox) from looping. */
+    const handleSettledChange = useCallback((settled: boolean) => {
+        setForm(prev => (prev.isPaid === settled ? prev : { ...prev, isPaid: settled }));
+    }, []);
+
     /* ── Prescription builder ── */
     const [medications, setMedications] = useState<MedicationEntry[]>([]);
     const [medForm, setMedForm] = useState<MedicationEntry>(EMPTY_MEDICATION);
@@ -502,6 +521,15 @@ export default function Consultation() {
         if (!medForm.medicineName.trim()) return;
         setMedications(prev => [...prev, medForm]);
         setMedForm(EMPTY_MEDICATION);
+    };
+
+    /* Templates append rather than replace: the doctor may have already typed a
+       line by hand, and silently discarding it would be worse than a duplicate
+       they can delete. The template's own advice note only fills an empty box,
+       for the same reason. */
+    const applyTemplate = (lines: MedicationEntry[], templateNotes: string | null) => {
+        if (lines.length) setMedications(prev => [...prev, ...lines]);
+        if (templateNotes?.trim()) setPrescriptionNotes(prev => prev.trim() ? prev : templateNotes);
     };
 
     const refreshArtifacts = useCallback(async (id: number) => {
@@ -1075,8 +1103,22 @@ export default function Consultation() {
                     >
                         {!isCompleted && (
                             <>
+                                <TemplateBar
+                                    userId={currentUserId}
+                                    currentMedicines={medications}
+                                    onApply={applyTemplate}
+                                />
                                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
-                                    <input value={medForm.medicineName} onChange={(e) => setMedForm(p => ({ ...p, medicineName: e.target.value }))} placeholder={t('consultation.prescription.medicine')} className={`${inputClass} col-span-2 lg:col-span-1`} />
+                                    <div className="col-span-2 lg:col-span-1">
+                                        <MedicineNameInput
+                                            value={medForm.medicineName}
+                                            onChange={(v) => setMedForm(p => ({ ...p, medicineName: v }))}
+                                            onPick={(line) => setMedForm(line)}
+                                            onSubmit={addMedication}
+                                            placeholder={t('consultation.prescription.medicine')}
+                                            className={`${inputClass} w-full`}
+                                        />
+                                    </div>
                                     <input value={medForm.dosage} onChange={(e) => setMedForm(p => ({ ...p, dosage: e.target.value }))} placeholder={t('consultation.prescription.dosage')} className={inputClass} />
                                     <input value={medForm.frequency} onChange={(e) => setMedForm(p => ({ ...p, frequency: e.target.value }))} placeholder={t('consultation.prescription.frequency')} className={inputClass} />
                                     <input value={medForm.duration} onChange={(e) => setMedForm(p => ({ ...p, duration: e.target.value }))} placeholder={t('consultation.prescription.duration')} className={inputClass} />
@@ -1149,6 +1191,17 @@ export default function Consultation() {
                         {medications.length === 0 && prescriptions.length === 0 && isCompleted && (
                             <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.prescription.none')}</p>
                         )}
+                    </SectionCard>
+
+                    {/* Certificats médicaux */}
+                    <SectionCard title={t('certificates.title')} icon={icons.clipboard}>
+                        <CertificateForm
+                            userId={currentUserId}
+                            patientId={patient?.id ?? null}
+                            consultationId={consultation?.id ?? null}
+                            language={prescriptionLanguage}
+                            disabled={isCompleted}
+                        />
                     </SectionCard>
 
                     {/* Documents */}
@@ -1246,6 +1299,24 @@ export default function Consultation() {
                             <span className="text-xs font-semibold text-navy/70">{t('consultation.billing.paid')}</span>
                         </label>
                         <p className="text-[10px] text-navy/35 leading-relaxed">{t('consultation.billing.hint')}</p>
+
+                        {/* Part-payments, balance and receipts. The checkbox above
+                            stays the settled flag; recording a payment drives it. */}
+                        <div className="pt-3 mt-1 border-t border-navy/[0.06]">
+                            <PaymentPanel
+                                consultationId={consultation?.id ?? null}
+                                userId={currentUserId}
+                                defaultFee={defaultFee}
+                                language={prescriptionLanguage}
+                                // Both come from the form, not the database: the
+                                // fields autosave on a debounce, and reading the
+                                // database back on every keystroke re-ticked the
+                                // box the user had just cleared.
+                                settled={form.isPaid}
+                                fee={toNumber(form.fee)}
+                                onSettledChange={handleSettledChange}
+                            />
+                        </div>
                     </SectionCard>
 
                     {/* Follow-up appointment */}

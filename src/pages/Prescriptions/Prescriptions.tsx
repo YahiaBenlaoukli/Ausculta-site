@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import type { DoctorProfile, Prescription, PrescriptionLanguage } from '../../../types/doctor';
 import type { Patient } from '../../../types/patient';
 import type { PatientDocument } from '../../../types/documents';
+import MedicineNameInput from '../../components/Prescription/MedicineNameInput';
+import TemplateBar from '../../components/Prescription/TemplateBar';
 
 /* ─── Types ─── */
 type Step = 'loading' | 'create-profile' | 'generate-pdf' | 'prescriptions';
@@ -292,6 +294,15 @@ export default function Prescriptions() {
 
     const handleRemoveMedication = (index: number) => {
         setNewMedications(prev => prev.filter((_, i) => i !== index));
+    };
+
+    /* Templates append rather than replace: the doctor may have already typed a
+       line by hand, and silently discarding it would be worse than a duplicate
+       they can delete. The template's own advice note only fills an empty box,
+       for the same reason. */
+    const handleApplyTemplate = (lines: MedicationEntry[], templateNotes: string | null) => {
+        if (lines.length) setNewMedications(prev => [...prev, ...lines]);
+        if (templateNotes?.trim()) setNotes(prev => prev.trim() ? prev : templateNotes);
     };
 
     /* ── Save ordonnance ── */
@@ -683,14 +694,20 @@ export default function Prescriptions() {
                                     </div>
                                     {/* Medication input form */}
                                     <div className="space-y-3">
+                                        <TemplateBar
+                                            userId={currentUserId}
+                                            currentMedicines={newMedications}
+                                            onApply={handleApplyTemplate}
+                                        />
                                         <div>
                                             <label className="block text-xs font-semibold text-navy/50 mb-1.5">{t('prescriptions.workspace.builder.medication')}</label>
-                                            <input
+                                            <MedicineNameInput
                                                 value={medForm.medicineName}
-                                                onChange={e => setMedForm(f => ({ ...f, medicineName: e.target.value }))}
-                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMedication(); } }}
+                                                onChange={v => setMedForm(f => ({ ...f, medicineName: v }))}
+                                                onPick={line => setMedForm(line)}
+                                                onSubmit={handleAddMedication}
                                                 placeholder={t('prescriptions.workspace.builder.medication_placeholder')}
-                                                className={inputClass}
+                                                className={`${inputClass} w-full`}
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">

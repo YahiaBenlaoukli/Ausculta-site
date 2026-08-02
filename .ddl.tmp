@@ -1,0 +1,320 @@
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS patients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      date_of_birth TEXT NOT NULL,
+      address TEXT,
+      phone_number TEXT,
+      ssn TEXT UNIQUE,
+      blood_type TEXT CHECK(blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', NULL)),
+      notes TEXT,
+      -- Accent- and diacritic-folded copy of name/phone/ssn/address, kept in
+      -- sync by patient.ts. SQLite's LIKE is ASCII-only, so this is what makes
+      -- "benaissa" match "Benaïssa" and unvocalised Arabic match vocalised.
+      -- See electron/db/normalize.ts.
+      search_text TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS doctor_profile (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      full_name TEXT NOT NULL,
+      email TEXT,
+      phone_number TEXT,
+      address TEXT,
+      speciality TEXT,
+      has_completed_profile INTEGER DEFAULT 0,
+      pdf_path TEXT,
+      pdf_path_en TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- 1. THE PRESCRIPTION HEADER
+    -- Represents the event of prescribing.
+    CREATE TABLE IF NOT EXISTS prescriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL, -- The doctor who issued it
+      patient_id INTEGER NOT NULL,
+      notes TEXT, -- ADDED: Useful for general advice (e.g., "Drink plenty of water")
+      -- Set when the prescription was written during a consultation. SQLite
+      -- resolves foreign keys at DML time, so referencing the consultations
+      -- table before it is declared below is fine.
+      consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES doctor_profile(user_id),
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+
+    -- 2. THE MEDICINES LIST (Line Items)
+    -- Links multiple medicines to a single prescription_id.
+    CREATE TABLE IF NOT EXISTS prescription_medicines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      prescription_id INTEGER NOT NULL,
+      medicine_name TEXT NOT NULL,
+      dosage TEXT,
+      frequency TEXT,
+      duration TEXT,
+      quantity TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (prescription_id) REFERENCES prescriptions(id) ON DELETE CASCADE
+    );
+
+    -- 3. THE DOCUMENTS
+    -- Stays mostly as is, but conceptually its prescription_id now 
+    -- perfectly links back to the new prescription header.
+    CREATE TABLE IF NOT EXISTS patient_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER NOT NULL,
+      prescription_id INTEGER,
+      consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL,
+      file_name TEXT NOT NULL,
+      file_category TEXT,
+      local_path TEXT NOT NULL,
+      upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (prescription_id) REFERENCES prescriptions(id) ON DELETE SET NULL
+    );
+    CREATE TABLE IF NOT EXISTS appointments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER NOT NULL,
+      doctor_id INTEGER NOT NULL,
+      
+      -- Store as ISO8601 string (e.g., '2026-06-21T14:30:00') for easy sorting
+      appointment_datetime TEXT NOT NULL, 
+      
+      -- Standardize how long the slot takes to block out the calendar
+      duration_minutes INTEGER DEFAULT 30, 
+      
+      -- Why is the patient visiting?
+      reason TEXT, 
+      
+      -- The status is locked to these 4 specific states to prevent typos
+      status TEXT DEFAULT 'Scheduled' CHECK(status IN ('Scheduled', 'Completed', 'Cancelled', 'No-Show')),
+      
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (doctor_id) REFERENCES doctor_profile(id) ON DELETE CASCADE
+    );
+
+    -- THE CONSULTATION (the visit that actually happened)
+    -- Separate from appointments on purpose: an appointment is the *intent* to
+    -- see a patient (and can be cancelled or no-showed), a consultation is the
+    -- encounter itself. A walk-in has a consultation with no appointment.
+    -- Must be created after the appointments table: it references it.
+    CREATE TABLE IF NOT EXISTS consultations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER NOT NULL,
+      doctor_id INTEGER NOT NULL,
+
+      -- NULL for a walk-in; set when the visit came from the calendar.
+      appointment_id INTEGER,
+
+      -- Same timezone-naive local format as appointment_datetime.
+      consultation_datetime TEXT NOT NULL,
+      is_walk_in INTEGER DEFAULT 0,
+      reason TEXT,
+
+      -- Vitals. blood_pressure is text because "120/80" is not two numbers.
+      weight REAL,
+      height REAL,
+      temperature REAL,
+      blood_pressure TEXT,
+      heart_rate INTEGER,
+
+      exam_notes TEXT,
+      diagnosis TEXT,
+      treatment_plan TEXT,
+      follow_up_notes TEXT,
+
+      -- NULL fee means "bill at the practice default" (see statistics.ts).
+      fee REAL,
+      is_paid INTEGER DEFAULT 1,
+
+      -- 'InProgress' is a draft opened while the patient is in the room, so
+      -- prescriptions and documents created mid-visit can be linked to it.
+      status TEXT DEFAULT 'InProgress' CHECK(status IN ('InProgress', 'Completed')),
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (doctor_id) REFERENCES doctor_profile(id) ON DELETE CASCADE,
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
+    );
+
+    -- A named, reusable set of medicines (v10). Applying a template COPIES its
+    -- lines into the prescription rather than referencing it — editing a
+    -- template later must never rewrite what was historically prescribed.
+    CREATE TABLE IF NOT EXISTS prescription_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES doctor_profile(user_id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS prescription_template_medicines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id INTEGER NOT NULL,
+      medicine_name TEXT NOT NULL,
+      dosage TEXT,
+      frequency TEXT,
+      duration TEXT,
+      quantity TEXT,
+      -- Preserves the order the doctor arranged the lines in.
+      position INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (template_id) REFERENCES prescription_templates(id) ON DELETE CASCADE
+    );
+
+    -- One template name per doctor: re-saving under an existing name replaces
+    -- it (see prescriptionLibrary.ts) instead of silently creating a duplicate.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_presc_template_name
+      ON prescription_templates(user_id, name);
+    CREATE INDEX IF NOT EXISTS idx_presc_template_medicines
+      ON prescription_template_medicines(template_id, position);
+
+    -- Append-only record of who changed what (v13).
+    --
+    -- Scope: WRITES only. Logging reads as well is what real medical-records
+    -- compliance asks for, but it multiplies the row count by an order of
+    -- magnitude and is the usual reason audit tables become unusable; it can be
+    -- added behind a setting later.
+    --
+    -- Honest about its threat model: anyone holding the machine can open this
+    -- SQLite file and edit it. It is an accountability record between
+    -- colleagues, not tamper-proof evidence, so there is no hash chain here —
+    -- that would imply a guarantee the storage cannot make.
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      -- NULL when nobody was signed in (a failed login, or startup repair work).
+      actor_id INTEGER,
+      -- Denormalised on purpose: the log must still name the actor after the
+      -- user row is renamed or deleted. A foreign key would defeat the point.
+      actor_name TEXT NOT NULL,
+
+      -- Dotted verb, e.g. 'patient.delete', 'payment.record'.
+      action TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id INTEGER,
+
+      -- One human-readable line, resolved at write time. Stored rather than
+      -- rebuilt on read so an entry still reads correctly once the row it
+      -- describes has been deleted.
+      summary TEXT,
+      -- JSON blob for anything extra worth keeping (amounts, changed fields).
+      details TEXT,
+
+      at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(at DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
+
+    -- Money actually received, one row per handover (v12).
+    --
+    -- consultations.fee stays the amount BILLED; this table records what came
+    -- in. The two are separate because a patient can pay 1500 of a 2000 fee and
+    -- bring the rest next visit — a boolean is_paid cannot express that.
+    --
+    -- consultations.is_paid is kept as the authoritative "nothing outstanding"
+    -- flag rather than being replaced: every visit recorded before this table
+    -- existed has is_paid set and no payment rows, and deriving balance purely
+    -- from SUM(payments) would resurrect every one of them as a debt. Balance is
+    -- therefore 0 when is_paid = 1, and (fee - paid) otherwise. payments.ts
+    -- recomputes the flag whenever a payment is added or removed.
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      consultation_id INTEGER NOT NULL,
+      -- Denormalised from the consultation so the outstanding-balances query
+      -- can group by patient without a join, and so a payment keeps pointing at
+      -- the right person even if the visit row is later reworked.
+      patient_id INTEGER NOT NULL,
+      -- Who took the money. Nullable: unknown for anything back-filled, and it
+      -- is the assistant rather than the doctor once there are two users.
+      user_id INTEGER,
+
+      amount REAL NOT NULL CHECK(amount > 0),
+      method TEXT NOT NULL DEFAULT 'cash'
+        CHECK(method IN ('cash', 'card', 'transfer', 'cheque', 'other')),
+
+      -- Receipt number, sequential per calendar year across the whole practice
+      -- (not per user: a receipt book belongs to the cabinet, not the person
+      -- who happened to be at the desk).
+      year INTEGER NOT NULL,
+      sequence INTEGER NOT NULL,
+
+      note TEXT,
+      paid_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_receipt ON payments(year, sequence);
+    CREATE INDEX IF NOT EXISTS idx_payments_consultation ON payments(consultation_id);
+    CREATE INDEX IF NOT EXISTS idx_payments_patient ON payments(patient_id);
+
+    -- Medical certificates: arrêt de travail, aptitude, présence, free text (v11).
+    --
+    -- The rendered PDF lands in patient_documents like everything else, but the
+    -- structured row is kept as well: an arrêt de travail is a legal document
+    -- that must be reprintable byte-for-byte years later, and "how many sick-leave
+    -- days did I issue in 2026" is a question a PDF on disk cannot answer.
+    --
+    -- body holds the FINAL text as issued (the doctor may edit the generated
+    -- wording before signing), which is what makes an identical reprint possible.
+    CREATE TABLE IF NOT EXISTS certificates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      patient_id INTEGER NOT NULL,
+      consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL,
+      type TEXT NOT NULL CHECK(type IN ('work_leave', 'fitness', 'presence', 'free')),
+
+      -- Sequential per doctor per year, displayed as e.g. "2026-0007".
+      year INTEGER NOT NULL,
+      sequence INTEGER NOT NULL,
+
+      -- work_leave only; NULL for the other types.
+      start_date TEXT,
+      end_date TEXT,
+      days INTEGER,
+
+      body TEXT NOT NULL,
+      language TEXT NOT NULL DEFAULT 'fr',
+      -- The generated PDF's row in patient_documents. NULL if it was deleted
+      -- from the Documents page; the certificate itself survives that.
+      document_id INTEGER REFERENCES patient_documents(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (user_id) REFERENCES doctor_profile(user_id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+
+    -- Enforces the gap-free numbering a serial is supposed to guarantee.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_certificates_serial
+      ON certificates(user_id, year, sequence);
+    CREATE INDEX IF NOT EXISTS idx_certificates_patient ON certificates(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_certificates_consultation ON certificates(consultation_id);
+
+    CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_consultations_datetime ON consultations(consultation_datetime);
+
+    -- Global search scans these columns with a leading-wildcard LIKE, which no
+    -- index can serve. They exist for the equality/prefix lookups the same
+    -- tables get elsewhere, and to keep the joins back to patients cheap.
+    CREATE INDEX IF NOT EXISTS idx_documents_patient ON patient_documents(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_presc_medicines_prescription ON prescription_medicines(prescription_id);

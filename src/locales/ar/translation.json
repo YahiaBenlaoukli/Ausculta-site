@@ -1,4 +1,149 @@
 {
+  "search": {
+    "title": "بحث",
+    "placeholder": "مريض، تشخيص، دواء، وثيقة…",
+    "hint": "أدخل حرفين على الأقل للبحث في المرضى والاستشارات والوصفات والوثائق.",
+    "no_results": "لا توجد نتائج لـ «{{query}}»",
+    "count_zero": "لا توجد نتائج",
+    "count_one": "نتيجة واحدة",
+    "count_two": "نتيجتان",
+    "count_few": "{{count}} نتائج",
+    "count_many": "{{count}} نتيجة",
+    "count_other": "{{count}} نتيجة",
+    "truncated": "عرض أفضل النتائج — حدّد بحثك أكثر",
+    "nav_hint": "↑↓ تنقل · ↵ فتح · esc إغلاق",
+    "groups": {
+      "patients": "المرضى",
+      "consultations": "الاستشارات",
+      "prescriptions": "الوصفات",
+      "documents": "الوثائق"
+    },
+    "untitled": {
+      "patient": "مريض بدون اسم",
+      "consultation": "استشارة بدون تشخيص",
+      "prescription": "وصفة فارغة",
+      "document": "وثيقة"
+    }
+  },
+  "billing": {
+    "currency": "دج",
+    "due": "المبلغ المستحق",
+    "paid": "المدفوع",
+    "balance": "الباقي",
+    "settled": "تمت تسوية هذه الاستشارة بالكامل.",
+    "amount": "المبلغ المستلم",
+    "method": "طريقة الدفع",
+    "receipt_no": "وصل رقم {{number}}",
+    "confirm_delete": "حذف الدفعة البالغة {{amount}} (وصل رقم {{receipt}})؟",
+    "methods": {
+      "cash": "نقداً",
+      "card": "بطاقة",
+      "transfer": "تحويل",
+      "cheque": "شيك",
+      "other": "أخرى"
+    },
+    "actions": {
+      "record": "تسجيل الدفع",
+      "pay_full": "تسوية ({{amount}})",
+      "receipt": "وصل",
+      "delete": "حذف الدفعة"
+    },
+    "errors": {
+      "invalid_amount": "أدخل مبلغاً أكبر من الصفر.",
+      "record_failed": "تعذّر تسجيل الدفعة.",
+      "delete_failed": "تعذّر حذف الدفعة.",
+      "receipt_failed": "تعذّر إنشاء الوصل.",
+      "unsupported_characters": "لا يمكن لملف PDF طباعة هذه الأحرف: {{characters}}."
+    },
+    "outstanding": {
+      "title": "المبالغ غير المسددة",
+      "subtitle": "المبالغ التي لا تزال مستحقة، لجميع الفترات. انقر على سطر لعرض تفاصيل الزيارات.",
+      "loading": "جارٍ التحميل…",
+      "empty": "لا توجد مبالغ غير مسددة. جميع المرضى مسدّدون.",
+      "patient": "المريض",
+      "phone": "الهاتف",
+      "visits": "الزيارات",
+      "oldest": "الأقدم",
+      "balance": "الباقي",
+      "days_ago_zero": "{{count}} يوم",
+      "days_ago_one": "يوم واحد",
+      "days_ago_two": "يومان",
+      "days_ago_few": "{{count}} أيام",
+      "days_ago_many": "{{count}} يومًا",
+      "days_ago_other": "{{count}} يوم",
+      "of_which": "مستحق {{due}} · مدفوع {{paid}}"
+    },
+    "settled_no_payment": "مُعلَّمة كمسدَّدة — لم تُسجَّل أي دفعة."
+  },
+  "certificates": {
+    "title": "الشهادات الطبية",
+    "serial": "رقم {{serial}}",
+    "empty": "لم تُصدَر أي شهادة خلال هذه الزيارة.",
+    "types": {
+      "work_leave": "عطلة مرضية",
+      "fitness": "شهادة لياقة / صحة جيدة",
+      "presence": "شهادة حضور",
+      "free": "نص حر"
+    },
+    "fields": {
+      "start": "من",
+      "end": "إلى",
+      "days_zero": "{{count}} يوم",
+      "days_one": "يوم واحد",
+      "days_two": "يومان",
+      "days_few": "{{count}} أيام",
+      "days_many": "{{count}} يومًا",
+      "days_other": "{{count}} يوم",
+      "invalid_range": "فترة غير صالحة",
+      "body": "نص الشهادة",
+      "body_placeholder": "النص المطبوع على الشهادة…"
+    },
+    "body": {
+      "work_leave": "أشهد أنا الموقّع أدناه أن الحالة الصحية للمريض تستوجب عطلة مرضية لمدة {{days}} يوم، من {{start}} إلى {{end}} ضمناً.",
+      "fitness": "أشهد أنا الموقّع أدناه أنني فحصت اليوم، {{date}}، المريض المذكور أعلاه ولم ألاحظ أي مانع ظاهر لممارسة الرياضة.",
+      "presence": "أشهد أنا الموقّع أدناه أن المريض المذكور أعلاه حضر إلى عيادتي اليوم، {{date}}، لإجراء فحص طبي.",
+      "free": "أشهد أنا الموقّع أدناه أنني فحصت المريض المذكور أعلاه اليوم، {{date}}."
+    },
+    "confirm_delete": "حذف «{{type}}» (رقم {{serial}}) من السجل؟\n\nسيبقى ملف PDF الذي تم إنشاؤه ضمن وثائق المريض.",
+    "actions": {
+      "issue": "إصدار الشهادة",
+      "issuing": "جارٍ الإنشاء…",
+      "reprint": "إعادة الطباعة",
+      "delete": "حذف الشهادة",
+      "reset_wording": "استعادة النص المقترح"
+    },
+    "errors": {
+      "issue_failed": "تعذّر إنشاء الشهادة.",
+      "delete_failed": "تعذّر حذف الشهادة.",
+      "unsupported_characters": "لا يمكن لملف PDF طباعة هذه الأحرف: {{characters}}. يُرجى تحرير الشهادة بالفرنسية أو الإنجليزية."
+    }
+  },
+  "prescription_library": {
+    "suggestions": {
+      "frequent": "أكثر الأدوية التي تصفها",
+      "uses_zero": "{{count}}×",
+      "uses_one": "{{count}}×",
+      "uses_two": "{{count}}×",
+      "uses_few": "{{count}}×",
+      "uses_many": "{{count}}×",
+      "uses_other": "{{count}}×"
+    },
+    "templates": {
+      "apply_zero": "النماذج ({{count}})",
+      "apply_one": "النماذج ({{count}})",
+      "apply_two": "النماذج ({{count}})",
+      "apply_few": "النماذج ({{count}})",
+      "apply_many": "النماذج ({{count}})",
+      "apply_other": "النماذج ({{count}})",
+      "save": "حفظ كنموذج",
+      "name_placeholder": "اسم النموذج (مثال: التهاب الحلق)",
+      "confirm": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "will_replace": "الاسم موجود مسبقًا — سيتم استبدال النموذج.",
+      "delete": "حذف النموذج",
+      "confirm_delete": "حذف النموذج «{{name}}»؟"
+    }
+  },
   "sidebar": {
     "sections": {
       "main": "الرئيسية",
@@ -367,7 +512,8 @@
       "consultation": "الاستشارات والمواعيد",
       "security": "الأمان والجلسة",
       "data": "النسخ الاحتياطي وقاعدة البيانات",
-      "license": "الترخيص"
+      "license": "الترخيص",
+      "activity": "سجل النشاط"
     },
     "license": {
       "title": "الترخيص",
@@ -790,6 +936,54 @@
       "booking_failed": "تعذّر حجز موعد المتابعة.",
       "finish_failed": "تعذّر إنهاء الاستشارة.",
       "discard_failed": "تعذّر حذف الاستشارة."
+    }
+  },
+  "audit": {
+    "title": "سجل النشاط",
+    "subtitle": "تاريخ التعديلات المسجّلة في العيادة.",
+    "loading": "جارٍ التحميل…",
+    "empty": "لا يوجد نشاط مطابق لهذه المعايير.",
+    "prev": "← السابق",
+    "next": "التالي →",
+    "pagination": "صفحة {{current}} من {{total}} · {{count}} مدخلة",
+    "disclaimer": "يسجّل هذا السجل التعديلات (وليس عمليات الاطّلاع). وهو محفوظ في قاعدة البيانات المحلية: يمكن لأي شخص لديه وصول إلى هذا الحاسوب تعديله. الغرض منه المساءلة بين الزملاء، لا أن يكون دليلاً غير قابل للتلاعب.",
+    "filters": {
+      "all": "كل الأنشطة",
+      "search_placeholder": "ابحث في السجل…"
+    },
+    "table": {
+      "when": "التاريخ",
+      "who": "المستخدم",
+      "action": "الإجراء",
+      "detail": "التفاصيل"
+    },
+    "groups": {
+      "patients": "المرضى",
+      "consultations": "الاستشارات",
+      "prescriptions": "الوصفات",
+      "documents": "الوثائق",
+      "certificates": "الشهادات",
+      "payments": "المدفوعات",
+      "access": "الوصول والبيانات"
+    },
+    "actions": {
+      "auth.login": "تسجيل الدخول",
+      "auth.login_failed": "فشل تسجيل الدخول",
+      "auth.logout": "تسجيل الخروج",
+      "patient.create": "إنشاء مريض",
+      "patient.update": "تعديل مريض",
+      "patient.delete": "حذف مريض",
+      "consultation.complete": "إنهاء استشارة",
+      "consultation.delete": "حذف استشارة",
+      "prescription.create": "إنشاء وصفة",
+      "prescription.delete": "حذف وصفة",
+      "document.upload": "إضافة وثيقة",
+      "document.delete": "حذف وثيقة",
+      "certificate.create": "إصدار شهادة",
+      "certificate.delete": "حذف شهادة",
+      "payment.record": "تسجيل دفعة",
+      "payment.delete": "إلغاء دفعة",
+      "database.reset": "إعادة تعيين قاعدة البيانات"
     }
   }
 }

@@ -1,0 +1,30 @@
+import { app } from 'electron';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+import { buildPatientSearchText, normalizeSearchText } from './normalize';
+
+let db: Database.Database;
+
+export function initializeDatabase(): Database.Database {
+  const dbPath = path.join(app.getPath('userData'), 'cabinet-medicale.db');
+  db = new Database(dbPath);
+
+  db.pragma('journal_mode = WAL');
+  // CRITICAL ADDITION: SQLite disables foreign keys by default.
+  // You must turn this on for your 'ON DELETE CASCADE' rules to actually work.
+  db.pragma('foreign_keys = ON');
+
+  // norm(text) — exposes the JS folding used for search to SQL, so global
+  // search can write `norm(diagnosis) LIKE '%diabete%'` and match "Diabète".
+  // SQLite's own LOWER/NOCASE are ASCII-only and cannot do this.
+  //
+  // Patients get a stored search_text column instead of this function because
+  // their lookup runs on every keystroke in half a dozen pickers; the clinical
+  // tables below are only scanned by the global search box, where a per-row
+  // call into JS on a few thousand rows is not worth a column to keep in sync.
+  db.function('norm', { deterministic: true }, (value: unknown) =>
+    normalizeSearchText(value == null ? '' : String(value))
+  );
+
+  const version = db.pragma('user_version', { simple: true }) as number;
+

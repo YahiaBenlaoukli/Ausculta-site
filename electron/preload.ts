@@ -1,9 +1,12 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { Patient } from '../types/patient'
 import type { Prescription } from '../types/doctor'
-import type { DoctorProfile } from '../types/doctor'
+import type { DoctorProfile, MedicineLine } from '../types/doctor'
 import { PatientDocument } from '../types/documents'
 import type { ConsultationDraft } from '../types/consultation'
+import type { CertificateDraft } from '../types/certificate'
+import type { PaymentDraft } from '../types/payment'
+import type { AuditQuery } from '../types/audit'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -34,6 +37,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   countPatients: () => ipcRenderer.invoke('count-patients'),
   resetDatabase: () => ipcRenderer.invoke('reset-database'),
 
+  //recherche globale
+  globalSearch: (query: string) => ipcRenderer.invoke('global-search', query),
+
 
   //gestion documents
   uploadDocument: (document: Omit<PatientDocument, 'id' | 'uploadDate'>) => ipcRenderer.invoke('upload-document', document),
@@ -55,6 +61,32 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   deletePrescription: (id: number) => ipcRenderer.invoke('delete-prescription', id),
   searchPrescription: (query: string) => ipcRenderer.invoke('search-prescriptions', query),
   countPrescriptions: () => ipcRenderer.invoke('count-prescriptions'),
+
+  //bibliothèque d'ordonnances (suggestions + modèles)
+  suggestMedicines: (query: string, limit?: number) => ipcRenderer.invoke('suggest-medicines', query, limit),
+  getPrescriptionTemplates: (userId: number) => ipcRenderer.invoke('get-prescription-templates', userId),
+  savePrescriptionTemplate: (userId: number, name: string, medicines: MedicineLine[], notes?: string) => ipcRenderer.invoke('save-prescription-template', userId, name, medicines, notes),
+  deletePrescriptionTemplate: (id: number) => ipcRenderer.invoke('delete-prescription-template', id),
+
+  //gestion des certificats médicaux
+  createCertificate: (userId: number, draft: CertificateDraft) => ipcRenderer.invoke('create-certificate', userId, draft),
+  getCertificatesByPatientId: (patientId: number) => ipcRenderer.invoke('get-certificates-by-patient-id', patientId),
+  getCertificatesByConsultationId: (consultationId: number) => ipcRenderer.invoke('get-certificates-by-consultation-id', consultationId),
+  reprintCertificate: (id: number) => ipcRenderer.invoke('reprint-certificate', id),
+  deleteCertificate: (id: number) => ipcRenderer.invoke('delete-certificate', id),
+  getCertificateStatistics: (userId: number, year: number) => ipcRenderer.invoke('get-certificate-statistics', userId, year),
+
+  //gestion des paiements et des impayés
+  recordPayment: (draft: PaymentDraft, userId?: number | null, defaultFee?: number) => ipcRenderer.invoke('record-payment', draft, userId, defaultFee),
+  getPaymentsByConsultationId: (consultationId: number) => ipcRenderer.invoke('get-payments-by-consultation-id', consultationId),
+  deletePayment: (id: number, defaultFee?: number) => ipcRenderer.invoke('delete-payment', id, defaultFee),
+  getConsultationBalance: (consultationId: number, defaultFee?: number) => ipcRenderer.invoke('get-consultation-balance', consultationId, defaultFee),
+  getOutstandingBalances: (defaultFee?: number) => ipcRenderer.invoke('get-outstanding-balances', defaultFee),
+  generateReceiptPdf: (paymentId: number, language?: string, defaultFee?: number) => ipcRenderer.invoke('generate-receipt-pdf', paymentId, language, defaultFee),
+
+  //journal d'activité (audit) — lecture seule
+  getAuditLog: (query?: AuditQuery) => ipcRenderer.invoke('get-audit-log', query),
+  getAuditLogForEntity: (entityType: string, entityId: number) => ipcRenderer.invoke('get-audit-log-for-entity', entityType, entityId),
 
   //gestion authentification
   createUser: (user: { fullName: string; password: string }) => ipcRenderer.invoke('create-user', user),

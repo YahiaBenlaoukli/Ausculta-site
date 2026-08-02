@@ -4,13 +4,14 @@ import { useTranslation } from "react-i18next";
 import type { TrialStatus } from "../../../types/trial";
 import type { DoctorProfile, PrescriptionLanguage } from "../../../types/doctor";
 import type { Patient } from "../../../types/patient";
+import AuditLog from "../../components/Audit/AuditLog";
 
 export default function Parameters() {
   const { t } = useTranslation();
   const location = useLocation();
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<"profile" | "consultation" | "security" | "data" | "license">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "consultation" | "security" | "activity" | "data" | "license">("profile");
 
   // User Session & Doctor Profile States
   const [currentUser, setCurrentUser] = useState<{ id: number; fullName: string } | null>(null);
@@ -315,6 +316,11 @@ export default function Parameters() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
               </svg>
             ) },
+            { id: "activity", label: t("settings.tabs.activity"), icon: (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            ) },
             { id: "data", label: t("settings.tabs.data"), icon: (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0v3.75" />
@@ -583,6 +589,9 @@ export default function Parameters() {
               </button>
             </div>
           )}
+
+          {/* Tab: Activity journal (read-only audit trail) */}
+          {activeTab === "activity" && <AuditLog />}
 
           {/* Tab 4: Backup & Wiping */}
           {activeTab === "data" && (

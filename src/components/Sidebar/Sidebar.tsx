@@ -71,6 +71,12 @@ const icons = {
       <polyline points="15 18 9 12 15 6" />
     </svg>
   ),
+  search: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="20" y1="20" x2="16.65" y2="16.65" />
+    </svg>
+  ),
 }
 
 /* ─── Navigation Config ─── */
@@ -165,8 +171,48 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
 }
 
 /* ─── Main Sidebar ─── */
+/* ─── Global search trigger ───
+   Not a NavItem: it opens the palette rather than routing anywhere, so it sits
+   above the nav sections with its own affordance (the Ctrl+K hint). */
+function SearchTrigger({ collapsed, onOpen }: { collapsed: boolean; onOpen: () => void }) {
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
+
+  if (collapsed) {
+    return (
+      <div className="relative group flex justify-center">
+        <button
+          id="sidebar-search"
+          onClick={onOpen}
+          aria-label={t('search.title')}
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.07] transition-all duration-200 cursor-pointer"
+        >
+          {icons.search}
+        </button>
+        <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-full mr-3' : 'left-full ml-3'} whitespace-nowrap bg-navy text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]`}>
+          {t('search.title')}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      id="sidebar-search"
+      onClick={onOpen}
+      className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.07] text-white/50 hover:text-white/90 hover:bg-white/[0.09] transition-all duration-200 cursor-pointer"
+    >
+      <span className="flex-shrink-0">{icons.search}</span>
+      <span className="text-sm font-medium truncate">{t('search.title')}</span>
+      <kbd className={`${isRtl ? 'mr-auto' : 'ml-auto'} flex-shrink-0 text-[10px] font-semibold text-white/40 bg-white/[0.07] border border-white/10 rounded-md px-1.5 py-0.5`}>
+        Ctrl K
+      </kbd>
+    </button>
+  )
+}
+
 export default function Sidebar() {
-  const { collapsed, setCollapsed } = useLayout()
+  const { collapsed, setCollapsed, setSearchOpen } = useLayout()
   const location = useLocation()
   const { t, i18n } = useTranslation()
   const isRtl = i18n.dir() === 'rtl'
@@ -231,6 +277,10 @@ export default function Sidebar() {
 
       {/* ── Navigation Items ── */}
       <div className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-0.5 py-4 ${collapsed ? 'px-2 items-center' : 'px-3'}`}>
+        <div className={`w-full ${collapsed ? 'mb-1' : 'mb-2'}`}>
+          <SearchTrigger collapsed={collapsed} onOpen={() => setSearchOpen(true)} />
+        </div>
+
         {grouped.map(section => (
           <div key={section.key} className="mb-1 w-full">
             {/* Section label (expanded) */}

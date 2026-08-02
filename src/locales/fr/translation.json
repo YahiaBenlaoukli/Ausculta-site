@@ -1,4 +1,129 @@
 {
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Patient, diagnostic, médicament, document…",
+    "hint": "Saisissez au moins 2 caractères pour chercher dans les patients, consultations, ordonnances et documents.",
+    "no_results": "Aucun résultat pour « {{query}} »",
+    "count_one": "{{count}} résultat",
+    "count_other": "{{count}} résultats",
+    "truncated": "Meilleurs résultats affichés — affinez votre recherche",
+    "nav_hint": "↑↓ naviguer · ↵ ouvrir · esc fermer",
+    "groups": {
+      "patients": "Patients",
+      "consultations": "Consultations",
+      "prescriptions": "Ordonnances",
+      "documents": "Documents"
+    },
+    "untitled": {
+      "patient": "Patient sans nom",
+      "consultation": "Consultation sans diagnostic",
+      "prescription": "Ordonnance vide",
+      "document": "Document"
+    }
+  },
+  "billing": {
+    "currency": "DA",
+    "due": "Montant dû",
+    "paid": "Réglé",
+    "balance": "Reste",
+    "settled": "Consultation entièrement réglée.",
+    "amount": "Montant reçu",
+    "method": "Mode",
+    "receipt_no": "Reçu n° {{number}}",
+    "confirm_delete": "Supprimer le paiement de {{amount}} (reçu n° {{receipt}}) ?",
+    "methods": {
+      "cash": "Espèces",
+      "card": "Carte",
+      "transfer": "Virement",
+      "cheque": "Chèque",
+      "other": "Autre"
+    },
+    "actions": {
+      "record": "Encaisser",
+      "pay_full": "Solder ({{amount}})",
+      "receipt": "Reçu",
+      "delete": "Supprimer le paiement"
+    },
+    "errors": {
+      "invalid_amount": "Saisissez un montant supérieur à zéro.",
+      "record_failed": "Impossible d'enregistrer le paiement.",
+      "delete_failed": "Impossible de supprimer le paiement.",
+      "receipt_failed": "Impossible de générer le reçu.",
+      "unsupported_characters": "Le PDF ne peut pas imprimer ces caractères : {{characters}}."
+    },
+    "outstanding": {
+      "title": "Impayés",
+      "subtitle": "Sommes restant dues, toutes périodes confondues. Cliquez sur une ligne pour le détail des visites.",
+      "loading": "Chargement…",
+      "empty": "Aucun impayé. Tous les patients sont à jour.",
+      "patient": "Patient",
+      "phone": "Téléphone",
+      "visits": "Visites",
+      "oldest": "Plus ancien",
+      "balance": "Reste dû",
+      "days_ago_one": "{{count}} jour",
+      "days_ago_other": "{{count}} jours",
+      "of_which": "dû {{due}} · réglé {{paid}}"
+    },
+    "settled_no_payment": "Marquée comme réglée — aucun paiement enregistré."
+  },
+  "certificates": {
+    "title": "Certificats médicaux",
+    "serial": "N° {{serial}}",
+    "empty": "Aucun certificat délivré lors de cette visite.",
+    "types": {
+      "work_leave": "Arrêt de travail",
+      "fitness": "Aptitude / Bonne santé",
+      "presence": "Présence",
+      "free": "Texte libre"
+    },
+    "fields": {
+      "start": "Du",
+      "end": "Au",
+      "days_one": "{{count}} jour",
+      "days_other": "{{count}} jours",
+      "invalid_range": "Période invalide",
+      "body": "Texte du certificat",
+      "body_placeholder": "Le texte imprimé sur le certificat…"
+    },
+    "body": {
+      "work_leave": "Je soussigné(e), certifie que l'état de santé du patient nécessite un arrêt de travail de {{days}} jour(s), du {{start}} au {{end}} inclus.",
+      "fitness": "Je soussigné(e), certifie avoir examiné ce jour, {{date}}, le patient désigné ci-dessus et n'avoir constaté aucune contre-indication apparente à la pratique du sport.",
+      "presence": "Je soussigné(e), certifie que le patient désigné ci-dessus s'est présenté à mon cabinet ce jour, {{date}}, pour une consultation médicale.",
+      "free": "Je soussigné(e), certifie avoir examiné le patient désigné ci-dessus ce jour, {{date}}."
+    },
+    "confirm_delete": "Supprimer « {{type}} » (N° {{serial}}) du dossier ?\n\nLe PDF déjà généré restera dans les documents du patient.",
+    "actions": {
+      "issue": "Délivrer le certificat",
+      "issuing": "Génération…",
+      "reprint": "Réimprimer",
+      "delete": "Supprimer le certificat",
+      "reset_wording": "Rétablir le texte proposé"
+    },
+    "errors": {
+      "issue_failed": "Impossible de générer le certificat.",
+      "delete_failed": "Impossible de supprimer le certificat.",
+      "unsupported_characters": "Le PDF ne peut pas imprimer ces caractères : {{characters}}. Rédigez le certificat en français ou en anglais."
+    }
+  },
+  "prescription_library": {
+    "suggestions": {
+      "frequent": "Vos médicaments les plus prescrits",
+      "uses_one": "{{count}}×",
+      "uses_other": "{{count}}×"
+    },
+    "templates": {
+      "apply_one": "Modèles ({{count}})",
+      "apply_other": "Modèles ({{count}})",
+      "save": "Enregistrer comme modèle",
+      "name_placeholder": "Nom du modèle (ex : Angine)",
+      "confirm": "Enregistrer",
+      "saving": "Enregistrement…",
+      "will_replace": "Ce nom existe déjà — le modèle sera remplacé.",
+      "delete": "Supprimer le modèle",
+      "confirm_delete": "Supprimer le modèle « {{name}} » ?"
+    }
+  },
   "sidebar": {
     "sections": {
       "main": "Principal",
@@ -367,7 +492,8 @@
       "consultation": "Consultations & RDV",
       "security": "Sécurité & Session",
       "data": "Sauvegarde & Données",
-      "license": "Licence"
+      "license": "Licence",
+      "activity": "Journal d'activité"
     },
     "license": {
       "title": "Licence",
@@ -790,6 +916,54 @@
       "booking_failed": "Impossible de planifier le rendez-vous de suivi.",
       "finish_failed": "Impossible de terminer la consultation.",
       "discard_failed": "Impossible de supprimer la consultation."
+    }
+  },
+  "audit": {
+    "title": "Journal d'activité",
+    "subtitle": "Historique des modifications enregistrées dans le cabinet.",
+    "loading": "Chargement…",
+    "empty": "Aucune activité enregistrée pour ces critères.",
+    "prev": "← Précédent",
+    "next": "Suivant →",
+    "pagination": "Page {{current}} sur {{total}} · {{count}} entrées",
+    "disclaimer": "Ce journal enregistre les modifications (pas les consultations en lecture). Il est conservé dans la base de données locale : toute personne ayant accès à cet ordinateur peut la modifier. Il sert à la responsabilité entre collègues, non de preuve infalsifiable.",
+    "filters": {
+      "all": "Toutes les activités",
+      "search_placeholder": "Rechercher dans le journal…"
+    },
+    "table": {
+      "when": "Date",
+      "who": "Utilisateur",
+      "action": "Action",
+      "detail": "Détail"
+    },
+    "groups": {
+      "patients": "Patients",
+      "consultations": "Consultations",
+      "prescriptions": "Ordonnances",
+      "documents": "Documents",
+      "certificates": "Certificats",
+      "payments": "Paiements",
+      "access": "Accès & données"
+    },
+    "actions": {
+      "auth.login": "Connexion",
+      "auth.login_failed": "Échec de connexion",
+      "auth.logout": "Déconnexion",
+      "patient.create": "Patient créé",
+      "patient.update": "Patient modifié",
+      "patient.delete": "Patient supprimé",
+      "consultation.complete": "Consultation terminée",
+      "consultation.delete": "Consultation supprimée",
+      "prescription.create": "Ordonnance créée",
+      "prescription.delete": "Ordonnance supprimée",
+      "document.upload": "Document ajouté",
+      "document.delete": "Document supprimé",
+      "certificate.create": "Certificat délivré",
+      "certificate.delete": "Certificat supprimé",
+      "payment.record": "Paiement encaissé",
+      "payment.delete": "Paiement annulé",
+      "database.reset": "Base réinitialisée"
     }
   }
 }

@@ -33,6 +33,19 @@ type TrialStatus = import('../types/trial').TrialStatus
 type Consultation = import('../types/consultation').Consultation
 type ConsultationDraft = import('../types/consultation').ConsultationDraft
 type ConsultationListItem = import('../types/consultation').ConsultationListItem
+type GlobalSearchResults = import('../types/search').GlobalSearchResults
+type MedicineLine = import('../types/doctor').MedicineLine
+type MedicineSuggestion = import('../types/doctor').MedicineSuggestion
+type PrescriptionTemplate = import('../types/doctor').PrescriptionTemplate
+type Certificate = import('../types/certificate').Certificate
+type CertificateDraft = import('../types/certificate').CertificateDraft
+type Payment = import('../types/payment').Payment
+type PaymentDraft = import('../types/payment').PaymentDraft
+type ConsultationBalance = import('../types/payment').ConsultationBalance
+type PatientBalance = import('../types/payment').PatientBalance
+type AuditEntry = import('../types/audit').AuditEntry
+type AuditQuery = import('../types/audit').AuditQuery
+type AuditPage = import('../types/audit').AuditPage
 
 interface IpcResult<T = unknown> {
   status: 'success' | 'fail' | 'not_found'
@@ -106,6 +119,9 @@ interface AuscultaIpc {
   countPatients(): Promise<number>
   resetDatabase(): Promise<IpcResult>
 
+  // recherche globale
+  globalSearch(query: string): Promise<GlobalSearchResults>
+
   // gestion documents
   uploadDocument(document: Omit<PatientDocument, 'id' | 'uploadDate'>): Promise<PatientDocument>
   getDocumentsByPatientId(patientId: number): Promise<PatientDocument[]>
@@ -128,6 +144,34 @@ interface AuscultaIpc {
   deletePrescription(id: number): Promise<IpcResult>
   searchPrescription(query: string): Promise<IpcResult<Prescription[]>>
   countPrescriptions(): Promise<IpcResult<number>>
+
+  // bibliothèque d'ordonnances (suggestions + modèles)
+  suggestMedicines(query: string, limit?: number): Promise<IpcResult<MedicineSuggestion[]>>
+  getPrescriptionTemplates(userId: number): Promise<IpcResult<PrescriptionTemplate[]>>
+  savePrescriptionTemplate(userId: number, name: string, medicines: MedicineLine[], notes?: string): Promise<IpcResult<{ templateId: number; replaced: boolean }>>
+  deletePrescriptionTemplate(id: number): Promise<IpcResult>
+
+  // gestion des certificats médicaux
+  /** On `unsupported_characters`, `characters` lists the glyphs the PDF font cannot draw. */
+  createCertificate(userId: number, draft: CertificateDraft): Promise<IpcResult<{ certificate: Certificate; documentPath: string }> & { characters?: string[] }>
+  getCertificatesByPatientId(patientId: number): Promise<IpcResult<Certificate[]>>
+  getCertificatesByConsultationId(consultationId: number): Promise<IpcResult<Certificate[]>>
+  reprintCertificate(id: number): Promise<IpcResult<{ documentPath: string }>>
+  deleteCertificate(id: number): Promise<IpcResult>
+  getCertificateStatistics(userId: number, year: number): Promise<IpcResult<{ total: number; work_leave_count: number; total_leave_days: number }>>
+
+  // gestion des paiements et des impayés
+  recordPayment(draft: PaymentDraft, userId?: number | null, defaultFee?: number): Promise<IpcResult<Payment>>
+  getPaymentsByConsultationId(consultationId: number): Promise<IpcResult<Payment[]>>
+  deletePayment(id: number, defaultFee?: number): Promise<IpcResult>
+  getConsultationBalance(consultationId: number, defaultFee?: number): Promise<IpcResult<ConsultationBalance>>
+  getOutstandingBalances(defaultFee?: number): Promise<IpcResult<{ patients: PatientBalance[]; totalOutstanding: number; patientCount: number }>>
+  /** On `unsupported_characters`, `characters` lists the glyphs the PDF font cannot draw. */
+  generateReceiptPdf(paymentId: number, language?: string, defaultFee?: number): Promise<IpcResult<{ documentPath: string; receiptNumber: string }> & { characters?: string[] }>
+
+  // journal d'activité (audit) — read-only by design
+  getAuditLog(query?: AuditQuery): Promise<IpcResult<AuditPage>>
+  getAuditLogForEntity(entityType: string, entityId: number): Promise<IpcResult<AuditEntry[]>>
   generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string, consultationId?: number): Promise<IpcResult<string>>
 
   // gestion authentification

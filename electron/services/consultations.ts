@@ -1,4 +1,5 @@
 import { getDatabase } from "../db/db";
+import { recordAudit } from "./audit";
 import { getPrescriptionsByConsultationId } from "./prescription";
 import { getDocumentsByConsultationId } from "./documents";
 import type { Consultation, ConsultationDraft, ConsultationListItem } from "../../types/consultation";
@@ -217,6 +218,15 @@ export function completeConsultation(id: number, draft?: ConsultationDraft) {
         transaction();
 
         const updated = db.prepare(`SELECT * FROM consultations WHERE id = ?`).get(id) as ConsultationRow;
+
+        const patient = db.prepare(`SELECT full_name FROM patients WHERE id = ?`)
+            .get(updated.patient_id) as { full_name: string } | undefined;
+        recordAudit('consultation.complete', {
+            entityType: 'consultation',
+            entityId: id,
+            summary: `${patient?.full_name ?? `#${updated.patient_id}`}${updated.diagnosis ? ` — ${updated.diagnosis}` : ''}`,
+            details: { patientId: updated.patient_id, fee: updated.fee, isPaid: Boolean(updated.is_paid) },
+        });
         return { status: "success", data: mapRowToConsultation(updated) };
     } catch (error) {
         console.error("completeConsultation error:", error);
@@ -247,9 +257,25 @@ export function getConsultationArtifacts(consultationId: number) {
 export function deleteConsultation(id: number) {
     try {
         const db = getDatabase();
+        const doomed = db.prepare(`
+            SELECT c.patient_id, c.consultation_datetime, c.diagnosis, c.status, p.full_name
+            FROM consultations c JOIN patients p ON p.id = c.patient_id WHERE c.id = ?
+        `).get(id) as { patient_id: number; consultation_datetime: string; diagnosis: string | null; status: string; full_name: string } | undefined;
+
         // Prescriptions and documents survive: their consultation_id is
         // ON DELETE SET NULL, so the patient keeps the paperwork.
         const result = db.prepare(`DELETE FROM consultations WHERE id = ?`).run(id);
+
+        // Abandoned empty drafts are swept away on every launch; logging those
+        // would bury the deletions a human actually performed.
+        if (result.changes && doomed && doomed.status === 'Completed') {
+            recordAudit('consultation.delete', {
+                entityType: 'patient',
+                entityId: doomed.patient_id,
+                summary: `${doomed.full_name} — ${doomed.consultation_datetime}${doomed.diagnosis ? ` (${doomed.diagnosis})` : ''}`,
+                details: { consultationId: id },
+            });
+        }
         return { status: "success", data: { changes: result.changes } };
     } catch (error) {
         console.error("deleteConsultation error:", error);

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import OutstandingBalances from "../../components/Billing/OutstandingBalances";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -519,6 +520,13 @@ export default function Statistics() {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* ── Outstanding balances ──
+              Unlike everything above, this ignores the date range: it is the
+              running total of what patients owe, not activity in a period. */}
+          <div className="grid grid-cols-1 gap-6 mb-6">
+            <OutstandingBalances defaultFee={parseFloat(priceInput) || 0} />
           </div>
 
           {/* ── Top Patients & No-Show Details ── */}

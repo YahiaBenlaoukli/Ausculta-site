@@ -6,6 +6,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import type { DoctorProfile, Prescription, PrescriptionLanguage } from "../../types/doctor";
 
 import { uploadDocument, getDocumentsByPatientId } from "./documents";
+import { recordAudit } from "./audit";
 
 
 import type { Patient } from "../../types/patient";
@@ -226,6 +227,12 @@ export function addPrescription(userId: number, patientId: number, medicines: { 
         });
 
         const prescriptionId = transaction();
+        recordAudit('prescription.create', {
+            entityType: 'patient',
+            entityId: patientId,
+            summary: medicines.map(m => m.medicineName).filter(Boolean).join(', ') || `#${prescriptionId}`,
+            details: { prescriptionId, medicineCount: medicines.length },
+        });
         return { status: "success", data: { prescriptionId } };
     } catch (error) {
         console.error("addPrescription error:", error);
@@ -473,9 +480,25 @@ export function updatePrescription(prescription: Prescription) {
 export function deletePrescription(id: number) {
     try {
         const db = getDatabase();
+        // Read the drug list before deleting: CASCADE takes the line items with
+        // it, and "prescription #12 deleted" tells nobody what was withdrawn.
+        const doomed = db.prepare(`
+            SELECT p.patient_id,
+                   (SELECT GROUP_CONCAT(m.medicine_name, ', ')
+                    FROM prescription_medicines m WHERE m.prescription_id = p.id) AS medicines
+            FROM prescriptions p WHERE p.id = ?
+        `).get(id) as { patient_id: number; medicines: string | null } | undefined;
+
         // ON DELETE CASCADE will remove prescription_medicines automatically
         const stmt = db.prepare(`DELETE FROM prescriptions WHERE id = ?`);
         const result = stmt.run(id);
+
+        recordAudit('prescription.delete', {
+            entityType: 'patient',
+            entityId: doomed?.patient_id ?? null,
+            summary: doomed?.medicines ?? `#${id}`,
+            details: { prescriptionId: id },
+        });
         return { status: "success", data: result };
     } catch (error) {
         return { status: "fail", message: (error as Error).message };

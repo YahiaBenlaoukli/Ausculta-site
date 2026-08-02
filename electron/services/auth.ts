@@ -8,6 +8,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import { clearCurrentUser, setCurrentUser } from "./session";
+import { recordAudit } from "./audit";
 
 // Load .env — the code runs from the bundled dist-electron/main.js, so
 // "../.env" points at the repo root; the actual file lives in electron/.env.
@@ -83,11 +85,15 @@ export async function login(fullName: string, password: string, stayLogged: bool
         `);
         const result = stmt.get(fullName) as Record<string, unknown> | undefined;
         if (!result) {
+            // actorName names the ATTEMPTED account: nobody is signed in, so
+            // there is no authenticated identity to attribute this to.
+            recordAudit('auth.login_failed', { summary: fullName, actorName: fullName });
             return { status: "fail", message: "Nom d'utilisateur ou mot de passe incorrect" };
         }
         const hashedPassword = result.password as string;
         const isValid = await bcrypt.compare(password, hashedPassword);
         if (!isValid) {
+            recordAudit('auth.login_failed', { summary: fullName, actorName: fullName });
             return { status: "fail", message: "Nom d'utilisateur ou mot de passe incorrect" };
         }
 
@@ -107,6 +113,11 @@ export async function login(fullName: string, password: string, stayLogged: bool
             deleteJWT();
             sessionToken = token;
         }
+
+        // The main process now knows who is acting; the audit log reads this
+        // rather than trusting a user id sent up from the renderer.
+        setCurrentUser({ id: result.id as number, fullName: result.full_name as string });
+        recordAudit('auth.login', { summary: result.full_name as string });
 
         return { status: "success", token, user: payload };
     } catch (error) {
@@ -138,22 +149,31 @@ export function checkAuth() {
         if (!user) {
             deleteJWT();
             sessionToken = null;
+            clearCurrentUser();
             return { status: "fail", message: "User no longer exists" };
         }
+
+        // Restores the main-process identity after a restart, where the token
+        // was loaded from disk and login() never ran.
+        setCurrentUser({ id: decoded.id, fullName: decoded.fullName });
 
         return { status: "success", token, user: decoded };
     } catch (error) {
         // Token expired or invalid — clean up
         deleteJWT();
         sessionToken = null;
+        clearCurrentUser();
         return { status: "fail", message: (error as Error).message };
     }
 }
 
 export function logout() {
     try {
+        // Recorded before the identity is cleared, or the entry has no actor.
+        recordAudit('auth.logout');
         deleteJWT();
         sessionToken = null;
+        clearCurrentUser();
         return { status: "success" };
     } catch (error) {
         return { status: "fail", message: (error as Error).message };
