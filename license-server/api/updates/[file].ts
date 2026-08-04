@@ -39,7 +39,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const url = await signDownloadUrl(file);
+    // Sign for the method the client will actually replay against R2 --
+    // a GET-signed URL 403s when followed with HEAD.
+    const url = await signDownloadUrl(file, req.method === "HEAD" ? "HEAD" : "GET");
 
     // 302 rather than proxying the bytes: a 100 MB installer streamed through
     // a serverless function would be slow, expensive, and would hit execution

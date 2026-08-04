@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
@@ -50,14 +50,27 @@ export function r2Configured(): boolean {
   );
 }
 
-/** Mints a temporary download URL for one object. */
-export async function signDownloadUrl(key: string): Promise<string> {
+/**
+ * Mints a temporary download URL for one object.
+ *
+ * The signature covers the HTTP method, so a URL signed for GET is rejected
+ * with 403 when used with HEAD. Callers must pass the method the client will
+ * actually use, or size probes fail while downloads succeed -- a confusing
+ * split that is easy to miss because the common path still works.
+ */
+export async function signDownloadUrl(
+  key: string,
+  method: "GET" | "HEAD" = "GET",
+): Promise<string> {
   const bucket = updatesBucket();
   if (!bucket) throw new Error("R2_BUCKET is not set.");
 
-  return getSignedUrl(client(), new GetObjectCommand({ Bucket: bucket, Key: key }), {
-    expiresIn: SIGNED_URL_TTL_SECONDS,
-  });
+  const command =
+    method === "HEAD"
+      ? new HeadObjectCommand({ Bucket: bucket, Key: key })
+      : new GetObjectCommand({ Bucket: bucket, Key: key });
+
+  return getSignedUrl(client(), command, { expiresIn: SIGNED_URL_TTL_SECONDS });
 }
 
 /**
