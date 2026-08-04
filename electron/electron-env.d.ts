@@ -30,6 +30,7 @@ type Prescription = import('../types/doctor').Prescription
 type DoctorProfile = import('../types/doctor').DoctorProfile
 type PatientDocument = import('../types/documents').PatientDocument
 type TrialStatus = import('../types/trial').TrialStatus
+type ActivationResult = import('../types/trial').ActivationResult
 type Consultation = import('../types/consultation').Consultation
 type ConsultationDraft = import('../types/consultation').ConsultationDraft
 type ConsultationListItem = import('../types/consultation').ConsultationListItem
@@ -210,7 +211,7 @@ interface AuscultaIpc {
 
   // gestion de la licence / période d'essai
   getTrialStatus(): Promise<TrialStatus>
-  activateLicense(key: string): Promise<{ status: 'success' | 'fail'; message?: string }>
+  activateLicense(key: string): Promise<ActivationResult>
 }
 
 // Used in Renderer process, expose in `preload.ts`

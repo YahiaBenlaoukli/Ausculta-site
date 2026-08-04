@@ -5,6 +5,7 @@ import type { TrialStatus } from "../../../types/trial";
 import type { DoctorProfile, PrescriptionLanguage } from "../../../types/doctor";
 import type { Patient } from "../../../types/patient";
 import AuditLog from "../../components/Audit/AuditLog";
+import { licenseErrorKey } from "../../services/licenseErrors";
 
 export default function Parameters() {
   const { t } = useTranslation();
@@ -108,11 +109,11 @@ export default function Parameters() {
         window.dispatchEvent(new Event("license-activated"));
         triggerToast("success", t("trial.success"));
       } else {
-        triggerToast("error", result?.message || t("trial.error_invalid"));
+        triggerToast("error", t(licenseErrorKey(result?.code)));
       }
     } catch (err) {
       console.error(err);
-      triggerToast("error", t("trial.error_connection"));
+      triggerToast("error", t("trial.error.server_error"));
     } finally {
       setActivatingLicense(false);
     }
@@ -754,6 +755,9 @@ export default function Parameters() {
                         required
                         className="w-full max-w-xl px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all font-mono"
                       />
+                      <p className="mt-2 text-xs text-navy/40 max-w-xl">
+                        {t("trial.internet_note")}
+                      </p>
                     </div>
 
                     <button

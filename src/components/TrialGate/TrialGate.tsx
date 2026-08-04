@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TrialStatus } from '../../../types/trial';
+import { licenseErrorKey } from '../../services/licenseErrors';
 
 /**
  * Gates the whole app behind the trial check.
@@ -53,10 +54,10 @@ export default function TrialGate({ children }: { children: React.ReactNode }) {
                 // Small pause so the user sees the confirmation before the app appears
                 setTimeout(() => refresh(), 900);
             } else {
-                setError(result?.message || t('trial.error_invalid'));
+                setError(t(licenseErrorKey(result?.code)));
             }
         } catch {
-            setError(t('trial.error_connection'));
+            setError(t('trial.error.server_error'));
         } finally {
             setIsActivating(false);
         }
@@ -98,7 +99,14 @@ export default function TrialGate({ children }: { children: React.ReactNode }) {
                             {t('trial.expired_title')}
                         </h1>
                         <p className="text-navy/40 text-sm text-center mb-6">
-                            {t('trial.expired_subtitle')}
+                            {/* A stored license that stopped verifying (moved to another PC,
+                                subscription lapsed) deserves a specific explanation rather
+                                than the generic "your trial ended". */}
+                            {trial.code
+                                ? t(licenseErrorKey(trial.code))
+                                : trial.tampered
+                                    ? t('trial.tampered')
+                                    : t('trial.expired_subtitle')}
                         </p>
 
                         {error && (
@@ -161,6 +169,9 @@ export default function TrialGate({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <p className="text-center text-navy/25 text-xs mt-5">
+                        {t('trial.internet_note')}
+                    </p>
+                    <p className="text-center text-navy/25 text-xs mt-2">
                         {t('trial.contact')}
                     </p>
                 </div>
