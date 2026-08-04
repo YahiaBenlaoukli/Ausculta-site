@@ -18,10 +18,22 @@ export function secretKey(): string | undefined {
   return process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
 
+/**
+ * The Supabase dashboard displays the REST endpoint
+ * (`https://xxx.supabase.co/rest/v1/`), but the client wants the bare project
+ * URL and silently builds broken paths otherwise. Trim it back so either form
+ * pasted into the environment works.
+ */
+export function projectUrl(): string | undefined {
+  const raw = process.env.SUPABASE_URL?.trim();
+  if (!raw) return undefined;
+  return raw.replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
+}
+
 export function db(): SupabaseClient {
   if (cached) return cached;
 
-  const url = process.env.SUPABASE_URL;
+  const url = projectUrl();
   const key = secretKey();
   if (!url || !key) {
     throw new Error("SUPABASE_URL / SUPABASE_SECRET_KEY are not set.");

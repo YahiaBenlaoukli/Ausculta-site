@@ -98,6 +98,26 @@ alter table licenses            enable row level security;
 alter table activations         enable row level security;
 alter table activation_attempts enable row level security;
 
+-- ─── Grants ──────────────────────────────────────────────────────────────
+-- RLS decides which ROWS a role may touch; grants decide whether it may touch
+-- the table at all. They are separate gates, and a table created here is owned
+-- by `postgres`, so the API roles start with no privileges — without this
+-- block every request fails with "permission denied for table licenses"
+-- (SQLSTATE 42501) no matter how the keys are configured.
+--
+-- Only `service_role` (which the secret key maps to, and which carries
+-- BYPASSRLS) is granted anything. `anon` and `authenticated` are deliberately
+-- left with nothing: no browser-side key can read a licence, ever.
+
+grant usage on schema public to service_role;
+
+grant select, insert, update, delete
+  on licenses, activations, activation_attempts
+  to service_role;
+
+-- activation_attempts.id is a bigserial, so its sequence needs granting too.
+grant usage, select on sequence activation_attempts_id_seq to service_role;
+
 -- ─── Support view ────────────────────────────────────────────────────────
 -- What you actually want to look at in the dashboard: who owns each key and
 -- how many device slots they have left.
@@ -119,3 +139,5 @@ from licenses l
 left join activations a on a.license_id = l.id
 group by l.id
 order by l.created_at desc;
+
+grant select on license_overview to service_role;
