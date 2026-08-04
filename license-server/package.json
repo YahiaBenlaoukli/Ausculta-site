@@ -1,0 +1,23 @@
+{
+  "name": "ausculta-license-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Activation server for Ausculta license keys (Vercel functions + Supabase Postgres).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@vercel/node": "^3.2.0",
+    "typescript": "^5.5.0"
+  },
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
