@@ -19,7 +19,10 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['better-sqlite3', 'bcrypt'],
+              // Native modules, plus electron-updater which must stay a real
+              // node_modules dependency at runtime (it resolves its own files
+              // and ships CommonJS).
+              external: ['better-sqlite3', 'bcrypt', 'electron-updater'],
             },
           },
         },

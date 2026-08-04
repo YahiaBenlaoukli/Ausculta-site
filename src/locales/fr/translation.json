@@ -765,6 +765,27 @@
       "subtitle": "Choisissez la langue du modèle à ouvrir."
     }
   },
+  "update": {
+    "available_title": "Mise à jour disponible",
+    "available_body": "Ausculta {{version}} est prête à être téléchargée.",
+    "download": "Télécharger",
+    "later": "Plus tard",
+    "downloading_body": "Téléchargement en arrière-plan. Vous pouvez continuer à travailler.",
+    "progress": "{{percent}} % téléchargés",
+    "ready_title": "Mise à jour prête",
+    "ready_body": "Redémarrez Ausculta pour terminer l'installation, sinon elle s'installera à la prochaine fermeture.",
+    "restart_now": "Redémarrer maintenant",
+    "on_quit": "À la fermeture",
+    "dismiss": "Fermer",
+    "settings_title": "Mises à jour",
+    "settings_subtitle": "Ausculta vérifie les mises à jour en arrière-plan et n'en installe jamais sans votre accord.",
+    "current_version": "Version actuelle",
+    "check_now": "Rechercher les mises à jour",
+    "checking": "Vérification...",
+    "up_to_date": "Ausculta est à jour.",
+    "check_failed": "Impossible de vérifier les mises à jour. Vérifiez votre connexion Internet.",
+    "dev_mode": "Les mises à jour sont désactivées en mode développement."
+  },
   "trial": {
     "days_remaining": "Essai : {{days}} jours restants",
     "expired_title": "Période d'essai terminée",

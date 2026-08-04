@@ -785,6 +785,27 @@
       "subtitle": "اختر لغة النموذج المراد فتحه."
     }
   },
+  "update": {
+    "available_title": "تحديث متوفر",
+    "available_body": "الإصدار {{version}} من Ausculta جاهز للتنزيل.",
+    "download": "تنزيل",
+    "later": "لاحقًا",
+    "downloading_body": "جارٍ التنزيل في الخلفية. يمكنك متابعة عملك.",
+    "progress": "تم تنزيل {{percent}}٪",
+    "ready_title": "التحديث جاهز",
+    "ready_body": "أعد تشغيل Ausculta لإتمام التثبيت، وإلا فسيُثبَّت عند إغلاقه في المرة القادمة.",
+    "restart_now": "إعادة التشغيل الآن",
+    "on_quit": "عند الإغلاق",
+    "dismiss": "إغلاق",
+    "settings_title": "التحديثات",
+    "settings_subtitle": "يبحث Ausculta عن التحديثات في الخلفية ولا يثبّت أي تحديث دون إذنك.",
+    "current_version": "الإصدار الحالي",
+    "check_now": "البحث عن تحديثات",
+    "checking": "جارٍ التحقق...",
+    "up_to_date": "Ausculta محدَّث.",
+    "check_failed": "تعذّر التحقق من التحديثات. تحقّق من اتصالك بالإنترنت.",
+    "dev_mode": "التحديثات معطّلة أثناء وضع التطوير."
+  },
   "trial": {
     "days_remaining": "الفترة التجريبية: {{days}} يومًا متبقيًا",
     "expired_title": "انتهت الفترة التجريبية",

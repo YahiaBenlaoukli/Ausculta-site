@@ -128,4 +128,10 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   //gestion de la licence / période d'essai
   getTrialStatus: () => ipcRenderer.invoke('get-trial-status'),
   activateLicense: (key: string) => ipcRenderer.invoke('activate-license', key),
+
+  //gestion des mises à jour
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
 })

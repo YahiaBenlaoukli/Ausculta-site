@@ -14,6 +14,7 @@ import Documents from './pages/Documents/Documents'
 import Statistics from './pages/Statistics/Statistics'
 import Parameters from './pages/Parameters/Parameters'
 import TrialGate from './components/TrialGate/TrialGate'
+import UpdateNotice from './components/UpdateNotice/UpdateNotice'
 import './services/i18n';
 import './index.css'
 
@@ -37,6 +38,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/settings" element={<Layout><Parameters /></Layout>} />
         </Routes>
       </HashRouter>
+      {/* App-wide, but inside TrialGate so it never covers the activation
+          screen — an expired licence is the more urgent thing to deal with. */}
+      <UpdateNotice />
     </TrialGate>
   </React.StrictMode>,
 )

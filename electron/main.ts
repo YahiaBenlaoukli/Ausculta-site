@@ -11,6 +11,7 @@ import { bookAppointment, cancelAppointment, deleteAppointment, updateAppointmen
 import { getFinancialStatistics, getAppointmentStatistics, getConsultationStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
 import { startConsultation, getConsultationById, getActiveConsultation, updateConsultation, completeConsultation, deleteConsultation, getConsultationArtifacts, getConsultationsByPatientId, getConsultationsByDay, getConsultationsByDateRange } from './services/consultations'
 import { getTrialStatus, activateLicense } from './services/trial'
+import { initializeUpdater, getUpdateStatus, checkForUpdates, downloadUpdate, quitAndInstall } from './services/updater'
 import { globalSearch } from './services/search'
 import { suggestMedicines, getPrescriptionTemplates, savePrescriptionTemplate, deletePrescriptionTemplate } from './services/prescriptionLibrary'
 import { createCertificate, getCertificatesByPatientId, getCertificatesByConsultationId, reprintCertificate, deleteCertificate, getCertificateStatistics } from './services/certificates'
@@ -191,5 +192,14 @@ app.whenReady().then(() => {
   ipcMain.handle('get-trial-status', async () => getTrialStatus());
   ipcMain.handle('activate-license', async (_event, key) => activateLicense(key));
 
+  //gestion des mises à jour
+  ipcMain.handle('get-update-status', async () => getUpdateStatus());
+  ipcMain.handle('check-for-updates', async () => checkForUpdates());
+  ipcMain.handle('download-update', async () => downloadUpdate());
+  ipcMain.handle('quit-and-install', async () => quitAndInstall());
+
   createWindow();
+
+  // Needs the window: update progress is pushed to the renderer over IPC.
+  if (win) initializeUpdater(win);
 })

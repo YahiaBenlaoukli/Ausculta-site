@@ -7,6 +7,17 @@
   "directories": {
     "output": "release/${version}"
   },
+  // Declaring a provider is what makes electron-builder emit latest.yml next
+  // to the installer — without it there is nothing for electron-updater to
+  // read. Uploading is done by scripts/publish-release.mjs, not by
+  // electron-builder, so a build never carries storage credentials.
+  "publish": [
+    {
+      "provider": "generic",
+      "url": "https://api.ausculta.site/api/updates",
+      "channel": "latest"
+    }
+  ],
   "files": [
     "dist",
     "dist-electron",

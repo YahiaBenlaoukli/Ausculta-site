@@ -148,6 +148,70 @@ This matters because **it cannot be retrofitted**. A copy of the app already on
 a doctor's PC only understands the protocol it shipped with. If v1 had no notion
 of expiry, every license sold now would be permanently un-expirable.
 
+## App updates
+
+The same deployment serves auto-updates. Installers live in a **private** R2
+bucket; `/api/updates/<file>` mints a 1-hour signed URL and 302-redirects to it,
+so nothing in the bucket is publicly readable and no storage credentials ever
+reach the desktop app.
+
+```
+Ausculta          api.ausculta.site            Cloudflare R2
+   |                     |                          |
+   |-- GET latest.yml -->|-- sign (1h) ------------>|
+   |<-- 302 signed URL --|                          |
+   |------------------ download ------------------->|
+   |
+ verifies SHA-512 from latest.yml, then installs on quit
+```
+
+Integrity does not rest on the signed URL: electron-updater checks the SHA-512
+recorded in `latest.yml` after downloading, so a substituted installer is
+rejected regardless of how it arrived.
+
+### One-time setup
+
+1. Create a **private** R2 bucket (`ausculta-updates`).
+2. R2 → Manage API tokens → token with **Object Read & Write** on it.
+3. Add `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
+   to Vercel **and** to `license-server/.env.local` (the publish script reads
+   the same file).
+
+`GET /api/health` reports `"updates": true` once all four are set. The licence
+server runs fine without them; only the update endpoint is affected.
+
+### Shipping a version
+
+```bash
+# 1. bump "version" in package.json  (e.g. 1.0.1)
+# 2. build and upload
+npm run release
+```
+
+`publish-release.mjs` uploads the installer and `.blockmap` **first** and
+`latest.yml` **last** — that order matters, because `latest.yml` is what
+announces the release to every running copy. Publishing it before the installer
+it names would send clinics chasing a file that is not there yet.
+
+Verify, then check from inside the app via Settings → Updates:
+
+```bash
+curl -I https://api.ausculta.site/api/updates/latest.yml   # expect 302
+```
+
+### Things to know
+
+- **Auto-update starts from the version *after* the one a user installed.** A
+  clinic must install 1.0.0 by hand once; from then on 1.0.1+ arrives on its
+  own. Nothing can retro-fit updating into a copy that shipped without it.
+- **Never reuse a version number.** Clients cache by version, and a changed
+  installer under an old number fails the SHA-512 check.
+- **Downloads need the doctor's consent** (`autoDownload = false`) and install
+  on quit, never mid-consultation.
+- **macOS auto-update needs signing + notarisation.** Unsigned mac builds
+  cannot self-update; Windows and Linux can. Windows is unsigned today, so the
+  first install shows a SmartScreen warning — updates themselves are unaffected.
+
 ## Local development
 
 ```bash

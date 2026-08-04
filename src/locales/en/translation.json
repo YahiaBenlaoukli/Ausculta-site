@@ -765,6 +765,27 @@
       "subtitle": "Choose the language of the template to open."
     }
   },
+  "update": {
+    "available_title": "Update available",
+    "available_body": "Ausculta {{version}} is ready to download.",
+    "download": "Download",
+    "later": "Later",
+    "downloading_body": "Downloading in the background. You can keep working.",
+    "progress": "{{percent}}% downloaded",
+    "ready_title": "Update ready",
+    "ready_body": "Restart Ausculta to finish installing, or it will install next time you close it.",
+    "restart_now": "Restart now",
+    "on_quit": "On quit",
+    "dismiss": "Dismiss",
+    "settings_title": "Updates",
+    "settings_subtitle": "Ausculta checks for updates in the background and never installs one without asking.",
+    "current_version": "Current version",
+    "check_now": "Check for updates",
+    "checking": "Checking...",
+    "up_to_date": "Ausculta is up to date.",
+    "check_failed": "Could not check for updates. Check your internet connection.",
+    "dev_mode": "Updates are disabled while running in development."
+  },
   "trial": {
     "days_remaining": "Trial: {{days}} days left",
     "expired_title": "Trial period expired",
