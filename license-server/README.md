@@ -66,9 +66,20 @@ environment variables (Settings → Environment Variables):
 | Name | Where it comes from |
 |---|---|
 | `SUPABASE_URL` | Supabase → Project Settings → Data API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API Keys → `service_role` (secret) |
+| `SUPABASE_SECRET_KEY` | Supabase → API Keys → Secret keys → `sb_secret_…` |
 | `LICENSE_PRIVATE_KEY` | `scripts/keys/license_private.pem`, whole PEM |
 | `ADMIN_TOKEN` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+
+> **On Supabase API keys.** The old `service_role` JWT still works, and
+> `SUPABASE_SERVICE_ROLE_KEY` is read as a fallback, but Supabase deprecates
+> legacy keys at the **end of 2026** — use the new `sb_secret_…` key. One real
+> difference: secret keys are not JWTs and are **rejected on the
+> `Authorization: Bearer` header**; they must go on `apikey`. `supabase-js`
+> handles this itself, and `scripts/issue-license.mjs` sends `apikey` only, so
+> both key generations work here.
+>
+> `GET /api/health` reports `keyType: "secret" | "legacy_service_role"` so you
+> can see which one a deployment is on.
 
 ### 4. Domain
 

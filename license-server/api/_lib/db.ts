@@ -1,25 +1,33 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Supabase access, service-role only.
+ * Supabase access with the secret (RLS-bypassing) key.
  *
  * Every table has RLS on with no policies, so this key is the only thing that
  * can read or write licenses. It must never appear in the desktop app, in the
  * repo, or in any response body.
+ *
+ * Supabase is replacing the legacy JWT `service_role` key with `sb_secret_…`
+ * keys; the legacy ones stop working at the end of 2026. supabase-js accepts
+ * either as a drop-in, so we read both names and prefer the new one.
  */
 
 let cached: SupabaseClient | null = null;
+
+export function secretKey(): string | undefined {
+  return process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
 
 export function db(): SupabaseClient {
   if (cached) return cached;
 
   const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set.");
+  const key = secretKey();
+  if (!url || !key) {
+    throw new Error("SUPABASE_URL / SUPABASE_SECRET_KEY are not set.");
   }
 
-  cached = createClient(url, serviceRoleKey, {
+  cached = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return cached;
