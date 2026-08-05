@@ -19,7 +19,8 @@ import {
     drawSignatureBlock,
     unsupportedCharacters,
 } from "./pdfLetterhead";
-import type { DoctorProfile, PrescriptionLanguage } from "../../types/doctor";
+import type { PrescriptionLanguage } from "../../types/doctor";
+import { mapRowToDoctorProfile } from "./doctorProfile";
 import type {
     ConsultationBalance,
     PatientBalance,
@@ -378,16 +379,7 @@ export async function generateReceiptPdf(paymentId: number, language: Prescripti
             .get(visit.user_id) as Record<string, unknown> | undefined;
         if (!doctorRow) return { status: "not_found", message: "doctor_not_found" };
 
-        const doctor: DoctorProfile = {
-            id: doctorRow.id as number,
-            userId: doctorRow.user_id as number,
-            fullName: doctorRow.full_name as string,
-            email: (doctorRow.email as string) ?? '',
-            phoneNumber: (doctorRow.phone_number as string) ?? '',
-            address: (doctorRow.address as string) ?? '',
-            speciality: (doctorRow.speciality as string) ?? '',
-            hasCompletedProfile: Boolean(doctorRow.has_completed_profile),
-        };
+        const doctor = mapRowToDoctorProfile(doctorRow);
 
         const labels = RECEIPT_LABELS[language];
         const fmtDate = (iso: string) => {

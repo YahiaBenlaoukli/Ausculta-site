@@ -28,6 +28,7 @@ declare namespace NodeJS {
 type Patient = import('../types/patient').Patient
 type Prescription = import('../types/doctor').Prescription
 type DoctorProfile = import('../types/doctor').DoctorProfile
+type DoctorProfileInput = import('../types/doctor').DoctorProfileInput
 type PatientDocument = import('../types/documents').PatientDocument
 type TrialStatus = import('../types/trial').TrialStatus
 type ActivationResult = import('../types/trial').ActivationResult
@@ -135,7 +136,7 @@ interface AuscultaIpc {
   // gestion profil médecin
   createDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string): Promise<IpcResult<DoctorProfile>>
   getDoctorProfile(userId: number): Promise<IpcResult<DoctorProfile>>
-  updateDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string): Promise<IpcResult<DoctorProfile>>
+  updateDoctorProfile(userId: number, input: DoctorProfileInput): Promise<IpcResult<DoctorProfile>>
   setPrescriptionPdf(doctorId: number): Promise<IpcResult<{ doctor: DoctorProfile; pdfPath: string; pdfPathEn: string }>>
 
   // gestion des prescriptions

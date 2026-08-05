@@ -3,10 +3,13 @@ import { app } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import type { DoctorProfile, Prescription, PrescriptionLanguage } from "../../types/doctor";
+import type { DoctorProfile, DoctorProfileInput, Prescription, PrescriptionLanguage } from "../../types/doctor";
 
 import { uploadDocument, getDocumentsByPatientId } from "./documents";
 import { recordAudit } from "./audit";
+import { renderHtmlToPdf } from "./htmlPdf";
+import { buildColorfulPrescriptionHtml } from "./prescriptionColorful";
+import { mapRowToDoctorProfile, normalizeStyle } from "./doctorProfile";
 
 
 import type { Patient } from "../../types/patient";
@@ -46,21 +49,6 @@ function templateFileForLanguage(language: PrescriptionLanguage): string {
     return language === "en" ? "templateEn.pdf" : "templateFr.pdf";
 }
 
-function mapRowToDoctorProfile(row: Record<string, unknown>): DoctorProfile {
-    return {
-        id: row.id as number,
-        userId: row.user_id as number,
-        fullName: row.full_name as string,
-        email: row.email as string,
-        phoneNumber: row.phone_number as string,
-        address: row.address as string,
-        speciality: row.speciality as string,
-        hasCompletedProfile: Boolean(row.has_completed_profile),
-        pdfPath: row.pdf_path as string | undefined,
-        pdfPathEn: row.pdf_path_en as string | undefined,
-    };
-}
-
 export async function createDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) {
     try {
         console.log("creating doctor profile in db");
@@ -80,6 +68,10 @@ export async function createDoctorProfile(userId: number, fullName: string, spec
             address,
             speciality,
             hasCompletedProfile: true,
+            // A new profile starts on the classic form; the colorful letterhead
+            // needs Arabic and clinic fields this function does not collect, so
+            // switching to it is a deliberate choice made in Settings.
+            prescriptionStyle: "classic",
         };
 
         return { status: "success", data: doctor };
@@ -129,10 +121,16 @@ export async function getDoctorProfileByUserId(userId: number) {
     }
 }
 
-export async function updateDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) {
+/**
+ * Takes a single payload rather than positional arguments: the bilingual
+ * letterhead added nine more fields, and a fifteen-argument IPC call is one
+ * transposed pair away from writing a phone number into the address column.
+ */
+export async function updateDoctorProfile(userId: number, input: DoctorProfileInput) {
     try {
         console.log("updating doctor profile in db for user", userId);
         const db = getDatabase();
+        const { fullName, speciality, phoneNumber, address, email } = input;
         const checkStmt = db.prepare(`SELECT id FROM doctor_profile WHERE user_id = ?`);
         let profile = checkStmt.get(userId) as { id: number } | undefined;
 
@@ -143,14 +141,32 @@ export async function updateDoctorProfile(userId: number, fullName: string, spec
                 throw new Error(createResult.message || "Failed to create doctor profile");
             }
             profile = { id: createResult.data.id };
-        } else {
-            const stmt = db.prepare(`
-                UPDATE doctor_profile 
-                SET full_name = ?, speciality = ?, phone_number = ?, address = ?, email = ?
-                WHERE user_id = ?
-            `);
-            stmt.run(fullName, speciality, phoneNumber, address, email, userId);
         }
+
+        // Runs for a freshly created profile too: createDoctorProfile only knows
+        // the five core fields, so the letterhead columns would otherwise stay
+        // null on a first save.
+        const stmt = db.prepare(`
+            UPDATE doctor_profile
+            SET full_name = ?, speciality = ?, phone_number = ?, address = ?, email = ?,
+                full_name_ar = ?, speciality_ar = ?, diploma = ?, diploma_ar = ?,
+                clinic_name = ?, clinic_name_ar = ?, order_number = ?, city = ?,
+                prescription_style = ?
+            WHERE user_id = ?
+        `);
+        stmt.run(
+            fullName, speciality, phoneNumber, address, email,
+            input.fullNameAr ?? null,
+            input.specialityAr ?? null,
+            input.diploma ?? null,
+            input.diplomaAr ?? null,
+            input.clinicName ?? null,
+            input.clinicNameAr ?? null,
+            input.orderNumber ?? null,
+            input.city ?? null,
+            normalizeStyle(input.prescriptionStyle),
+            userId
+        );
 
         // Regenerate template PDF with the new details
         await setPrescriptionPdf(profile.id);
@@ -179,13 +195,15 @@ export async function setPrescriptionPdf(doctorId: number) {
         }
         const doctor = mapRowToDoctorProfile(row);
 
-        // 2. Fill both language templates with the doctor's header info so each
-        //    can be previewed (Settings / Prescriptions page).
-        const frResult = await fillTemplate(doctor, "fr");
+        // 2. Build both language previews so each can be shown in Settings.
+        //    Routed through the same renderer the real prescription uses, so the
+        //    preview cannot show classic artwork while the doctor's documents
+        //    come out colorful.
+        const frResult = await renderHeaderPreview(doctor, "fr");
         if (frResult.status === "fail") {
             return frResult;
         }
-        const enResult = await fillTemplate(doctor, "en");
+        const enResult = await renderHeaderPreview(doctor, "en");
         if (enResult.status === "fail") {
             return enResult;
         }
@@ -342,10 +360,50 @@ function drawDoctorHeader(
     });
 }
 
+type PdfPathResult =
+    | { status: "success"; pdfPath: string }
+    | { status: "fail"; message: string };
+
+/** Writes PDF bytes into the previews directory under a unique name. */
+async function writePreviewPdf(bytes: Uint8Array, doctorId: number): Promise<string> {
+    await fs.mkdir(PDF_OUTPUT_DIR, { recursive: true });
+    const outputPath = path.join(PDF_OUTPUT_DIR, `prescription_dr_${doctorId}_${Date.now()}.pdf`);
+    await fs.writeFile(outputPath, bytes);
+    return outputPath;
+}
+
+/**
+ * The empty-form preview shown in Settings, in whichever style the doctor has
+ * selected. Dispatches to the same two renderers as a real prescription.
+ */
+async function renderHeaderPreview(
+    doctor: DoctorProfile,
+    language: PrescriptionLanguage
+): Promise<PdfPathResult> {
+    if (doctor.prescriptionStyle !== "colorful") {
+        return fillTemplate(doctor, language);
+    }
+    try {
+        // patient: null renders the letterhead over a blank form — see
+        // ColorfulPrescriptionInput.
+        const html = await buildColorfulPrescriptionHtml({
+            patient: null,
+            prescriptions: [],
+            doctor,
+            language,
+        });
+        const bytes = await renderHtmlToPdf(html);
+        return { status: "success", pdfPath: await writePreviewPdf(bytes, doctor.id) };
+    } catch (error) {
+        console.error("renderHeaderPreview error:", error);
+        return { status: "fail", message: (error as Error).message };
+    }
+}
+
 async function fillTemplate(
     doctor: DoctorProfile,
     language: PrescriptionLanguage = "fr"
-): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
+): Promise<PdfPathResult> {
     try {
         const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", templateFileForLanguage(language));
         const existingPdfBytes = await fs.readFile(templatePath);
@@ -360,14 +418,7 @@ async function fillTemplate(
         drawDoctorHeader(firstPage, doctor, helveticaFont, helveticaFontBold, width, height, language);
 
         const modifiedPdfBytes = await pdfDoc.save();
-
-        // Save the filled PDF to disk
-        await fs.mkdir(PDF_OUTPUT_DIR, { recursive: true });
-        const outputFileName = `prescription_dr_${doctor.id}_${Date.now()}.pdf`;
-        const outputPath = path.join(PDF_OUTPUT_DIR, outputFileName);
-        await fs.writeFile(outputPath, modifiedPdfBytes);
-
-        return { status: "success", pdfPath: outputPath };
+        return { status: "success", pdfPath: await writePreviewPdf(modifiedPdfBytes, doctor.id) };
     } catch (error) {
         return { status: "fail", message: (error as Error).message };
     }
@@ -571,13 +622,22 @@ export async function generatePatientPrescriptionPDF(patientId: number, prescrip
             return { status: "fail", message: "Patient not found" };
         }
         const patient = mapRowToPatient(patientResult);
+
+        // The renderer hands us the profile it last loaded, which predates the
+        // letterhead fields and the style switch if Settings was saved in another
+        // window. The database is the authority on both, so re-read and fall
+        // back to the passed object only if the row has vanished.
+        const freshRow = db.prepare(`SELECT * FROM doctor_profile WHERE id = ?`)
+            .get(doctor.id) as Record<string, unknown> | undefined;
+        const effectiveDoctor = freshRow ? mapRowToDoctorProfile(freshRow) : doctor;
+
         // Use the first prescription's ID to link the document
         const prescriptionId = prescriptions.length > 0 ? prescriptions[0].id : undefined;
         // Fall back to the prescription's own consultation when the caller did
         // not pass one, so a PDF regenerated later from the Prescriptions page
         // still lands in the right visit.
         const visitId = consultationId ?? (prescriptions.length > 0 ? prescriptions[0].consultationId ?? undefined : undefined);
-        const pdfResult = await fillPatientPrescriptionTemplate(patient, prescriptions, doctor, normalizeLanguage(language), weight, prescriptionId, visitId);
+        const pdfResult = await fillPatientPrescriptionTemplate(patient, prescriptions, effectiveDoctor, normalizeLanguage(language), weight, prescriptionId, visitId);
         if (pdfResult.status === "fail") {
             return pdfResult;
         }
@@ -589,6 +649,16 @@ export async function generatePatientPrescriptionPDF(patientId: number, prescrip
     }
 }
 
+/**
+ * Renders a prescription in whichever style the doctor uses, then files the
+ * result as a patient document.
+ *
+ * The two renderers share nothing but this function: "classic" stamps text onto
+ * the pre-drawn PDF form with pdf-lib, "colorful" prints HTML through Chromium.
+ * Persisting in one place is what keeps them interchangeable — whichever ran,
+ * the PDF lands in the same directory and gets the same document row, so the
+ * Documents tab and the consultation timeline cannot tell them apart.
+ */
 async function fillPatientPrescriptionTemplate(
     patient: Patient,
     prescriptions: Prescription[],
@@ -597,30 +667,18 @@ async function fillPatientPrescriptionTemplate(
     weight?: string,
     prescriptionId?: number,
     consultationId?: number
-): Promise<{ status: "success"; pdfPath: string } | { status: "fail"; message: string }> {
+): Promise<PdfPathResult> {
     try {
-        // Draw the doctor header fresh onto the chosen-language template rather
-        // than reusing the pre-baked doctor.pdfPath (which is always French), so
-        // the whole prescription — header labels included — matches the language.
-        const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", templateFileForLanguage(language));
-        const existingPdfBytes = await fs.readFile(templatePath);
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
-        const pages = pdfDoc.getPages();
-        const firstPage = pages[0];
-        const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const helveticaFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        const { width, height } = firstPage.getSize();
-
-        drawDoctorHeader(firstPage, doctor, helveticaFont, helveticaFontBold, width, height, language);
-        drawPatientInformation(firstPage, patient, helveticaFontBold, helveticaFont, width, height, language, weight);
-        drawPrescriptions(firstPage, prescriptions, helveticaFontBold, helveticaFont, width, height, language);
-
-        const modifiedPdfBytes = await pdfDoc.save();
+        // Only the classic form has a weight box on it; the colorful letterhead
+        // deliberately does not print one, so it ignores `weight`.
+        const pdfBytes = doctor.prescriptionStyle === "colorful"
+            ? await renderColorfulPrescription(patient, prescriptions, doctor, language)
+            : await renderClassicPrescription(patient, prescriptions, doctor, language, weight);
 
         await fs.mkdir(PATIENTS_PDF_DIR, { recursive: true });
         const outputFileName = `prescription_patient_${patient.id}_${Date.now()}.pdf`;
         const outputPath = path.join(PATIENTS_PDF_DIR, outputFileName);
-        await fs.writeFile(outputPath, modifiedPdfBytes);
+        await fs.writeFile(outputPath, pdfBytes);
 
         await uploadDocument({
             patientId: patient.id,
@@ -633,8 +691,51 @@ async function fillPatientPrescriptionTemplate(
 
         return { status: "success", pdfPath: outputPath };
     } catch (error) {
+        console.error("fillPatientPrescriptionTemplate error:", error);
         return { status: "fail", message: (error as Error).message };
     }
+}
+
+/** The bilingual FR/AR letterhead, printed through Chromium. */
+async function renderColorfulPrescription(
+    patient: Patient,
+    prescriptions: Prescription[],
+    doctor: DoctorProfile,
+    language: PrescriptionLanguage
+): Promise<Uint8Array> {
+    const html = await buildColorfulPrescriptionHtml({
+        patient,
+        prescriptions,
+        doctor,
+        language,
+    });
+    return renderHtmlToPdf(html);
+}
+
+/** The original pdf-lib path: text stamped onto template{Fr,En}.pdf. */
+async function renderClassicPrescription(
+    patient: Patient,
+    prescriptions: Prescription[],
+    doctor: DoctorProfile,
+    language: PrescriptionLanguage,
+    weight?: string
+): Promise<Uint8Array> {
+    // Draw the doctor header fresh onto the chosen-language template rather
+    // than reusing the pre-baked doctor.pdfPath (which is always French), so
+    // the whole prescription — header labels included — matches the language.
+    const templatePath = path.join(process.env.VITE_PUBLIC, "ordonnance", templateFileForLanguage(language));
+    const existingPdfBytes = await fs.readFile(templatePath);
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    const firstPage = pdfDoc.getPages()[0];
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const { width, height } = firstPage.getSize();
+
+    drawDoctorHeader(firstPage, doctor, helveticaFont, helveticaFontBold, width, height, language);
+    drawPatientInformation(firstPage, patient, helveticaFontBold, helveticaFont, width, height, language, weight);
+    drawPrescriptions(firstPage, prescriptions, helveticaFontBold, helveticaFont, width, height, language);
+
+    return pdfDoc.save();
 }
 
 function drawPatientInformation(page: PDFPage, patient: Patient, helveticaFontBold: PDFFont, _helveticaFont: PDFFont, _width: number, height: number, language: PrescriptionLanguage, weight?: string) {

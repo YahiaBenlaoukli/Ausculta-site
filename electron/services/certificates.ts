@@ -17,6 +17,7 @@ import {
     unsupportedCharacters,
 } from "./pdfLetterhead";
 import type { DoctorProfile, PrescriptionLanguage } from "../../types/doctor";
+import { mapRowToDoctorProfile } from "./doctorProfile";
 import type { Certificate, CertificateDraft, CertificateType } from "../../types/certificate";
 import type { Patient } from "../../types/patient";
 
@@ -230,16 +231,7 @@ export async function createCertificate(userId: number, draft: CertificateDraft)
         const row = db.prepare(`SELECT * FROM certificates WHERE id = ?`).get(id) as CertificateRow;
         const certificate = mapRow(row);
 
-        const doctor: DoctorProfile = {
-            id: doctorRow.id as number,
-            userId: doctorRow.user_id as number,
-            fullName: doctorRow.full_name as string,
-            email: (doctorRow.email as string) ?? '',
-            phoneNumber: (doctorRow.phone_number as string) ?? '',
-            address: (doctorRow.address as string) ?? '',
-            speciality: (doctorRow.speciality as string) ?? '',
-            hasCompletedProfile: Boolean(doctorRow.has_completed_profile),
-        };
+        const doctor = mapRowToDoctorProfile(doctorRow);
 
         const document = await renderCertificatePdf(certificate, {
             id: patient.id,
@@ -310,16 +302,7 @@ export async function reprintCertificate(id: number) {
             Record<string, unknown> | undefined;
         if (!doctorRow) return { status: "not_found", message: "doctor_not_found" };
 
-        const doctor: DoctorProfile = {
-            id: doctorRow.id as number,
-            userId: doctorRow.user_id as number,
-            fullName: doctorRow.full_name as string,
-            email: (doctorRow.email as string) ?? '',
-            phoneNumber: (doctorRow.phone_number as string) ?? '',
-            address: (doctorRow.address as string) ?? '',
-            speciality: (doctorRow.speciality as string) ?? '',
-            hasCompletedProfile: Boolean(doctorRow.has_completed_profile),
-        };
+        const doctor = mapRowToDoctorProfile(doctorRow);
 
         const document = await renderCertificatePdf(certificate, {
             id: patient.id,

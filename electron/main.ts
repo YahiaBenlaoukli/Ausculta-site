@@ -112,7 +112,7 @@ app.whenReady().then(() => {
   //gestion profil médecin
   ipcMain.handle('create-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address, email) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
   ipcMain.handle('get-doctor-profile', async (_event, userId) => getDoctorProfileByUserId(userId));
-  ipcMain.handle('update-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address, email) => await updateDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
+  ipcMain.handle('update-doctor-profile', async (_event, userId, input) => await updateDoctorProfile(userId, input));
   ipcMain.handle('set-prescription-pdf', async (_event, doctorId) => await setPrescriptionPdf(doctorId));
 
   //gestion des prescriptions 

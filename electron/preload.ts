@@ -1,7 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { Patient } from '../types/patient'
 import type { Prescription } from '../types/doctor'
-import type { DoctorProfile, MedicineLine } from '../types/doctor'
+import type { DoctorProfile, DoctorProfileInput, MedicineLine } from '../types/doctor'
 import { PatientDocument } from '../types/documents'
 import type { ConsultationDraft } from '../types/consultation'
 import type { CertificateDraft } from '../types/certificate'
@@ -50,7 +50,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   //gestion profil médecin
   createDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('create-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
   getDoctorProfile: (userId: number) => ipcRenderer.invoke('get-doctor-profile', userId),
-  updateDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('update-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
+  updateDoctorProfile: (userId: number, input: DoctorProfileInput) => ipcRenderer.invoke('update-doctor-profile', userId, input),
   setPrescriptionPdf: (doctorId: number) => ipcRenderer.invoke('set-prescription-pdf', doctorId),
   //gestion des prescriptions
   addPrescription: (userId: number, patientId: number, medicines: { medicineName: string; dosage: string; frequency: string; quantity: string; duration: string }[], notes?: string, consultationId?: number) => ipcRenderer.invoke('add-prescription', userId, patientId, medicines, notes, consultationId),

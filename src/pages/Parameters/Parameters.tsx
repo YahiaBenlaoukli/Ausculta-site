@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TrialStatus } from "../../../types/trial";
-import type { DoctorProfile, PrescriptionLanguage } from "../../../types/doctor";
+import type { DoctorProfile, PrescriptionLanguage, PrescriptionStyle } from "../../../types/doctor";
 import type { Patient } from "../../../types/patient";
 import AuditLog from "../../components/Audit/AuditLog";
 import { licenseErrorKey } from "../../services/licenseErrors";
@@ -27,6 +27,17 @@ export default function Parameters() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [phoneError, setPhoneError] = useState("");
+
+  // Letterhead fields — only the "colorful" prescription style prints these.
+  const [prescriptionStyle, setPrescriptionStyle] = useState<PrescriptionStyle>("classic");
+  const [fullNameAr, setFullNameAr] = useState("");
+  const [specialityAr, setSpecialityAr] = useState("");
+  const [diploma, setDiploma] = useState("");
+  const [diplomaAr, setDiplomaAr] = useState("");
+  const [clinicName, setClinicName] = useState("");
+  const [clinicNameAr, setClinicNameAr] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [city, setCity] = useState("");
 
   // Consultation Preferences
   const [defaultPrice, setDefaultPrice] = useState("2000");
@@ -72,6 +83,15 @@ export default function Parameters() {
             setPhone(p.phoneNumber || "");
             setEmail(p.email || "");
             setAddress(p.address || "");
+            setPrescriptionStyle(p.prescriptionStyle || "classic");
+            setFullNameAr(p.fullNameAr || "");
+            setSpecialityAr(p.specialityAr || "");
+            setDiploma(p.diploma || "");
+            setDiplomaAr(p.diplomaAr || "");
+            setClinicName(p.clinicName || "");
+            setClinicNameAr(p.clinicNameAr || "");
+            setOrderNumber(p.orderNumber || "");
+            setCity(p.city || "");
           }
         } else {
           window.location.hash = "/";
@@ -142,14 +162,22 @@ export default function Parameters() {
     setSuccessMsg("");
 
     try {
-      const result = await window.ipcRenderer.updateDoctorProfile(
-        currentUser.id,
+      const result = await window.ipcRenderer.updateDoctorProfile(currentUser.id, {
         fullName,
         speciality,
-        phone,
+        phoneNumber: phone,
         address,
-        email
-      );
+        email,
+        prescriptionStyle,
+        fullNameAr,
+        specialityAr,
+        diploma,
+        diplomaAr,
+        clinicName,
+        clinicNameAr,
+        orderNumber,
+        city,
+      });
 
       if (result.status === "success" && result.data) {
         setProfile(result.data);
@@ -432,6 +460,199 @@ export default function Parameters() {
                   />
                 </div>
               </div>
+
+              {/* Prescription artwork. Saving re-renders the previews below in
+                  whichever style is selected here. */}
+              <div className="pt-2">
+                <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-1">
+                  {t("settings.profile.style_title")}
+                </label>
+                <p className="text-[11px] text-navy/45 mb-3">{t("settings.profile.style_hint")}</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([
+                    { value: "classic", label: t("settings.profile.style_classic"), desc: t("settings.profile.style_classic_desc") },
+                    { value: "colorful", label: t("settings.profile.style_colorful"), desc: t("settings.profile.style_colorful_desc") },
+                  ] as { value: PrescriptionStyle; label: string; desc: string }[]).map((option) => {
+                    const active = prescriptionStyle === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPrescriptionStyle(option.value)}
+                        className={`text-left p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+                          active
+                            ? "border-[#e91e8c]/50 bg-[#e91e8c]/[0.04] shadow-[0_2px_10px_rgba(233,30,140,0.08)]"
+                            : "border-navy/[0.08] bg-bg/40 hover:border-navy/20"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Thumbnail: a schematic of the page each style produces. */}
+                          <div className="w-11 h-14 rounded-lg bg-white border border-navy/10 flex-shrink-0 overflow-hidden p-1">
+                            {option.value === "colorful" ? (
+                              <div className="space-y-[2px]">
+                                <div className="h-[3px] w-3/4 bg-[#1b4f8f] rounded-sm" />
+                                <div className="h-[2px] w-1/2 bg-[#1b4f8f]/60 rounded-sm" />
+                                <div className="h-[2px] w-full bg-[#2b6cb0] rounded-sm mt-1" />
+                                <div className="h-[3px] w-2/3 bg-[#1b4f8f] rounded-sm ml-auto" />
+                                <div className="h-[2px] w-full bg-[#1b4f8f] rounded-sm mt-1" />
+                                <div className="h-[2px] w-1/2 mx-auto bg-navy/40 rounded-sm mt-1" />
+                                <div className="h-[1.5px] w-full bg-navy/15 rounded-sm mt-1" />
+                                <div className="h-[1.5px] w-5/6 bg-navy/15 rounded-sm" />
+                                <div className="h-[1.5px] w-full bg-navy/15 rounded-sm" />
+                              </div>
+                            ) : (
+                              <div className="space-y-[2px]">
+                                <div className="h-[3px] w-2/3 mx-auto bg-navy/60 rounded-sm" />
+                                <div className="h-[2px] w-1/2 mx-auto bg-navy/30 rounded-sm" />
+                                <div className="h-[1px] w-full bg-navy/20 mt-1.5" />
+                                <div className="h-[1.5px] w-full bg-navy/15 rounded-sm mt-1.5" />
+                                <div className="h-[1.5px] w-5/6 bg-navy/15 rounded-sm" />
+                                <div className="h-[1.5px] w-full bg-navy/15 rounded-sm" />
+                                <div className="h-[1.5px] w-4/6 bg-navy/15 rounded-sm" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className={`text-sm font-bold block ${active ? "text-[#e91e8c]" : "text-navy"}`}>
+                              {option.label}
+                            </span>
+                            <span className="text-[11px] text-navy/50 block mt-0.5 leading-snug">{option.desc}</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bilingual letterhead. Hidden on the classic style, which cannot
+                  print any of it — showing dead fields would imply otherwise. */}
+              {prescriptionStyle === "colorful" && (
+                <div className="p-5 bg-navy/[0.02] border border-navy/[0.06] rounded-2xl space-y-5">
+                  <div>
+                    <h3 className="text-sm font-bold text-navy">{t("settings.profile.letterhead_title")}</h3>
+                    <p className="text-[11px] text-navy/45 mt-1">{t("settings.profile.letterhead_hint")}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                        {t("settings.profile.name_ar")}
+                      </label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="ar"
+                        value={fullNameAr}
+                        onChange={(e) => setFullNameAr(e.target.value)}
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                        {t("settings.profile.speciality_ar")}
+                      </label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="ar"
+                        value={specialityAr}
+                        onChange={(e) => setSpecialityAr(e.target.value)}
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                        {t("settings.profile.diploma")}
+                      </label>
+                      <input
+                        type="text"
+                        value={diploma}
+                        onChange={(e) => setDiploma(e.target.value)}
+                        placeholder={t("settings.profile.diploma_placeholder")}
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                        {t("settings.profile.diploma_ar")}
+                      </label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        lang="ar"
+                        value={diplomaAr}
+                        onChange={(e) => setDiplomaAr(e.target.value)}
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                      />
+                    </div>
+
+                    {/* Clinic band — omitted from the prescription entirely when
+                        both name fields are blank, which is the common case. */}
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 p-4 rounded-2xl bg-white/60 border border-navy/[0.06]">
+                      <div className="md:col-span-2">
+                        <p className="text-[11px] text-navy/45">{t("settings.profile.clinic_hint")}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                          {t("settings.profile.clinic_name")}
+                        </label>
+                        <input
+                          type="text"
+                          value={clinicName}
+                          onChange={(e) => setClinicName(e.target.value)}
+                          className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                          {t("settings.profile.clinic_name_ar")}
+                        </label>
+                        <input
+                          type="text"
+                          dir="rtl"
+                          lang="ar"
+                          value={clinicNameAr}
+                          onChange={(e) => setClinicNameAr(e.target.value)}
+                          className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                        {t("settings.profile.order_number")}
+                      </label>
+                      <input
+                        type="text"
+                        value={orderNumber}
+                        onChange={(e) => setOrderNumber(e.target.value)}
+                        placeholder={t("settings.profile.order_number_placeholder")}
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
+                        {t("settings.profile.city")}
+                      </label>
+                      <input
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder={t("settings.profile.city_placeholder")}
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* PDF header previews — one per available language */}
               {(profile?.pdfPath || profile?.pdfPathEn) && (

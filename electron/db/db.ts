@@ -7,7 +7,7 @@ import { buildPatientSearchText, normalizeSearchText } from './normalize';
  * Schema version this build expects. Bump it in the same commit that appends
  * to MIGRATIONS below — the two are meaningless apart.
  */
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 /**
  * The version a pre-versioning database is treated as.
@@ -154,6 +154,20 @@ function createSchema(db: Database.Database) {
       has_completed_profile INTEGER DEFAULT 0,
       pdf_path TEXT,
       pdf_path_en TEXT,
+      -- Bilingual letterhead fields, used only by the 'colorful' prescription
+      -- style. Nullable throughout: the classic template ignores them, and an
+      -- empty one means "omit that row" rather than "print a blank line".
+      full_name_ar TEXT,
+      speciality_ar TEXT,
+      diploma TEXT,
+      diploma_ar TEXT,
+      clinic_name TEXT,
+      clinic_name_ar TEXT,
+      order_number TEXT,
+      city TEXT,
+      -- 'classic' | 'colorful'. Defaults to classic so an existing practice's
+      -- prescriptions do not change appearance when this build is installed.
+      prescription_style TEXT NOT NULL DEFAULT 'classic',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -455,7 +469,26 @@ function ensureColumns(db: Database.Database) {
   ensureColumn(db, 'prescriptions', 'consultation_id', 'INTEGER REFERENCES consultations(id) ON DELETE SET NULL');
   ensureColumn(db, 'patient_documents', 'consultation_id', 'INTEGER REFERENCES consultations(id) ON DELETE SET NULL');
   ensureColumn(db, 'patients', 'search_text', 'TEXT');
+  for (const column of DOCTOR_LETTERHEAD_COLUMNS) {
+    ensureColumn(db, 'doctor_profile', column, 'TEXT');
+  }
+  ensureColumn(db, 'doctor_profile', 'prescription_style', `TEXT NOT NULL DEFAULT 'classic'`);
 }
+
+/**
+ * The bilingual-letterhead columns, listed once so ensureColumns and migration
+ * 14 cannot drift apart. All plain TEXT — see createSchema for why nullable.
+ */
+const DOCTOR_LETTERHEAD_COLUMNS = [
+  'full_name_ar',
+  'speciality_ar',
+  'diploma',
+  'diploma_ar',
+  'clinic_name',
+  'clinic_name_ar',
+  'order_number',
+  'city',
+] as const;
 
 interface Migration {
   version: number;
@@ -525,6 +558,20 @@ const MIGRATIONS: Migration[] = [
     version: 13,
     name: 'audit_log',
     // Starts empty rather than inventing history it never observed.
+  },
+  {
+    version: 14,
+    name: 'doctor_profile.letterhead',
+    // Header fields for the colorful bilingual prescription, plus the per-doctor
+    // style switch. The DEFAULT on prescription_style is what keeps existing
+    // practices on the classic artwork: an ALTER with a default backfills every
+    // existing row, so nobody's prescriptions change shape on upgrade.
+    up: (db) => {
+      for (const column of DOCTOR_LETTERHEAD_COLUMNS) {
+        ensureColumn(db, 'doctor_profile', column, 'TEXT');
+      }
+      ensureColumn(db, 'doctor_profile', 'prescription_style', `TEXT NOT NULL DEFAULT 'classic'`);
+    },
   },
 ];
 

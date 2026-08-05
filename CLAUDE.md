@@ -45,7 +45,19 @@ JWT-based, but scoped to a single local user session rather than a network API: 
 
 ### PDF generation
 
-`electron/services/prescription.ts` uses `pdf-lib` to fill a prescription PDF template (see `public/ordonnance/`) with patient/doctor/medicine data, then persists it through `documents.ts` (`uploadDocument`) so generated prescriptions show up as patient documents.
+There are **two** renderers, chosen per doctor by `doctor_profile.prescription_style`. Both are dispatched from `fillPatientPrescriptionTemplate` in `electron/services/prescription.ts`, which is also the single place the resulting bytes get written to disk and filed through `documents.ts` (`uploadDocument`) — so whichever ran, the PDF shows up as a patient document identically.
+
+- **`classic`** (the default, and what every pre-existing install keeps) — `pdf-lib` stamps text at measured coordinates onto a pre-drawn form template (`public/ordonnance/template{Fr,En}.pdf`). Used for certificates and receipts too, via `pdfLetterhead.ts`.
+- **`colorful`** — `electron/services/prescriptionColorful.ts` builds a bilingual French/Arabic letterhead as HTML, which `electron/services/htmlPdf.ts` prints via a hidden `BrowserWindow` + `webContents.printToPDF`.
+
+**Why two.** `pdf-lib`'s standard fonts are WinAnsi and throw on Arabic, and pdf-lib does no glyph shaping or bidi reordering — so Arabic text is not merely unstyled there, it is impossible (see the deliberate refusals in `certificates.ts` and `pdfLetterhead.ts`). Chromium already implements shaping, bidi and RTL, so anything with Arabic in it goes through the HTML path. That path also gets page breaking for free: the colorful template flows onto a second page where the classic one truncates with "+N autre(s) médicament(s)".
+
+Two constraints in the HTML path are load-bearing and easy to break:
+
+- Every interpolated value **must** go through `escapeHtml` from `htmlPdf.ts`. JavaScript is left enabled in the render window (only to await `document.fonts.ready`), so unescaped database text would be a script-injection sink as well as a layout bug.
+- The letterhead lives in a `<thead>` so Chromium repeats it on continuation pages. Chromium silently stops repeating a header taller than **25% of the page**, so the letterhead must stay under ~66mm of the 265mm printable height (currently ~54mm). Growing it past that degrades quietly — page 2 just loses the header.
+
+Arabic is rendered with Amiri (OFL, `public/fonts/Amiri-{Regular,Bold}.ttf`), inlined into the page as base64 `data:` URIs because the render page has an opaque `file://` origin and Chromium CORS-blocks font fetches from it.
 
 ### Packaging
 
