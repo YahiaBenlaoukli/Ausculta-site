@@ -21,6 +21,14 @@ export type AuditAction =
     | 'certificate.delete'
     | 'payment.record'
     | 'payment.delete'
+    /** A WhatsApp appointment reminder was opened for a patient. */
+    | 'reminder.send'
+    | 'database.backup'
+    /**
+     * Recorded in the database being REPLACED, moments before the swap — the
+     * only place it can land. It survives in the pre-restore snapshot.
+     */
+    | 'database.restore'
     | 'database.reset';
 
 export interface AuditEntry {

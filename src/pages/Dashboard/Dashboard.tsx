@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import type { DoctorProfile } from "../../../types/doctor";
+import TomorrowReminders from "../../components/Reminders/TomorrowReminders";
 import {
   ResponsiveContainer,
   PieChart,
@@ -292,6 +293,11 @@ export default function Dashboard() {
               </div>
             );
           })()}
+
+          {/* Tomorrow's WhatsApp reminders. Above today's schedule because it is
+              the one thing on this page that expires: tomorrow's reminders are
+              only useful while it is still today. */}
+          {doctorProfile && <TomorrowReminders doctor={doctorProfile} />}
 
           {/* Today's Appointments & Distribution Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

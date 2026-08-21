@@ -6,8 +6,12 @@ import { buildPatientSearchText, normalizeSearchText } from './normalize';
 /**
  * Schema version this build expects. Bump it in the same commit that appends
  * to MIGRATIONS below — the two are meaningless apart.
+ *
+ * Exported because backup.ts stamps it into a backup's manifest and refuses to
+ * restore a file produced by a NEWER build: migrations only run forwards, so
+ * loading a future schema would leave the app reading columns it cannot see.
  */
-const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /**
  * The version a pre-versioning database is treated as.
@@ -19,7 +23,7 @@ const SCHEMA_VERSION = 14;
  */
 const LEGACY_BASELINE = 5;
 
-let db: Database.Database;
+let db: Database.Database | undefined;
 
 export function initializeDatabase(): Database.Database {
   const dbPath = path.join(app.getPath('userData'), 'cabinet-medicale.db');
@@ -443,6 +447,55 @@ function createSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_certificates_patient ON certificates(patient_id);
     CREATE INDEX IF NOT EXISTS idx_certificates_consultation ON certificates(consultation_id);
 
+    -- Appointment reminders sent to patients (v15).
+    --
+    -- Exists because the WhatsApp click-to-chat channel is write-only: the app
+    -- builds a wa.me URL, hands it to the OS, and never hears another word. So
+    -- "did we already remind this patient" is not a question the channel can
+    -- answer and has to be remembered here instead — otherwise a secretary
+    -- reopening the dashboard has no idea where she stopped.
+    --
+    -- appointment_datetime is stored, and is HALF THE UNIQUE KEY, on purpose:
+    -- it records the time the reminder actually announced. When an appointment
+    -- is moved, the old row stops matching and the patient correctly shows as
+    -- un-reminded — keying on appointment_id alone would count "reminded about
+    -- Tuesday" as covering a visit since shifted to Thursday, which is the one
+    -- failure mode worse than not reminding at all.
+    --
+    -- phone_used and body are denormalised for the same reason as
+    -- audit_log.summary: the record must still say what was sent, and where,
+    -- after the patient's number is corrected or the template is reworded.
+    CREATE TABLE IF NOT EXISTS appointment_reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      appointment_id INTEGER NOT NULL,
+      patient_id INTEGER NOT NULL,
+      appointment_datetime TEXT NOT NULL,
+
+      -- 'whatsapp_link' today. Left unconstrained rather than CHECKed because
+      -- SQLite cannot widen a CHECK without rebuilding the table, and a second
+      -- channel (Cloud API, SMS) is the expected next step here.
+      channel TEXT NOT NULL DEFAULT 'whatsapp_link',
+      phone_used TEXT,
+      body TEXT,
+
+      -- 'opened' is the most this channel can honestly claim — WhatsApp was
+      -- launched with the message loaded. 'sent' and 'failed' are the USER
+      -- reporting the outcome they saw on screen, which is why they carry a
+      -- separate confirmed_at. Widening this set needs a table rebuild.
+      status TEXT NOT NULL DEFAULT 'opened' CHECK(status IN ('opened', 'sent', 'failed')),
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      confirmed_at DATETIME,
+
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+
+    -- One reminder per (appointment, announced time): makes re-opening WhatsApp
+    -- an update instead of a duplicate, and lets a reschedule reset the state.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_appointment_reminders_target
+      ON appointment_reminders(appointment_id, appointment_datetime);
+
     CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id);
     CREATE INDEX IF NOT EXISTS idx_consultations_datetime ON consultations(consultation_datetime);
 
@@ -572,6 +625,14 @@ const MIGRATIONS: Migration[] = [
       }
       ensureColumn(db, 'doctor_profile', 'prescription_style', `TEXT NOT NULL DEFAULT 'classic'`);
     },
+  },
+  {
+    version: 15,
+    name: 'appointment_reminders',
+    // Table and index only, so createSchema() has already built it. Starts
+    // empty: reminders sent by hand before this existed left no trace to
+    // backfill, and inventing "already reminded" rows would suppress the first
+    // real reminder for every appointment already on the calendar.
   },
 ];
 
@@ -743,4 +804,26 @@ function syncMissedAppointments() {
 export function getDatabase(): Database.Database {
   if (!db) throw new Error('Database not initialized. Call initializeDatabase() first.');
   return db;
+}
+
+/**
+ * Closes the connection and FORGETS it.
+ *
+ * Only the restore path needs this — replacing the database file underneath an
+ * open connection is how you get a half-read database and a corrupt -wal.
+ *
+ * Clearing the reference is the point, not a tidy-up: better-sqlite3 leaves a
+ * closed Database object perfectly truthy, so without this getDatabase() keeps
+ * handing out a dead handle and every caller fails deep inside a query with
+ * "database connection is not open". A thrown "not initialized" at the door is
+ * the same outcome, said in a way that names the cause.
+ */
+export function closeDatabase() {
+  if (!db) return;
+  try {
+    db.close();
+  } catch (error) {
+    console.error('closeDatabase error:', error);
+  }
+  db = undefined;
 }

@@ -42,6 +42,12 @@
 
 /* ---- Base ---- */
 html {
+  /* Painted explicitly rather than inherited from body so the page surface has
+     a colour from the first frame. Must match `backgroundColor` on the
+     BrowserWindow in electron/main.ts — that value is what Chromium shows for
+     any region not yet painted, and a mismatch between the two turns a resize
+     or a route change into a visible colour flash. */
+  background: var(--background);
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

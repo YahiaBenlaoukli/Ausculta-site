@@ -17,14 +17,17 @@ const ACTION_GROUPS: { key: string; actions: AuditAction[] }[] = [
   { key: 'documents', actions: ['document.upload', 'document.delete'] },
   { key: 'certificates', actions: ['certificate.create', 'certificate.delete'] },
   { key: 'payments', actions: ['payment.record', 'payment.delete'] },
-  { key: 'access', actions: ['auth.login', 'auth.login_failed', 'auth.logout', 'database.reset'] },
+  { key: 'reminders', actions: ['reminder.send'] },
+  { key: 'access', actions: ['auth.login', 'auth.login_failed', 'auth.logout', 'database.reset', 'database.backup', 'database.restore'] },
 ]
 
 /** Destructive actions are tinted so a deletion is findable by eye. */
 const DESTRUCTIVE = new Set<AuditAction>([
   'patient.delete', 'consultation.delete', 'prescription.delete',
   'document.delete', 'certificate.delete', 'payment.delete',
-  'database.reset', 'auth.login_failed',
+  // A restore replaces every record in the practice, so it is tinted like a
+  // deletion. A backup only reads, so it is not.
+  'database.reset', 'database.restore', 'auth.login_failed',
 ])
 
 export default function AuditLog() {

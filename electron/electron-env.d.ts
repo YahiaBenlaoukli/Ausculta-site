@@ -38,6 +38,25 @@ type Consultation = import('../types/consultation').Consultation
 type ConsultationDraft = import('../types/consultation').ConsultationDraft
 type ConsultationListItem = import('../types/consultation').ConsultationListItem
 type GlobalSearchResults = import('../types/search').GlobalSearchResults
+type ReminderList = import('../types/reminder').ReminderList
+type ReminderOutcome = import('../types/reminder').ReminderOutcome
+type ReminderErrorCode = import('../types/reminder').ReminderErrorCode
+type BackupResult = import('../types/backup').BackupResult
+type RestoreResult = import('../types/backup').RestoreResult
+type BackupErrorCode = import('../types/backup').BackupErrorCode
+type BackupScope = import('../types/backup').BackupScope
+
+/**
+ * Result of an operation the user can abandon in an OS dialog. 'cancelled' is
+ * separated from 'fail' so the UI can stay silent instead of reporting an error
+ * the user caused on purpose.
+ */
+interface CancellableResult<T> {
+  status: 'success' | 'fail' | 'cancelled'
+  data?: T
+  code?: BackupErrorCode
+  message?: string
+}
 type MedicineLine = import('../types/doctor').MedicineLine
 type MedicineSuggestion = import('../types/doctor').MedicineSuggestion
 type PrescriptionTemplate = import('../types/doctor').PrescriptionTemplate
@@ -193,6 +212,15 @@ interface AuscultaIpc {
   getAppointmentsByPatientId(patientId: number): Promise<AppointmentRow[]>
   getAppointmentsByDateRange(doctorId: number, startDate: string, endDate: string): Promise<AppointmentRow[]>
 
+  // rappels de rendez-vous (WhatsApp)
+  getTomorrowReminders(doctorId: number): Promise<IpcResult<ReminderList> & { data: ReminderList }>
+  /**
+   * Opens WhatsApp with `message` loaded. Success means WhatsApp was LAUNCHED —
+   * not that the patient received anything; the channel cannot report that.
+   */
+  openWhatsAppReminder(appointmentId: number, message: string): Promise<IpcResult<{ phoneDisplay: string }> & { code?: ReminderErrorCode }>
+  setReminderOutcome(appointmentId: number, outcome: ReminderOutcome): Promise<IpcResult & { code?: ReminderErrorCode }>
+
   // gestion des consultations
   startConsultation(patientId: number, doctorId: number, appointmentId?: number): Promise<IpcResult<Consultation>>
   getConsultationById(id: number): Promise<IpcResult<Consultation>>
@@ -215,6 +243,20 @@ interface AuscultaIpc {
   // gestion de la licence / période d'essai
   getTrialStatus(): Promise<TrialStatus>
   activateLicense(key: string): Promise<ActivationResult>
+
+  // sauvegarde / restauration de la base (licence requise)
+  /**
+   * Writes a snapshot the user picks a location for. 'database' saves one .db
+   * file; 'full' saves a folder holding that file plus the documents tree.
+   */
+  backupDatabase(scope: BackupScope): Promise<CancellableResult<BackupResult>>
+  /**
+   * Replaces the live data with a chosen backup of the same scope. On success
+   * the app MUST be relaunched via relaunchApp() — until then it is running
+   * against a database its open connection no longer describes.
+   */
+  restoreDatabase(scope: BackupScope): Promise<CancellableResult<RestoreResult>>
+  relaunchApp(): Promise<void>
 
   // gestion des mises à jour
   getUpdateStatus(): Promise<UpdateStatus>

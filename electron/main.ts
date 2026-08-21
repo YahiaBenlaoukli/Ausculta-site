@@ -1,5 +1,5 @@
 
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initializeDatabase } from './db/db'
@@ -17,6 +17,8 @@ import { suggestMedicines, getPrescriptionTemplates, savePrescriptionTemplate, d
 import { createCertificate, getCertificatesByPatientId, getCertificatesByConsultationId, reprintCertificate, deleteCertificate, getCertificateStatistics } from './services/certificates'
 import { recordPayment, getPaymentsByConsultationId, deletePayment, getConsultationBalance, getOutstandingBalances, generateReceiptPdf } from './services/payments'
 import { getAuditLog, getAuditLogForEntity } from './services/audit'
+import { getTomorrowReminders, openWhatsAppReminder, setReminderOutcome } from './services/reminders'
+import { backupDatabase, restoreDatabase, relaunchApp } from './services/backup'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -43,10 +45,25 @@ let win: BrowserWindow | null
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'logo.ico'),
+    // Matches the app's body background (--background in src/index.css).
+    //
+    // This is what the compositor presents for any region the renderer has not
+    // painted yet — during startup, a resize, or a route change that briefly
+    // empties the content area. Left unset, those frames come out black on
+    // Windows, which reads as a flicker when navigating. Keep this in sync with
+    // the CSS: a mismatch turns the same moments into a visible colour flash
+    // instead of a seamless one.
+    backgroundColor: '#e9f1f1',
+    // Do not present the window until there is a painted frame to show.
+    // Without this the window appears while the document is still blank, so
+    // every launch starts with a flash of empty window.
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
   })
+
+  win.once('ready-to-show', () => win?.show())
 
   // External links (target="_blank" / window.open) go to the default browser,
   // never a new Electron window.
@@ -89,7 +106,24 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
-  initializeDatabase();
+  // A database that refuses to open must not take the window down with it.
+  // Unguarded, a throw here skips every ipcMain.handle registration AND
+  // createWindow() at the bottom of this block — so the app starts with no
+  // window and no message, which from the outside is indistinguishable from a
+  // silent crash. Registering the handlers anyway means the renderer's calls
+  // reject with a real reason instead of hanging, and the window can at least
+  // say something.
+  try {
+    initializeDatabase();
+  } catch (error) {
+    console.error('Fatal: the database could not be opened:', error);
+    // No renderer exists yet, so there is no i18n to reach for; French is the
+    // default locale for this market.
+    dialog.showErrorBox(
+      'Ausculta',
+      `La base de données n'a pas pu être ouverte.\n\n${(error as Error).message}`
+    );
+  }
   ipcMain.handle('add-patient', async (_event, patient) => await addPatient(patient));
   ipcMain.handle('get-patient-by-id', async (_event, id) => await getPatient(id));
   ipcMain.handle('get-all-patients', async () => await getAllPatients());
@@ -169,6 +203,13 @@ app.whenReady().then(() => {
   ipcMain.handle('get-appointments-by-patient-id', async (_event, patientId) => getAppointmentsByPatientId(patientId));
   ipcMain.handle('get-appointments-by-date-range', async (_event, doctorId, startDate, endDate) => getAppointmentsByDateRange(doctorId, startDate, endDate));
 
+  //rappels de rendez-vous (WhatsApp)
+  // openWhatsAppReminder takes the message body from the renderer: the wording
+  // is patient-facing prose that lives in the locale files, in three languages.
+  ipcMain.handle('get-tomorrow-reminders', async (_event, doctorId) => getTomorrowReminders(doctorId));
+  ipcMain.handle('open-whatsapp-reminder', async (_event, appointmentId, message) => await openWhatsAppReminder(appointmentId, message));
+  ipcMain.handle('set-reminder-outcome', async (_event, appointmentId, outcome) => setReminderOutcome(appointmentId, outcome));
+
   //gestion des consultations
   ipcMain.handle('start-consultation', async (_event, patientId, doctorId, appointmentId) => startConsultation(patientId, doctorId, appointmentId));
   ipcMain.handle('get-consultation-by-id', async (_event, id) => getConsultationById(id));
@@ -191,6 +232,15 @@ app.whenReady().then(() => {
   //gestion de la licence / période d'essai
   ipcMain.handle('get-trial-status', async () => getTrialStatus());
   ipcMain.handle('activate-license', async (_event, key) => activateLicense(key));
+
+  //sauvegarde / restauration de la base (licence requise, vérifiée côté main)
+  // The window is passed so the OS dialogs are modal to it rather than free
+  // floating, which is what makes them impossible to lose behind the app.
+  ipcMain.handle('backup-database', async (_event, scope) => await backupDatabase(scope, win));
+  ipcMain.handle('restore-database', async (_event, scope) => await restoreDatabase(scope, win));
+  // Separate channel on purpose: the renderer gets the restore result, shows the
+  // user what happened, and only then asks for the restart.
+  ipcMain.handle('relaunch-app', async () => relaunchApp());
 
   //gestion des mises à jour
   ipcMain.handle('get-update-status', async () => getUpdateStatus());

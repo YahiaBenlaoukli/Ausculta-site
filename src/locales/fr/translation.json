@@ -183,6 +183,39 @@
       "address": "adresse",
       "action": "Compléter maintenant"
     },
+    "reminders": {
+      "title": "Rappels de demain",
+      "hint": "Un rappel la veille peut réduire les rendez-vous manqués jusqu'à 50 %.",
+      "empty": "Aucun rendez-vous prévu demain.",
+      "stats": {
+        "to_remind": "À rappeler",
+        "reminded": "Rappelés",
+        "unreachable": "Injoignables"
+      },
+      "language_label": "Langue du message",
+      "action": "Rappeler",
+      "resend": "Renvoyer",
+      "asking": "Envoyé ?",
+      "confirm_sent": "Oui, envoyé",
+      "confirm_failed": "Non, échec",
+      "state": {
+        "sent": "Rappelé",
+        "failed": "Pas sur WhatsApp",
+        "landline": "Ligne fixe",
+        "invalid": "Numéro invalide",
+        "missing": "Pas de numéro"
+      },
+      "message": "Bonjour {{name}}, rappel de votre rendez-vous demain {{date}} à {{time}} — {{clinic}}. Merci de nous prévenir en cas d'empêchement.",
+      "error": {
+        "not_found": "Ce rendez-vous n'existe plus.",
+        "not_scheduled": "Ce rendez-vous n'est plus planifié.",
+        "unreachable": "Ce numéro ne peut pas recevoir de message WhatsApp.",
+        "empty_message": "Le message de rappel est vide.",
+        "launch_failed": "Impossible d'ouvrir WhatsApp sur cet ordinateur.",
+        "generic": "Le rappel n'a pas pu être ouvert."
+      },
+      "disclaimer": "Ausculta ouvre WhatsApp avec le message prêt ; l'envoi reste à confirmer de votre côté."
+    },
     "walk_in_action": "Consultation sans RDV"
   },
   "patients": {
@@ -573,8 +606,37 @@
       "reset_success": "Base de données réinitialisée avec succès !",
       "reset_error": "Erreur lors de la réinitialisation",
       "backup_title": "Sauvegarde des Patients",
+      "db_title": "Sauvegarde & restauration",
+      "db_hint": "Enregistrez une copie de votre cabinet, puis restaurez-la sur cet ordinateur ou sur un autre.",
+      "db_restore_confirm": "Remplacer la base actuelle ?",
+      "db_backup_success": "Sauvegarde enregistrée : {{name}} ({{size}})",
+      "db_restore_success": "Base restaurée. L'application va redémarrer…",
+      "db_locked_title": "Fonctionnalité sous licence",
+      "db_locked_hint": "La sauvegarde et la restauration de la base sont disponibles après l'activation de votre licence.",
+      "db_locked_action": "Activer une licence",
+      "db_error": {
+        "not_licensed": "Activez votre licence pour utiliser la sauvegarde.",
+        "not_found": "Le fichier sélectionné est introuvable.",
+        "not_a_backup": "Ce fichier n'est pas une sauvegarde Ausculta.",
+        "corrupt": "Ce fichier de sauvegarde est endommagé et n'a pas été restauré.",
+        "target_is_live_db": "Choisissez un autre emplacement : ce fichier est la base en cours d'utilisation.",
+        "safety_backup_failed": "Impossible de sauvegarder la base actuelle ; la restauration a été annulée.",
+        "write_failed": "Échec de l'opération sur le fichier.",
+        "newer_schema": "Cette sauvegarde a été créée par une version plus récente d'Ausculta. Mettez l'application à jour avant de la restaurer.",
+        "documents_incomplete": "Les dossiers ont été restaurés, mais la copie des documents PDF a échoué : certains documents peuvent être absents de cet ordinateur."
+      },
       "confirm": "Confirmer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "db_create_label": "Créer une sauvegarde",
+      "db_restore_label": "Restaurer une sauvegarde",
+      "db_scope_full": "Sauvegarde complète",
+      "db_scope_full_hint": "Dossiers + documents PDF. Enregistrée dans un dossier — à copier sur une clé USB.",
+      "db_scope_db": "Base de données seule",
+      "db_scope_db_hint": "Un seul fichier .db. Tous les dossiers, sans les documents PDF.",
+      "db_restore_full": "Depuis une sauvegarde complète",
+      "db_restore_db": "Depuis un fichier .db",
+      "db_restore_warning_full": "La restauration remplace la totalité des dossiers ET des documents PDF actuels par le contenu de la sauvegarde. Une copie de sécurité de l'état actuel est conservée automatiquement.",
+      "db_restore_warning_db": "La restauration remplace la totalité des dossiers actuels par le contenu du fichier choisi. Les documents PDF déjà présents sur cet ordinateur ne sont pas modifiés. Une copie de sécurité de la base actuelle est conservée automatiquement."
     }
   },
   "documents": {
@@ -998,6 +1060,7 @@
       "documents": "Documents",
       "certificates": "Certificats",
       "payments": "Paiements",
+      "reminders": "Rappels",
       "access": "Accès & données"
     },
     "actions": {
@@ -1017,6 +1080,9 @@
       "certificate.delete": "Certificat supprimé",
       "payment.record": "Paiement encaissé",
       "payment.delete": "Paiement annulé",
+      "reminder.send": "Rappel WhatsApp ouvert",
+      "database.backup": "Sauvegarde créée",
+      "database.restore": "Base restaurée",
       "database.reset": "Base réinitialisée"
     }
   }

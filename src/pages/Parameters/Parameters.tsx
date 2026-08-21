@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { TrialStatus } from "../../../types/trial";
 import type { DoctorProfile, PrescriptionLanguage, PrescriptionStyle } from "../../../types/doctor";
 import type { Patient } from "../../../types/patient";
+import type { BackupErrorCode, BackupScope } from "../../../types/backup";
 import AuditLog from "../../components/Audit/AuditLog";
 import { licenseErrorKey } from "../../services/licenseErrors";
 
@@ -52,6 +53,12 @@ export default function Parameters() {
   // Database Reset Input
   const [confirmResetText, setConfirmResetText] = useState("");
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+
+  // Whole-database backup / restore (licensed only). One busy key per button so
+  // only the button being used shows a wait state.
+  const [dbBusy, setDbBusy] = useState<"backup-full" | "backup-db" | "restore-full" | "restore-db" | null>(null);
+  /** Which restore is awaiting confirmation, if any. */
+  const [restoreConfirm, setRestoreConfirm] = useState<BackupScope | null>(null);
 
   // License / trial
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
@@ -264,6 +271,69 @@ export default function Parameters() {
     } catch (err) {
       console.error(err);
       triggerToast("error", t("settings.data.export_error"));
+    }
+  };
+
+  // ---- Whole-database backup / restore (licensed only) ----
+  // The licence is re-checked in the main process, so these only deal with the
+  // answer. A "cancelled" result is silent: the user closed the OS dialog
+  // themselves and does not need to be told about it.
+  const formatBytes = (bytes: number) =>
+    bytes >= 1024 * 1024
+      ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+  const dbErrorMessage = (code?: BackupErrorCode) =>
+    t(`settings.data.db_error.${code ?? "write_failed"}`, t("settings.data.db_error.write_failed"));
+
+  const handleBackupDatabase = async (scope: BackupScope) => {
+    setDbBusy(scope === "full" ? "backup-full" : "backup-db");
+    try {
+      const result = await window.ipcRenderer.backupDatabase(scope);
+      if (result.status === "success" && result.data) {
+        triggerToast("success", t("settings.data.db_backup_success", {
+          name: result.data.path.split(/[\\/]/).pop(),
+          size: formatBytes(result.data.bytes),
+        }));
+      } else if (result.status === "fail") {
+        triggerToast("error", dbErrorMessage(result.code));
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast("error", dbErrorMessage());
+    } finally {
+      setDbBusy(null);
+    }
+  };
+
+  const handleRestoreDatabase = async (scope: BackupScope) => {
+    setDbBusy(scope === "full" ? "restore-full" : "restore-db");
+    try {
+      const result = await window.ipcRenderer.restoreDatabase(scope);
+      if (result.status === "success") {
+        setRestoreConfirm(null);
+        triggerToast("success", t("settings.data.db_restore_success"));
+        // Left "busy" on purpose: the data has already been swapped, so nothing
+        // on this page is worth clicking until the relaunch lands. The delay is
+        // only so the toast can be read.
+        setTimeout(() => window.ipcRenderer.relaunchApp(), 1800);
+        return;
+      }
+      // 'documents_incomplete' is a real failure, but the database HAS been
+      // replaced — so the app still has to restart, or it keeps running against
+      // a file its open connection no longer describes.
+      if (result.status === "fail") {
+        triggerToast("error", dbErrorMessage(result.code));
+        if (result.code === "documents_incomplete") {
+          setTimeout(() => window.ipcRenderer.relaunchApp(), 4000);
+          return;
+        }
+      }
+      setDbBusy(null);
+    } catch (err) {
+      console.error(err);
+      triggerToast("error", dbErrorMessage());
+      setDbBusy(null);
     }
   };
 
@@ -848,6 +918,139 @@ export default function Parameters() {
                   </button>
                 </div>
               </div>
+
+              {/* Whole-database backup / restore — licensed installs only.
+                  Hidden here AND refused in the main process; this half is the
+                  courtesy, backup.ts is the control. */}
+              {trialStatus?.licensed ? (
+                <div className="p-5 bg-bg/30 border border-navy/[0.06] rounded-3xl space-y-5">
+                  <div>
+                    <h3 className="text-sm font-bold text-navy">{t("settings.data.db_title")}</h3>
+                    <p className="text-xs text-navy/50 leading-relaxed mt-1">{t("settings.data.db_hint")}</p>
+                  </div>
+
+                  {/* Create — the two scopes side by side, each saying what it covers.
+                      "full" writes a folder (database + PDFs); "database" writes one file. */}
+                  <div className="space-y-2.5">
+                    <span className="block text-[11px] font-bold text-navy/40 uppercase tracking-wider">
+                      {t("settings.data.db_create_label")}
+                    </span>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleBackupDatabase("full")}
+                        disabled={dbBusy !== null}
+                        className="text-start flex items-start gap-3 bg-white border border-navy/10 hover:border-pink/40 disabled:opacity-50 disabled:cursor-wait px-4 py-3.5 rounded-2xl transition-all cursor-pointer select-none group"
+                      >
+                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-navy/40 group-hover:text-[#e91e8c] transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                        </svg>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold text-navy">{t("settings.data.db_scope_full")}</span>
+                          <span className="block text-[11px] text-navy/45 leading-snug mt-0.5">{t("settings.data.db_scope_full_hint")}</span>
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => handleBackupDatabase("database")}
+                        disabled={dbBusy !== null}
+                        className="text-start flex items-start gap-3 bg-white border border-navy/10 hover:border-pink/40 disabled:opacity-50 disabled:cursor-wait px-4 py-3.5 rounded-2xl transition-all cursor-pointer select-none group"
+                      >
+                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-navy/40 group-hover:text-[#e91e8c] transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75" />
+                        </svg>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold text-navy">{t("settings.data.db_scope_db")}</span>
+                          <span className="block text-[11px] text-navy/45 leading-snug mt-0.5">{t("settings.data.db_scope_db_hint")}</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Restore — deliberately a separate pair rather than one button that
+                      guesses: a full backup is a folder and a database backup is a file,
+                      and an OS dialog cannot offer both in one picker. */}
+                  <div className="space-y-2.5">
+                    <span className="block text-[11px] font-bold text-navy/40 uppercase tracking-wider">
+                      {t("settings.data.db_restore_label")}
+                    </span>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setRestoreConfirm("full")}
+                        disabled={dbBusy !== null}
+                        className={`flex items-center justify-center gap-2 border text-xs font-bold px-4 py-3 rounded-2xl transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-wait ${
+                          restoreConfirm === "full"
+                            ? "bg-amber-100 border-amber-400 text-amber-800"
+                            : "bg-white border-navy/10 hover:border-amber-400 text-navy hover:text-amber-600"
+                        }`}
+                      >
+                        {t("settings.data.db_restore_full")}
+                      </button>
+                      <button
+                        onClick={() => setRestoreConfirm("database")}
+                        disabled={dbBusy !== null}
+                        className={`flex items-center justify-center gap-2 border text-xs font-bold px-4 py-3 rounded-2xl transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-wait ${
+                          restoreConfirm === "database"
+                            ? "bg-amber-100 border-amber-400 text-amber-800"
+                            : "bg-white border-navy/10 hover:border-amber-400 text-navy hover:text-amber-600"
+                        }`}
+                      >
+                        {t("settings.data.db_restore_db")}
+                      </button>
+                    </div>
+                  </div>
+
+                  {restoreConfirm && (
+                    <div className="space-y-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 animate-[fadeIn_0.2s_ease-out]">
+                      <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                        {t(restoreConfirm === "full"
+                          ? "settings.data.db_restore_warning_full"
+                          : "settings.data.db_restore_warning_db")}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
+                        <span className="text-xs font-bold text-amber-900 flex-1">
+                          {t("settings.data.db_restore_confirm")}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleRestoreDatabase(restoreConfirm)}
+                            disabled={dbBusy !== null}
+                            className="px-6 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-wait text-white text-xs font-bold shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer select-none"
+                          >
+                            {t("settings.data.confirm")}
+                          </button>
+                          <button
+                            onClick={() => setRestoreConfirm(null)}
+                            disabled={dbBusy !== null}
+                            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-amber-100 disabled:opacity-50 text-navy/70 text-xs font-bold transition-all cursor-pointer select-none"
+                          >
+                            {t("settings.data.cancel")}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-5 bg-bg/30 border border-navy/[0.06] rounded-3xl flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 rounded-full bg-navy/[0.06] text-navy/40 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-navy">{t("settings.data.db_locked_title")}</h3>
+                      <p className="text-xs text-navy/50 leading-relaxed mt-0.5">{t("settings.data.db_locked_hint")}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("license")}
+                    className="flex-shrink-0 px-5 py-2.5 rounded-2xl bg-[#e91e8c] hover:bg-[#be185d] text-white text-xs font-bold shadow-md shadow-[#e91e8c]/20 transition-colors cursor-pointer select-none"
+                  >
+                    {t("settings.data.db_locked_action")}
+                  </button>
+                </div>
+              )}
 
               {/* Data Reset Danger Section */}
               <div className="p-5 bg-rose-50/50 border border-rose-100 rounded-3xl space-y-4">

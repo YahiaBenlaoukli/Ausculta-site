@@ -7,6 +7,8 @@ import type { ConsultationDraft } from '../types/consultation'
 import type { CertificateDraft } from '../types/certificate'
 import type { PaymentDraft } from '../types/payment'
 import type { AuditQuery } from '../types/audit'
+import type { ReminderOutcome } from '../types/reminder'
+import type { BackupScope } from '../types/backup'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -106,6 +108,11 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getAppointmentsByPatientId: (patientId: number) => ipcRenderer.invoke('get-appointments-by-patient-id', patientId),
   getAppointmentsByDateRange: (doctorId: number, startDate: string, endDate: string) => ipcRenderer.invoke('get-appointments-by-date-range', doctorId, startDate, endDate),
 
+  //rappels de rendez-vous (WhatsApp)
+  getTomorrowReminders: (doctorId: number) => ipcRenderer.invoke('get-tomorrow-reminders', doctorId),
+  openWhatsAppReminder: (appointmentId: number, message: string) => ipcRenderer.invoke('open-whatsapp-reminder', appointmentId, message),
+  setReminderOutcome: (appointmentId: number, outcome: ReminderOutcome) => ipcRenderer.invoke('set-reminder-outcome', appointmentId, outcome),
+
   //gestion des consultations
   startConsultation: (patientId: number, doctorId: number, appointmentId?: number) => ipcRenderer.invoke('start-consultation', patientId, doctorId, appointmentId),
   getConsultationById: (id: number) => ipcRenderer.invoke('get-consultation-by-id', id),
@@ -128,6 +135,11 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   //gestion de la licence / période d'essai
   getTrialStatus: () => ipcRenderer.invoke('get-trial-status'),
   activateLicense: (key: string) => ipcRenderer.invoke('activate-license', key),
+
+  //sauvegarde / restauration de la base (licence requise)
+  backupDatabase: (scope: BackupScope) => ipcRenderer.invoke('backup-database', scope),
+  restoreDatabase: (scope: BackupScope) => ipcRenderer.invoke('restore-database', scope),
+  relaunchApp: () => ipcRenderer.invoke('relaunch-app'),
 
   //gestion des mises à jour
   getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),

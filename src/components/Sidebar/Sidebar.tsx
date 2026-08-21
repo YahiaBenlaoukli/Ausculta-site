@@ -90,7 +90,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Tableau de bord', icon: icons.dashboard, path: '/', section: 'main' },
+  { id: 'dashboard', label: 'Tableau de bord', icon: icons.dashboard, path: '/dashboard', section: 'main' },
   { id: 'patients', label: 'Patients', icon: icons.patients, path: '/patients', section: 'main' },
   { id: 'appointments', label: 'Rendez-vous', icon: icons.calendar, path: '/appointments', section: 'main' },
   { id: 'consultation', label: 'Consultation', icon: icons.consultation, path: '/consultation', section: 'main' },

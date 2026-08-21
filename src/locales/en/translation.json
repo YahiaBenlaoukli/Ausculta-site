@@ -183,6 +183,39 @@
       "address": "address",
       "action": "Complete now"
     },
+    "reminders": {
+      "title": "Tomorrow's reminders",
+      "hint": "A reminder the day before can cut missed appointments by up to 50%.",
+      "empty": "No appointments scheduled for tomorrow.",
+      "stats": {
+        "to_remind": "To remind",
+        "reminded": "Reminded",
+        "unreachable": "Unreachable"
+      },
+      "language_label": "Message language",
+      "action": "Remind",
+      "resend": "Send again",
+      "asking": "Did it send?",
+      "confirm_sent": "Yes, sent",
+      "confirm_failed": "No, it failed",
+      "state": {
+        "sent": "Reminded",
+        "failed": "Not on WhatsApp",
+        "landline": "Landline",
+        "invalid": "Invalid number",
+        "missing": "No number"
+      },
+      "message": "Hello {{name}}, a reminder of your appointment tomorrow {{date}} at {{time}} — {{clinic}}. Please let us know if you cannot attend.",
+      "error": {
+        "not_found": "This appointment no longer exists.",
+        "not_scheduled": "This appointment is no longer scheduled.",
+        "unreachable": "This number cannot receive a WhatsApp message.",
+        "empty_message": "The reminder message is empty.",
+        "launch_failed": "WhatsApp could not be opened on this computer.",
+        "generic": "The reminder could not be opened."
+      },
+      "disclaimer": "Ausculta opens WhatsApp with the message ready; sending it is still up to you."
+    },
     "walk_in_action": "Walk-in consultation"
   },
   "patients": {
@@ -573,8 +606,37 @@
       "reset_success": "Database successfully reset!",
       "reset_error": "Error resetting database",
       "backup_title": "Patient Backup",
+      "db_title": "Backup & restore",
+      "db_hint": "Save a copy of your practice, then restore it on this computer or another one.",
+      "db_restore_confirm": "Replace the current database?",
+      "db_backup_success": "Backup saved: {{name}} ({{size}})",
+      "db_restore_success": "Database restored. The application will restart…",
+      "db_locked_title": "Licensed feature",
+      "db_locked_hint": "Database backup and restore become available once your licence is activated.",
+      "db_locked_action": "Activate a licence",
+      "db_error": {
+        "not_licensed": "Activate your licence to use backup and restore.",
+        "not_found": "The selected file could not be found.",
+        "not_a_backup": "That file is not an Ausculta backup.",
+        "corrupt": "That backup file is damaged and was not restored.",
+        "target_is_live_db": "Pick another location: that file is the database currently in use.",
+        "safety_backup_failed": "The current database could not be backed up, so the restore was cancelled.",
+        "write_failed": "The file operation failed.",
+        "newer_schema": "This backup was created by a newer version of Ausculta. Update the application before restoring it.",
+        "documents_incomplete": "The records were restored, but copying the PDF documents failed: some documents may be missing on this computer."
+      },
       "confirm": "Confirm",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "db_create_label": "Create a backup",
+      "db_restore_label": "Restore a backup",
+      "db_scope_full": "Full backup",
+      "db_scope_full_hint": "Records + PDF documents. Saved as a folder — copy it to a USB stick.",
+      "db_scope_db": "Database only",
+      "db_scope_db_hint": "A single .db file. Every record, without the PDF documents.",
+      "db_restore_full": "From a full backup",
+      "db_restore_db": "From a .db file",
+      "db_restore_warning_full": "Restoring replaces all current records AND PDF documents with the contents of the backup. A safety copy of the current state is kept automatically.",
+      "db_restore_warning_db": "Restoring replaces all current records with the contents of the chosen file. PDF documents already on this computer are left untouched. A safety copy of the current database is kept automatically."
     }
   },
   "documents": {
@@ -998,6 +1060,7 @@
       "documents": "Documents",
       "certificates": "Certificates",
       "payments": "Payments",
+      "reminders": "Reminders",
       "access": "Access & data"
     },
     "actions": {
@@ -1017,6 +1080,9 @@
       "certificate.delete": "Certificate deleted",
       "payment.record": "Payment recorded",
       "payment.delete": "Payment voided",
+      "reminder.send": "WhatsApp reminder opened",
+      "database.backup": "Backup created",
+      "database.restore": "Database restored",
       "database.reset": "Database reset"
     }
   }
