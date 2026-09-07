@@ -1,6 +1,8 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useLayout } from '../Layout/LayoutContext'
 import { useTranslation } from 'react-i18next'
+import { useCurrentUser, clearCachedUser } from '../../hooks/useCurrentUser'
 
 /* ─── Inline SVG Icons ─── */
 const icons = {
@@ -18,6 +20,12 @@ const icons = {
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  waiting: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 15.5 14" />
     </svg>
   ),
   calendar: (
@@ -77,6 +85,19 @@ const icons = {
       <line x1="20" y1="20" x2="16.65" y2="16.65" />
     </svg>
   ),
+  medications: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7z" />
+      <line x1="8.5" y1="8.5" x2="15.5" y2="15.5" />
+    </svg>
+  ),
+  logout: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
 }
 
 /* ─── Navigation Config ─── */
@@ -87,18 +108,48 @@ interface NavItem {
   path: string
   badge?: number
   section: 'main' | 'manage' | 'system'
+  /**
+   * Hidden from an assistant. This mirrors the channel allowlist in
+   * `electron/services/permissions.ts` but does not enforce anything — the main
+   * process refuses the calls either way. Its job is to keep the assistant off
+   * screens where most of the controls would come back refused.
+   *
+   * Ordonnances is doctor-only for a subtler reason than the rest: an assistant
+   * may READ prescriptions (the desk reprints them), but the page's whole
+   * purpose is authoring, so they reach the finished PDFs through Documents
+   * instead.
+   */
+  doctorOnly?: boolean
 }
 
-const navItems: NavItem[] = [
+/**
+ * The nav, minus anything that varies at runtime.
+ *
+ * Held outside the component because it is constant; the badge count is folded
+ * in below, since it is the one field that changes while the app is open.
+ */
+const BASE_NAV: NavItem[] = [
   { id: 'dashboard', label: 'Tableau de bord', icon: icons.dashboard, path: '/dashboard', section: 'main' },
   { id: 'patients', label: 'Patients', icon: icons.patients, path: '/patients', section: 'main' },
+  { id: 'waiting', label: "Salle d'attente", icon: icons.waiting, path: '/waiting-room', section: 'main' },
   { id: 'appointments', label: 'Rendez-vous', icon: icons.calendar, path: '/appointments', section: 'main' },
   { id: 'consultation', label: 'Consultation', icon: icons.consultation, path: '/consultation', section: 'main' },
   { id: 'documents', label: 'Documents', icon: icons.documents, path: '/documents', section: 'manage' },
-  { id: 'prescriptions', label: 'Ordonnances', icon: icons.prescription, path: '/prescriptions', section: 'manage' },
-  { id: 'statistics', label: 'Statistiques', icon: icons.stats, path: '/statistics', section: 'manage' },
-  { id: 'settings', label: 'Paramètres', icon: icons.settings, path: '/settings', section: 'system' },
+  { id: 'prescriptions', label: 'Ordonnances', icon: icons.prescription, path: '/prescriptions', section: 'manage', doctorOnly: true },
+  { id: 'medications', label: 'Médicaments', icon: icons.medications, path: '/medications', section: 'manage' },
+  { id: 'statistics', label: 'Statistiques', icon: icons.stats, path: '/statistics', section: 'manage', doctorOnly: true },
+  { id: 'settings', label: 'Paramètres', icon: icons.settings, path: '/settings', section: 'system', doctorOnly: true },
 ]
+
+/**
+ * How often the sidebar re-counts the waiting room.
+ *
+ * Slower than the waiting-room page's own five seconds on purpose: this is a
+ * glance-value for someone working elsewhere in the app, and the point of the
+ * badge is that the doctor does not have to sit on the queue to know it is
+ * filling up.
+ */
+const WAITING_POLL_MS = 15_000
 
 /* ─── Language options ─── */
 const languages = [
@@ -217,18 +268,64 @@ export default function Sidebar() {
   const { t, i18n } = useTranslation()
   const isRtl = i18n.dir() === 'rtl'
   const activeLang = i18n.language?.startsWith('ar') ? 'ar' : i18n.language?.startsWith('en') ? 'en' : 'fr';
+  const { isAssistant, user } = useCurrentUser()
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
     return location.pathname.startsWith(path)
   }
 
+  const handleLogout = async () => {
+    if (!window.confirm(t('settings.security.logout_confirm'))) return
+    try {
+      await window.ipcRenderer.logout()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      // Cleared even if the channel threw: the renderer must not keep showing
+      // a role for a session the main process may already have dropped.
+      clearCachedUser()
+      window.location.hash = '/'
+    }
+  }
+
+  /* How many people are waiting, for the badge. Polled rather than pushed,
+     for the reasons set out in PrintQueuePanel — and it is only ever a count,
+     so a failed poll leaves the last one on screen rather than flashing zero. */
+  const [waitingCount, setWaitingCount] = useState(0)
+
+  const countWaiting = useCallback(async () => {
+    try {
+      const room = await window.ipcRenderer.getWaitingRoom()
+      if (Array.isArray(room?.waiting)) setWaitingCount(room.waiting.length)
+    } catch {
+      // Silent: HostBanner already reports a host that cannot be reached, and a
+      // badge is not worth a second complaint about it.
+    }
+  }, [])
+
+  useEffect(() => {
+    void countWaiting()
+    const timer = setInterval(() => void countWaiting(), WAITING_POLL_MS)
+    return () => clearInterval(timer)
+  }, [countWaiting])
+
+  const navItems = useMemo(
+    () => BASE_NAV.map(item => (item.id === 'waiting' && waitingCount > 0 ? { ...item, badge: waitingCount } : item)),
+    [waitingCount]
+  )
+
   const sections = ['main', 'manage', 'system'] as const
-  const grouped = sections.map(s => ({
-    key: s,
-    label: t(`sidebar.sections.${s}`),
-    items: navItems.filter(i => i.section === s),
-  }))
+  const visibleItems = navItems.filter(item => !(item.doctorOnly && isAssistant))
+  const grouped = sections
+    .map(s => ({
+      key: s,
+      label: t(`sidebar.sections.${s}`),
+      items: visibleItems.filter(i => i.section === s),
+    }))
+    // 'system' holds only Paramètres today, so for an assistant the whole
+    // section empties out — rendering its heading over nothing looks broken.
+    .filter(section => section.items.length > 0)
 
   return (
     <nav
@@ -307,8 +404,48 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* ── Footer: Language Selector Only ── */}
-      <div className={`border-t border-white/[0.07] flex-shrink-0 ${collapsed ? 'px-2 py-4' : 'px-3 py-4'}`}>
+      {/* ── Footer: signed-in account + language ── */}
+      <div className={`border-t border-white/[0.07] flex-shrink-0 flex flex-col gap-2 ${collapsed ? 'px-2 py-4' : 'px-3 py-4'}`}>
+        {/* Who is signed in, and the way out.
+            Sign-out lives here rather than only in Paramètres because an
+            assistant cannot open Paramètres at all — without this there would
+            be no way for them to end a session. */}
+        {user && (
+          collapsed ? (
+            <div className="relative group flex justify-center">
+              <button
+                id="sidebar-logout"
+                onClick={handleLogout}
+                aria-label={t('sidebar.actions.logout')}
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-white/50 hover:text-pink hover:bg-white/[0.07] transition-all duration-200 cursor-pointer"
+              >
+                {icons.logout}
+              </button>
+              <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-full mr-3' : 'left-full ml-3'} whitespace-nowrap bg-navy text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]`}>
+                {user.fullName} — {t('sidebar.actions.logout')}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.07]">
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-xs font-semibold text-white/80 truncate">{user.fullName}</span>
+                <span className="text-[10px] text-white/35 truncate">
+                  {t(`roles.${user.role}`)}
+                </span>
+              </div>
+              <button
+                id="sidebar-logout"
+                onClick={handleLogout}
+                aria-label={t('sidebar.actions.logout')}
+                title={t('sidebar.actions.logout')}
+                className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-pink hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <span className="scale-[0.8]">{icons.logout}</span>
+              </button>
+            </div>
+          )
+        )}
+
         {/* Language selector — native select */}
         {!collapsed ? (
           <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.07]">

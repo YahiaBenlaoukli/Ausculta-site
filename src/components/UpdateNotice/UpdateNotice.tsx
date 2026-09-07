@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UpdateStatus } from '../../../types/update';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 /**
  * Update notice.
@@ -12,9 +13,15 @@ import type { UpdateStatus } from '../../../types/update';
  * date, or when the check failed — a clinic with no internet must never see an
  * error it can do nothing about. The card only shows up when there is a
  * decision for the doctor to make, and it can always be dismissed.
+ *
+ * Literally the doctor's decision: downloading and installing restarts the
+ * app, so those channels are doctor-only and an assistant is not shown a card
+ * whose buttons would be refused. Nobody signed in (the login screen) is not
+ * an assistant, so the notice behaves there exactly as it always has.
  */
 export default function UpdateNotice() {
     const { t } = useTranslation();
+    const { isAssistant } = useCurrentUser();
     const [update, setUpdate] = useState<UpdateStatus | null>(null);
     const [dismissed, setDismissed] = useState<string | null>(null);
 
@@ -36,7 +43,7 @@ export default function UpdateNotice() {
         return () => window.ipcRenderer.off('update-status', onStatus);
     }, [refresh]);
 
-    if (!update) return null;
+    if (!update || isAssistant) return null;
 
     const { phase, newVersion, percent } = update;
 

@@ -6,10 +6,21 @@
 // here touches a patient — it is the doctor's own library.
 import { getDatabase } from "../db/db";
 import { escapeLike, normalizeSearchText } from "../db/normalize";
+import { searchMedicationCatalog } from "./medicationCatalog";
 import type { MedicineLine, MedicineSuggestion, PrescriptionTemplate } from "../../types/doctor";
 
 /** Suggestions shown at once. Enough to be useful, few enough to scan. */
 const SUGGESTION_LIMIT = 8;
+
+/**
+ * Slots held back for the national catalogue once the doctor has typed something.
+ *
+ * History is strictly more useful — it carries the posology — so it takes the
+ * list by default. But a doctor who has prescribed eight loosely-matching drugs
+ * before would otherwise never be shown the registered product they are actually
+ * reaching for, so a few rows at the bottom stay reserved for the catalogue.
+ */
+const CATALOG_SLOTS = 3;
 
 type MedicineRow = {
     medicine_name: string;
@@ -30,7 +41,8 @@ function mapMedicineLine(row: MedicineRow): MedicineLine {
 }
 
 /**
- * Autocomplete over the doctor's own prescribing history.
+ * Autocomplete over the doctor's own prescribing history, topped up from the
+ * national drug catalogue.
  *
  * Drugs are grouped by their folded name (see db/normalize.ts) so "Paracétamol"
  * and "paracetamol" are one entry rather than two, and each entry carries the
@@ -38,8 +50,15 @@ function mapMedicineLine(row: MedicineRow): MedicineLine {
  * suggestion refills dosage, frequency, duration and quantity too, which is
  * where the actual typing is saved.
  *
- * An empty query returns the most-prescribed drugs, so focusing the field with
- * nothing typed shows the doctor their own top-8 shortlist.
+ * Once the doctor has typed at least two characters, any slots history did not
+ * fill — plus CATALOG_SLOTS held back on purpose — are offered from the ~5,350
+ * products registered in Algeria (see services/medicationCatalog.ts). Those
+ * carry a name and a strength but no posology, and are flagged with `catalog` so
+ * the renderer can mark them as coming from the registry rather than from here.
+ *
+ * An empty query returns the most-prescribed drugs and nothing from the
+ * catalogue, so focusing the field with nothing typed shows the doctor their own
+ * top-8 shortlist rather than 5,350 products in no meaningful order.
  */
 export function suggestMedicines(query: string, limit: number = SUGGESTION_LIMIT) {
     try {
@@ -61,21 +80,43 @@ export function suggestMedicines(query: string, limit: number = SUGGESTION_LIMIT
             : '';
         const params = terms.map((t) => `%${escapeLike(t)}%`);
 
+        // Cap history short of the limit so the catalogue always gets a look in,
+        // but only once there is a query — an empty field is the doctor's own
+        // shortlist and the catalogue has nothing sensible to add to it.
+        const historyLimit = terms.length ? Math.max(1, limit - CATALOG_SLOTS) : limit;
+
         const rows = db
             .prepare(
-                `SELECT m.medicine_name, m.dosage, m.frequency, m.duration, m.quantity, agg.uses
+                `SELECT m.medicine_name, m.dosage, m.frequency, m.duration, m.quantity, agg.uses, agg.folded
                  FROM (${grouped}) agg
                  JOIN prescription_medicines m ON m.id = agg.last_id
                  ${where}
                  ORDER BY agg.uses DESC, m.id DESC
                  LIMIT ?`
             )
-            .all(...params, limit) as (MedicineRow & { uses: number })[];
+            .all(...params, historyLimit) as (MedicineRow & { uses: number; folded: string })[];
 
         const data: MedicineSuggestion[] = rows.map((row) => ({
             ...mapMedicineLine(row),
             uses: row.uses,
         }));
+
+        // Never offer the same drug twice: the history row wins because it knows
+        // how this doctor last prescribed it.
+        const alreadyOffered = new Set(rows.map((row) => row.folded));
+        for (const hit of searchMedicationCatalog(query, limit - data.length, alreadyOffered)) {
+            data.push({
+                medicineName: hit.medicine.medicineName,
+                dosage: hit.medicine.dosage,
+                // Posology is a clinical decision; the registry cannot supply it.
+                frequency: '',
+                duration: '',
+                quantity: '',
+                uses: 0,
+                catalog: hit.catalog,
+            });
+        }
+
         return { status: "success", data };
     } catch (error) {
         console.error("suggestMedicines error:", error);

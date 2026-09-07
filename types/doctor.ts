@@ -1,3 +1,5 @@
+import type { MedicationCatalogInfo } from "./medication";
+
 // Language a prescription PDF can be generated in. Each maps to a template
 // file under public/ordonnance/ (templateFr.pdf / templateEn.pdf).
 export type PrescriptionLanguage = "fr" | "en";
@@ -92,13 +94,24 @@ export type MedicineLine = {
 }
 
 /**
- * A drug the doctor has prescribed before, offered as autocomplete. The posology
- * fields carry the values used the LAST time this drug was prescribed, so
- * picking a suggestion refills the whole row, not just the name.
+ * A drug offered as autocomplete while writing a prescription, from one of two
+ * places.
+ *
+ * Without `catalog`, it comes from the doctor's own prescribing history, and the
+ * posology fields carry the values used the LAST time this drug was prescribed —
+ * so picking it refills the whole row, not just the name.
+ *
+ * With `catalog`, it comes from the national drug catalogue (see
+ * types/medication.ts). Only `medicineName` and `dosage` are filled; the posology
+ * is a clinical decision the doctor still has to make. History always ranks
+ * first: a doctor's own habits beat a registry.
  */
 export type MedicineSuggestion = MedicineLine & {
-    /** Times this drug appears across all prescriptions — drives the ordering. */
+    /** Times this drug appears across all prescriptions — drives the ordering.
+     *  Always 0 for a catalogue entry, which has never been prescribed here. */
     uses: number;
+    /** Present only for catalogue entries; absent for history. */
+    catalog?: MedicationCatalogInfo;
 }
 
 /** A named, reusable set of medicines. */

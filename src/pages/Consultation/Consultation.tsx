@@ -9,6 +9,8 @@ import MedicineNameInput from '../../components/Prescription/MedicineNameInput';
 import TemplateBar from '../../components/Prescription/TemplateBar';
 import CertificateForm from '../../components/Prescription/CertificateForm';
 import PaymentPanel from '../../components/Billing/PaymentPanel';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+import SendToPrintIcon from '../../components/Print/SendToPrintIcon';
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /*                              ICONS                                  */
@@ -79,9 +81,19 @@ const icons = {
             <polyline points="20 6 9 17 4 12" />
         </svg>
     ),
+    checkSmall: (
+        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
+    ),
     search: (
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+    ),
+    arrowLeft: (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
         </svg>
     ),
 };
@@ -205,6 +217,11 @@ const EMPTY_MEDICATION: MedicationEntry = { medicineName: '', dosage: '', freque
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
+/* The visit is recorded in the order it happens: why the patient came and what
+   was measured, what was found, what was brought in, what is being issued, what
+   is owed. Each phase is one screen; the stepper keeps all of them reachable. */
+type PhaseId = 'vitals' | 'clinical' | 'documents' | 'prescription' | 'billing';
+
 /* ═══════════════════════════════════════════════════════════════════ */
 /*                       SMALL PRESENTATIONAL BITS                     */
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -248,6 +265,7 @@ export default function Consultation() {
 
     /* ── Session ── */
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const { isAssistant } = useCurrentUser();
     const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
     const [step, setStep] = useState<'loading' | 'no-profile' | 'select' | 'workspace'>('loading');
 
@@ -257,6 +275,7 @@ export default function Consultation() {
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [saveState, setSaveState] = useState<SaveState>('idle');
     const [isFinishing, setIsFinishing] = useState(false);
+    const [phase, setPhase] = useState<PhaseId>('vitals');
     // The first render after loading a consultation must not trigger an
     // autosave — it would just write back what we have only read.
     const skipAutosave = useRef(true);
@@ -344,7 +363,7 @@ export default function Consultation() {
         if (currentUserId === null) return;
         (async () => {
             try {
-                const result = await window.ipcRenderer.getDoctorProfile(currentUserId);
+                const result = await window.ipcRenderer.getPracticeDoctorProfile();
                 if (result.status === 'success' && result.data) {
                     setDoctorProfile(result.data);
                 } else {
@@ -362,6 +381,7 @@ export default function Consultation() {
         skipAutosave.current = true;
         setConsultation(record);
         setForm(formFromConsultation(record));
+        setPhase('vitals');
         setStep('workspace');
 
         const [loadedPatient, artifacts, history] = await Promise.all([
@@ -458,11 +478,23 @@ export default function Consultation() {
 
     /* ══════════════════════ Starting a visit ══════════════════════ */
 
+    /*
+     * Opens the visit — but by a different route per role, because the two mean
+     * different things now that there is a waiting room.
+     *
+     * startConsultation stamps `called_at`: the patient is in the room with the
+     * doctor. The desk cannot say that (the main process refuses the channel),
+     * and should not: an assistant reaching a patient here is taking their
+     * constantes while they wait, which is a check-in. Both land on the same
+     * draft, so the doctor picks it up with the vitals already on it.
+     */
     const startVisit = useCallback(async (selectedPatient: Patient, appointmentId?: number) => {
         if (!doctorProfile) return;
         setIsStarting(true);
         try {
-            const result = await window.ipcRenderer.startConsultation(selectedPatient.id, doctorProfile.id, appointmentId);
+            const result = isAssistant
+                ? await window.ipcRenderer.checkInPatient(selectedPatient.id, appointmentId)
+                : await window.ipcRenderer.startConsultation(selectedPatient.id, doctorProfile.id, appointmentId);
             if (result.status === 'success' && result.data) {
                 setPatientSearchQuery('');
                 setPatientSearchResults([]);
@@ -476,10 +508,12 @@ export default function Consultation() {
         } finally {
             setIsStarting(false);
         }
-    }, [doctorProfile, openWorkspace, showError, t]);
+    }, [doctorProfile, isAssistant, openWorkspace, showError, t]);
 
     /* A patient handed over from the patient file or the calendar. */
-    const handoff = location.state as { patient?: Patient; appointmentId?: number } | null;
+    const handoff = location.state as { patient?: Patient; appointmentId?: number; cameFromConsultation?: boolean } | null;
+    /* Set by openPastConsultation — there is a visit behind this one to go back to. */
+    const cameFromConsultation = Boolean(handoff?.cameFromConsultation);
     const handoffHandled = useRef(false);
     useEffect(() => {
         if (handoffHandled.current || step !== 'select' || !handoff?.patient || !doctorProfile) return;
@@ -703,6 +737,7 @@ export default function Consultation() {
         setBookedFollowUp(null);
         setFollowUp({ date: '', time: '09:00', duration: '30', reason: '' });
         setSaveState('idle');
+        setPhase('vitals');
         handoffHandled.current = false;
     }
 
@@ -725,6 +760,65 @@ export default function Consultation() {
         const error = await window.ipcRenderer.openDocument(path);
         if (error) console.error('[open-document] error:', error);
     };
+
+    /* Opening a past visit from the history panel. The autosave is debounced,
+       so switching records would drop whatever was typed in the last second —
+       flush it first. The flag is what puts the Back button on the header of
+       the visit we land on. */
+    const openPastConsultation = async (pastId: number) => {
+        if (consultationId && !isCompleted) {
+            try {
+                await window.ipcRenderer.updateConsultation(consultationId, draftFromForm(form));
+            } catch (error) {
+                console.error('Error saving before opening a past consultation:', error);
+            }
+        }
+        navigate(`/consultation/${pastId}`, { state: { cameFromConsultation: true } });
+    };
+
+    /* `filled` drives the tick on the stepper: it says a phase has something
+       recorded in it, not that it is finished — nothing here is mandatory, a
+       visit can legitimately end without a prescription or a document.
+
+       `doctorOnly` is what makes check-in by an assistant safe. The main
+       process already refuses to write the clinical fields for them
+       (scopeDraftToRole in consultations.ts), so without this the desk could
+       type a diagnosis, watch it autosave, and never find out it was dropped.
+       Removing the phase is what keeps the UI honest about that — and since
+       `phase` starts at 'vitals' and only ever moves through this list, a
+       filtered-out phase is unreachable rather than merely hidden. */
+    const phases = useMemo(() => ([
+        {
+            id: 'vitals' as const,
+            label: t('consultation.vitals.title'),
+            filled: [form.reason, form.weight, form.height, form.temperature, form.bloodPressure, form.heartRate].some(v => v.trim()),
+        },
+        {
+            id: 'clinical' as const,
+            label: t('consultation.clinical.title'),
+            filled: [form.examNotes, form.diagnosis, form.treatmentPlan, form.followUpNotes].some(v => v.trim()),
+            doctorOnly: true,
+        },
+        {
+            id: 'documents' as const,
+            label: t('consultation.documents.title'),
+            filled: documents.length > 0,
+        },
+        {
+            id: 'prescription' as const,
+            label: t('consultation.prescription.phase_title'),
+            filled: prescriptions.length > 0,
+            doctorOnly: true,
+        },
+        {
+            id: 'billing' as const,
+            label: t('consultation.billing.phase_title'),
+            filled: form.fee.trim() !== '' || bookedFollowUp !== null,
+        },
+    ].filter(entry => !(entry.doctorOnly && isAssistant))),
+        [t, form, documents.length, prescriptions.length, bookedFollowUp, isAssistant]);
+
+    const phaseIndex = Math.max(0, phases.findIndex(entry => entry.id === phase));
 
     /* ═══════════════════════════════════════════════════════════════ */
     /*                            RENDERING                            */
@@ -940,6 +1034,18 @@ export default function Consultation() {
             <div className="sticky top-0 z-30 -mx-1 px-1 py-1">
                 <div className="bg-white rounded-2xl p-4 shadow-[0_4px_20px_rgba(30,42,86,0.08)] border border-navy/[0.04] flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3.5 min-w-0">
+                        {/* Only when we arrived here from another visit, so the
+                            button never leads out of the consultation flow. */}
+                        {cameFromConsultation && (
+                            <button
+                                onClick={() => navigate(-1)}
+                                title={t('consultation.header.back')}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-navy/10 bg-white text-navy/60 hover:text-navy hover:bg-navy/[0.03] text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
+                            >
+                                {icons.arrowLeft}
+                                {t('consultation.header.back')}
+                            </button>
+                        )}
                         <span className="w-11 h-11 rounded-full bg-gradient-to-br from-pink to-pink-light text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
                             {patient ? getInitials(patient.fullName) : '—'}
                         </span>
@@ -981,7 +1087,11 @@ export default function Consultation() {
                                 {t('consultation.header.open_file')}
                             </button>
                         )}
-                        {!isCompleted && (
+                        {/* Closing or discarding a visit is a clinical sign-off:
+                            complete-consultation and delete-consultation are both
+                            doctor-only channels, so the desk checks the patient in
+                            and records vitals, and the doctor ends the visit. */}
+                        {!isCompleted && !isAssistant && (
                             <>
                                 <button
                                     onClick={handleDiscard}
@@ -1005,424 +1115,489 @@ export default function Consultation() {
 
             {feedback}
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
-                {/* ── Clinical column ── */}
-                <div className="xl:col-span-2 space-y-5">
-                    <SectionCard title={t('consultation.vitals.title')} icon={icons.pulse}>
-                        <Field label={t('consultation.vitals.reason')}>
-                            <input
-                                value={form.reason}
-                                onChange={(e) => setForm(p => ({ ...p, reason: e.target.value }))}
-                                disabled={isCompleted}
-                                placeholder={t('consultation.vitals.reason_placeholder')}
-                                className={inputClass}
-                            />
-                        </Field>
+            {/* Phase stepper. Every step stays clickable — a real consultation
+                doubles back, and the order is a suggestion rather than a gate. */}
+            <nav className="bg-white rounded-2xl p-2 shadow-[0_2px_12px_rgba(30,42,86,0.06)] border border-navy/[0.04] flex items-center gap-1 overflow-x-auto">
+                {phases.map((entry, index) => {
+                    const isCurrent = entry.id === phase;
+                    return (
+                        <button
+                            key={entry.id}
+                            onClick={() => setPhase(entry.id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer border-none ${isCurrent ? 'bg-pink text-white shadow-[0_2px_8px_rgba(233,30,140,0.25)]' : 'bg-transparent text-navy/45 hover:text-navy hover:bg-navy/[0.03]'}`}
+                        >
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ${isCurrent ? 'bg-white/20 text-white' : entry.filled ? 'bg-emerald-100 text-emerald-600' : 'bg-navy/[0.06] text-navy/40'}`}>
+                                {entry.filled && !isCurrent ? icons.checkSmall : index + 1}
+                            </span>
+                            {entry.label}
+                        </button>
+                    );
+                })}
+            </nav>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                            <Field label={t('consultation.vitals.weight')}>
-                                <input value={form.weight} onChange={(e) => setForm(p => ({ ...p, weight: e.target.value }))} disabled={isCompleted} inputMode="decimal" placeholder={t('consultation.vitals.weight_placeholder')} className={inputClass} />
-                            </Field>
-                            <Field label={t('consultation.vitals.height')}>
-                                <input value={form.height} onChange={(e) => setForm(p => ({ ...p, height: e.target.value }))} disabled={isCompleted} inputMode="decimal" placeholder={t('consultation.vitals.height_placeholder')} className={inputClass} />
-                            </Field>
-                            <Field label={t('consultation.vitals.temperature')}>
-                                <input value={form.temperature} onChange={(e) => setForm(p => ({ ...p, temperature: e.target.value }))} disabled={isCompleted} inputMode="decimal" placeholder={t('consultation.vitals.temperature_placeholder')} className={inputClass} />
-                            </Field>
-                            <Field label={t('consultation.vitals.blood_pressure')}>
-                                <input value={form.bloodPressure} onChange={(e) => setForm(p => ({ ...p, bloodPressure: e.target.value }))} disabled={isCompleted} placeholder="120/80" className={inputClass} />
-                            </Field>
-                            <Field label={t('consultation.vitals.heart_rate')}>
-                                <input value={form.heartRate} onChange={(e) => setForm(p => ({ ...p, heartRate: e.target.value }))} disabled={isCompleted} inputMode="numeric" placeholder={t('consultation.vitals.heart_rate_placeholder')} className={inputClass} />
-                            </Field>
-                        </div>
 
-                        {bmi && (
-                            <p className="text-[11px] font-semibold text-navy/40">{t('consultation.vitals.bmi', { value: bmi })}</p>
-                        )}
-                    </SectionCard>
-
-                    <SectionCard title={t('consultation.clinical.title')} icon={icons.clipboard}>
-                        <Field label={t('consultation.clinical.exam')}>
-                            <textarea
-                                value={form.examNotes}
-                                onChange={(e) => setForm(p => ({ ...p, examNotes: e.target.value }))}
-                                disabled={isCompleted}
-                                placeholder={t('consultation.clinical.exam_placeholder')}
-                                className={textareaClass}
-                            />
-                        </Field>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <Field label={t('consultation.clinical.diagnosis')}>
-                                <textarea
-                                    value={form.diagnosis}
-                                    onChange={(e) => setForm(p => ({ ...p, diagnosis: e.target.value }))}
-                                    disabled={isCompleted}
-                                    placeholder={t('consultation.clinical.diagnosis_placeholder')}
-                                    className={textareaClass}
-                                />
-                            </Field>
-                            <Field label={t('consultation.clinical.plan')}>
-                                <textarea
-                                    value={form.treatmentPlan}
-                                    onChange={(e) => setForm(p => ({ ...p, treatmentPlan: e.target.value }))}
-                                    disabled={isCompleted}
-                                    placeholder={t('consultation.clinical.plan_placeholder')}
-                                    className={textareaClass}
-                                />
-                            </Field>
-                        </div>
-                        <Field label={t('consultation.clinical.follow_up_notes')}>
-                            <textarea
-                                value={form.followUpNotes}
-                                onChange={(e) => setForm(p => ({ ...p, followUpNotes: e.target.value }))}
-                                disabled={isCompleted}
-                                placeholder={t('consultation.clinical.follow_up_placeholder')}
-                                className={textareaClass}
-                            />
-                        </Field>
-                    </SectionCard>
-
-                    {/* Prescription */}
-                    <SectionCard
-                        title={t('consultation.prescription.title')}
-                        icon={icons.pill}
-                        action={
-                            <div className="flex items-center gap-1 bg-navy/[0.04] p-1 rounded-xl">
-                                {(['fr', 'en'] as PrescriptionLanguage[]).map((language) => (
-                                    <button
-                                        key={language}
-                                        onClick={() => setPrescriptionLanguage(language)}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer border-none ${prescriptionLanguage === language ? 'bg-white text-navy shadow-sm' : 'bg-transparent text-navy/40 hover:text-navy'}`}
-                                    >
-                                        {language}
-                                    </button>
-                                ))}
-                            </div>
-                        }
-                    >
-                        {!isCompleted && (
-                            <>
-                                <TemplateBar
-                                    userId={currentUserId}
-                                    currentMedicines={medications}
-                                    onApply={applyTemplate}
-                                />
-                                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
-                                    <div className="col-span-2 lg:col-span-1">
-                                        <MedicineNameInput
-                                            value={medForm.medicineName}
-                                            onChange={(v) => setMedForm(p => ({ ...p, medicineName: v }))}
-                                            onPick={(line) => setMedForm(line)}
-                                            onSubmit={addMedication}
-                                            placeholder={t('consultation.prescription.medicine')}
-                                            className={`${inputClass} w-full`}
-                                        />
-                                    </div>
-                                    <input value={medForm.dosage} onChange={(e) => setMedForm(p => ({ ...p, dosage: e.target.value }))} placeholder={t('consultation.prescription.dosage')} className={inputClass} />
-                                    <input value={medForm.frequency} onChange={(e) => setMedForm(p => ({ ...p, frequency: e.target.value }))} placeholder={t('consultation.prescription.frequency')} className={inputClass} />
-                                    <input value={medForm.duration} onChange={(e) => setMedForm(p => ({ ...p, duration: e.target.value }))} placeholder={t('consultation.prescription.duration')} className={inputClass} />
-                                    <input value={medForm.quantity} onChange={(e) => setMedForm(p => ({ ...p, quantity: e.target.value }))} placeholder={t('consultation.prescription.quantity')} className={inputClass} />
-                                </div>
-                                <button
-                                    onClick={addMedication}
-                                    disabled={!medForm.medicineName.trim()}
-                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    {icons.plus}{t('consultation.prescription.add_medicine')}
-                                </button>
-                            </>
-                        )}
-
-                        {medications.length > 0 && (
-                            <div className="space-y-2">
-                                {medications.map((medication, index) => (
-                                    <div key={index} className="flex items-start justify-between gap-3 p-3 rounded-xl bg-navy/[0.02] border border-navy/[0.05]">
-                                        <div className="min-w-0">
-                                            <span className="text-sm font-semibold text-navy">{medication.medicineName}</span>
-                                            <span className="block text-[11px] text-navy/40">
-                                                {[medication.dosage, medication.quantity, medication.frequency, medication.duration].filter(Boolean).join(' · ')}
-                                            </span>
-                                        </div>
-                                        <button
-                                            onClick={() => setMedications(prev => prev.filter((_, i) => i !== index))}
-                                            className="p-1.5 text-navy/20 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer bg-transparent border-none flex-shrink-0"
-                                        >
-                                            {icons.trash}
-                                        </button>
-                                    </div>
-                                ))}
-
-                                <Field label={t('consultation.prescription.notes')}>
-                                    <textarea
-                                        value={prescriptionNotes}
-                                        onChange={(e) => setPrescriptionNotes(e.target.value)}
-                                        placeholder={t('consultation.prescription.notes_placeholder')}
-                                        className={`${inputClass} resize-y min-h-[64px]`}
-                                    />
-                                </Field>
-
-                                <button
-                                    onClick={handleSavePrescription}
-                                    disabled={isSavingPrescription}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-pink hover:bg-pink-dark text-white text-xs font-bold shadow-[0_2px_8px_rgba(233,30,140,0.2)] transition-colors cursor-pointer border-none disabled:opacity-50"
-                                >
-                                    {isSavingPrescription
-                                        ? t('consultation.prescription.generating')
-                                        : t('consultation.prescription.save_and_print')}
-                                </button>
-                            </div>
-                        )}
-
-                        {prescriptions.length > 0 && (
-                            <div className="space-y-2 pt-3 border-t border-navy/[0.06]">
-                                <p className="text-[11px] font-bold uppercase tracking-wider text-navy/35">{t('consultation.prescription.issued')}</p>
-                                {prescriptions.map((prescription) => (
-                                    <div key={prescription.id} className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
-                                        <span className="text-xs font-bold text-navy">{t('consultation.prescription.item', { id: prescription.id })}</span>
-                                        <span className="block text-[11px] text-navy/45 mt-0.5">
-                                            {prescription.medicines.map(m => m.medicineName).join(', ')}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {medications.length === 0 && prescriptions.length === 0 && isCompleted && (
-                            <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.prescription.none')}</p>
-                        )}
-                    </SectionCard>
-
-                    {/* Certificats médicaux */}
-                    <SectionCard title={t('certificates.title')} icon={icons.clipboard}>
-                        <CertificateForm
-                            userId={currentUserId}
-                            patientId={patient?.id ?? null}
-                            consultationId={consultation?.id ?? null}
-                            language={prescriptionLanguage}
+            <div className={phase === 'vitals' ? 'space-y-5' : 'hidden'}>
+                <SectionCard title={t('consultation.vitals.title')} icon={icons.pulse}>
+                    <Field label={t('consultation.vitals.reason')}>
+                        <input
+                            value={form.reason}
+                            onChange={(e) => setForm(p => ({ ...p, reason: e.target.value }))}
                             disabled={isCompleted}
+                            placeholder={t('consultation.vitals.reason_placeholder')}
+                            className={inputClass}
                         />
-                    </SectionCard>
+                    </Field>
 
-                    {/* Documents */}
-                    <SectionCard title={t('consultation.documents.title')} icon={icons.fileDoc}>
-                        {!isCompleted && (
-                            <div className="flex flex-wrap items-end gap-3">
-                                <div className="flex-1 min-w-[180px]">
-                                    <Field label={t('consultation.documents.category')}>
-                                        <select
-                                            value={uploadCategory}
-                                            onChange={(e) => setUploadCategory(e.target.value)}
-                                            className={`${inputClass} cursor-pointer`}
-                                        >
-                                            <option value="radiography">{t('documents.categories.radiography')}</option>
-                                            <option value="analysis">{t('documents.categories.analysis')}</option>
-                                            <option value="report">{t('consultation.documents.category_report')}</option>
-                                            <option value="other">{t('documents.categories.other')}</option>
-                                        </select>
-                                    </Field>
-                                </div>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                    className="hidden"
-                                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                                />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <Field label={t('consultation.vitals.weight')}>
+                            <input value={form.weight} onChange={(e) => setForm(p => ({ ...p, weight: e.target.value }))} disabled={isCompleted} inputMode="decimal" placeholder={t('consultation.vitals.weight_placeholder')} className={inputClass} />
+                        </Field>
+                        <Field label={t('consultation.vitals.height')}>
+                            <input value={form.height} onChange={(e) => setForm(p => ({ ...p, height: e.target.value }))} disabled={isCompleted} inputMode="decimal" placeholder={t('consultation.vitals.height_placeholder')} className={inputClass} />
+                        </Field>
+                        <Field label={t('consultation.vitals.temperature')}>
+                            <input value={form.temperature} onChange={(e) => setForm(p => ({ ...p, temperature: e.target.value }))} disabled={isCompleted} inputMode="decimal" placeholder={t('consultation.vitals.temperature_placeholder')} className={inputClass} />
+                        </Field>
+                        <Field label={t('consultation.vitals.blood_pressure')}>
+                            <input value={form.bloodPressure} onChange={(e) => setForm(p => ({ ...p, bloodPressure: e.target.value }))} disabled={isCompleted} placeholder="120/80" className={inputClass} />
+                        </Field>
+                        <Field label={t('consultation.vitals.heart_rate')}>
+                            <input value={form.heartRate} onChange={(e) => setForm(p => ({ ...p, heartRate: e.target.value }))} disabled={isCompleted} inputMode="numeric" placeholder={t('consultation.vitals.heart_rate_placeholder')} className={inputClass} />
+                        </Field>
+                    </div>
+
+                    {bmi && (
+                        <p className="text-[11px] font-semibold text-navy/40">{t('consultation.vitals.bmi', { value: bmi })}</p>
+                    )}
+                </SectionCard>
+
+                {/* Patient history */}
+                <SectionCard title={t('consultation.history.title')} icon={icons.clipboard}>
+                    {patientNote && (
+                        <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-100">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/70 block mb-1">
+                                {t('consultation.history.patient_notes')}
+                            </span>
+                            <p className="text-[11px] text-navy/60 line-clamp-4 whitespace-pre-wrap">{patientNote}</p>
+                        </div>
+                    )}
+
+                    {pastConsultations.length === 0 ? (
+                        <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.history.empty')}</p>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+                            {pastConsultations.slice(0, 8).map((past) => (
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="px-4 py-2.5 rounded-xl border border-dashed border-navy/15 text-navy/55 hover:text-pink hover:border-pink/40 text-xs font-semibold transition-colors cursor-pointer bg-transparent max-w-[220px] truncate"
+                                    key={past.id}
+                                    onClick={() => openPastConsultation(past.id)}
+                                    className="w-full text-left p-3 rounded-xl bg-navy/[0.02] border border-navy/[0.05] hover:border-pink/20 transition-colors cursor-pointer"
                                 >
-                                    {selectedFile ? selectedFile.name : t('consultation.documents.choose_file')}
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-navy/35">
+                                            {new Date(past.consultationDatetime).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                        {past.isWalkIn && (
+                                            <span className="text-[9px] font-bold text-amber-600">{t('consultation.walk_in_badge')}</span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs font-semibold text-navy mt-1 line-clamp-2">
+                                        {past.diagnosis || past.reason || t('consultation.history.no_diagnosis')}
+                                    </p>
+                                    {(past.prescriptionCount > 0 || past.documentCount > 0) && (
+                                        <p className="text-[10px] text-navy/35 mt-1">
+                                            {t('consultation.history.artifacts', { prescriptions: past.prescriptionCount, documents: past.documentCount })}
+                                        </p>
+                                    )}
                                 </button>
-                                <button
-                                    onClick={handleUpload}
-                                    disabled={!selectedFile || isUploading}
-                                    className="px-4 py-2.5 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    {isUploading ? t('consultation.documents.uploading') : t('consultation.documents.attach')}
-                                </button>
+                            ))}
+                        </div>
+                    )}
+                </SectionCard>
+            </div>
+
+            <div className={phase === 'clinical' ? 'space-y-5' : 'hidden'}>
+                <SectionCard title={t('consultation.clinical.title')} icon={icons.clipboard}>
+                    <Field label={t('consultation.clinical.exam')}>
+                        <textarea
+                            value={form.examNotes}
+                            onChange={(e) => setForm(p => ({ ...p, examNotes: e.target.value }))}
+                            disabled={isCompleted}
+                            placeholder={t('consultation.clinical.exam_placeholder')}
+                            className={textareaClass}
+                        />
+                    </Field>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <Field label={t('consultation.clinical.diagnosis')}>
+                            <textarea
+                                value={form.diagnosis}
+                                onChange={(e) => setForm(p => ({ ...p, diagnosis: e.target.value }))}
+                                disabled={isCompleted}
+                                placeholder={t('consultation.clinical.diagnosis_placeholder')}
+                                className={textareaClass}
+                            />
+                        </Field>
+                        <Field label={t('consultation.clinical.plan')}>
+                            <textarea
+                                value={form.treatmentPlan}
+                                onChange={(e) => setForm(p => ({ ...p, treatmentPlan: e.target.value }))}
+                                disabled={isCompleted}
+                                placeholder={t('consultation.clinical.plan_placeholder')}
+                                className={textareaClass}
+                            />
+                        </Field>
+                    </div>
+                    <Field label={t('consultation.clinical.follow_up_notes')}>
+                        <textarea
+                            value={form.followUpNotes}
+                            onChange={(e) => setForm(p => ({ ...p, followUpNotes: e.target.value }))}
+                            disabled={isCompleted}
+                            placeholder={t('consultation.clinical.follow_up_placeholder')}
+                            className={textareaClass}
+                        />
+                    </Field>
+                </SectionCard>
+            </div>
+
+            <div className={phase === 'documents' ? 'space-y-5' : 'hidden'}>
+                {/* Documents */}
+                <SectionCard title={t('consultation.documents.title')} icon={icons.fileDoc}>
+                    {!isCompleted && (
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div className="flex-1 min-w-[180px]">
+                                <Field label={t('consultation.documents.category')}>
+                                    <select
+                                        value={uploadCategory}
+                                        onChange={(e) => setUploadCategory(e.target.value)}
+                                        className={`${inputClass} cursor-pointer`}
+                                    >
+                                        <option value="radiography">{t('documents.categories.radiography')}</option>
+                                        <option value="analysis">{t('documents.categories.analysis')}</option>
+                                        <option value="report">{t('consultation.documents.category_report')}</option>
+                                        <option value="other">{t('documents.categories.other')}</option>
+                                    </select>
+                                </Field>
                             </div>
-                        )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                className="hidden"
+                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-4 py-2.5 rounded-xl border border-dashed border-navy/15 text-navy/55 hover:text-pink hover:border-pink/40 text-xs font-semibold transition-colors cursor-pointer bg-transparent max-w-[220px] truncate"
+                            >
+                                {selectedFile ? selectedFile.name : t('consultation.documents.choose_file')}
+                            </button>
+                            <button
+                                onClick={handleUpload}
+                                disabled={!selectedFile || isUploading}
+                                className="px-4 py-2.5 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                {isUploading ? t('consultation.documents.uploading') : t('consultation.documents.attach')}
+                            </button>
+                        </div>
+                    )}
 
-                        {documents.length === 0 ? (
-                            <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.documents.empty')}</p>
-                        ) : (
-                            <div className="divide-y divide-navy/[0.04]">
-                                {documents.map((document) => (
-                                    <div key={document.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <span className="w-8 h-8 rounded-lg bg-navy/5 text-navy/40 flex items-center justify-center flex-shrink-0">
-                                                {icons.fileDoc}
-                                            </span>
-                                            <div className="min-w-0">
-                                                <span className="block text-xs font-semibold text-navy truncate max-w-[260px]">{document.fileName}</span>
-                                                <span className="text-[10px] text-navy/35 font-medium uppercase tracking-wider">{document.fileCategory}</span>
-                                            </div>
+                    {documents.length === 0 ? (
+                        <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.documents.empty')}</p>
+                    ) : (
+                        <div className="divide-y divide-navy/[0.04]">
+                            {documents.map((document) => (
+                                <div key={document.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <span className="w-8 h-8 rounded-lg bg-navy/5 text-navy/40 flex items-center justify-center flex-shrink-0">
+                                            {icons.fileDoc}
+                                        </span>
+                                        <div className="min-w-0">
+                                            <span className="block text-xs font-semibold text-navy truncate max-w-[260px]">{document.fileName}</span>
+                                            <span className="text-[10px] text-navy/35 font-medium uppercase tracking-wider">{document.fileCategory}</span>
                                         </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                        {/* Everything produced during the visit lands in this
+                                            list — prescription, certificate, receipt — so one
+                                            button here covers the whole in-room flow. */}
+                                        <SendToPrintIcon documentPath={document.localPath} />
                                         <button
                                             onClick={() => openDocument(document.localPath)}
-                                            className="p-1.5 text-navy/25 hover:text-navy rounded-lg hover:bg-navy/5 transition-colors cursor-pointer bg-transparent border-none flex-shrink-0"
+                                            className="p-1.5 text-navy/25 hover:text-navy rounded-lg hover:bg-navy/5 transition-colors cursor-pointer bg-transparent border-none"
                                             title={t('consultation.documents.open')}
                                         >
                                             {icons.open}
                                         </button>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </SectionCard>
-                </div>
-
-                {/* ── Context column ── */}
-                <div className="space-y-5">
-                    {/* Billing */}
-                    <SectionCard title={t('consultation.billing.title')} icon={icons.wallet}>
-                        <Field label={t('consultation.billing.fee')}>
-                            <input
-                                value={form.fee}
-                                onChange={(e) => setForm(p => ({ ...p, fee: e.target.value }))}
-                                disabled={isCompleted}
-                                inputMode="decimal"
-                                placeholder={t('consultation.billing.fee_placeholder')}
-                                className={inputClass}
-                            />
-                        </Field>
-                        <label className="flex items-center gap-2.5 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={form.isPaid}
-                                onChange={(e) => setForm(p => ({ ...p, isPaid: e.target.checked }))}
-                                disabled={isCompleted}
-                                className="w-4 h-4 accent-pink cursor-pointer"
-                            />
-                            <span className="text-xs font-semibold text-navy/70">{t('consultation.billing.paid')}</span>
-                        </label>
-                        <p className="text-[10px] text-navy/35 leading-relaxed">{t('consultation.billing.hint')}</p>
-
-                        {/* Part-payments, balance and receipts. The checkbox above
-                            stays the settled flag; recording a payment drives it. */}
-                        <div className="pt-3 mt-1 border-t border-navy/[0.06]">
-                            <PaymentPanel
-                                consultationId={consultation?.id ?? null}
-                                userId={currentUserId}
-                                defaultFee={defaultFee}
-                                language={prescriptionLanguage}
-                                // Both come from the form, not the database: the
-                                // fields autosave on a debounce, and reading the
-                                // database back on every keystroke re-ticked the
-                                // box the user had just cleared.
-                                settled={form.isPaid}
-                                fee={toNumber(form.fee)}
-                                onSettledChange={handleSettledChange}
-                            />
-                        </div>
-                    </SectionCard>
-
-                    {/* Follow-up appointment */}
-                    <SectionCard title={t('consultation.follow_up.title')} icon={icons.calendar}>
-                        {bookedFollowUp ? (
-                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700">
-                                <span className="text-xs font-bold block">{t('consultation.follow_up.confirmed')}</span>
-                                <span className="text-[11px]">
-                                    {new Date(bookedFollowUp).toLocaleString(locale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Field label={t('consultation.follow_up.date')}>
-                                        <input
-                                            type="date"
-                                            value={followUp.date}
-                                            min={todayKey()}
-                                            onChange={(e) => setFollowUp(p => ({ ...p, date: e.target.value }))}
-                                            className={inputClass}
-                                        />
-                                    </Field>
-                                    <Field label={t('consultation.follow_up.time')}>
-                                        <input
-                                            type="time"
-                                            value={followUp.time}
-                                            onChange={(e) => setFollowUp(p => ({ ...p, time: e.target.value }))}
-                                            className={inputClass}
-                                        />
-                                    </Field>
                                 </div>
-                                <Field label={t('consultation.follow_up.duration')}>
-                                    <select
-                                        value={followUp.duration}
-                                        onChange={(e) => setFollowUp(p => ({ ...p, duration: e.target.value }))}
-                                        className={`${inputClass} cursor-pointer`}
+                            ))}
+                        </div>
+                    )}
+                </SectionCard>
+            </div>
+
+            <div className={phase === 'prescription' ? 'space-y-5' : 'hidden'}>
+                {/* Prescription */}
+                <SectionCard
+                    title={t('consultation.prescription.title')}
+                    icon={icons.pill}
+                    action={
+                        <div className="flex items-center gap-1 bg-navy/[0.04] p-1 rounded-xl">
+                            {(['fr', 'en'] as PrescriptionLanguage[]).map((language) => (
+                                <button
+                                    key={language}
+                                    onClick={() => setPrescriptionLanguage(language)}
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer border-none ${prescriptionLanguage === language ? 'bg-white text-navy shadow-sm' : 'bg-transparent text-navy/40 hover:text-navy'}`}
+                                >
+                                    {language}
+                                </button>
+                            ))}
+                        </div>
+                    }
+                >
+                    {!isCompleted && (
+                        <>
+                            <TemplateBar
+                                userId={currentUserId}
+                                currentMedicines={medications}
+                                onApply={applyTemplate}
+                            />
+                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
+                                <div className="col-span-2 lg:col-span-1">
+                                    <MedicineNameInput
+                                        value={medForm.medicineName}
+                                        onChange={(v) => setMedForm(p => ({ ...p, medicineName: v }))}
+                                        onPick={(line) => setMedForm(line)}
+                                        onSubmit={addMedication}
+                                        placeholder={t('consultation.prescription.medicine')}
+                                        className={`${inputClass} w-full`}
+                                    />
+                                </div>
+                                <input value={medForm.dosage} onChange={(e) => setMedForm(p => ({ ...p, dosage: e.target.value }))} placeholder={t('consultation.prescription.dosage')} className={inputClass} />
+                                <input value={medForm.frequency} onChange={(e) => setMedForm(p => ({ ...p, frequency: e.target.value }))} placeholder={t('consultation.prescription.frequency')} className={inputClass} />
+                                <input value={medForm.duration} onChange={(e) => setMedForm(p => ({ ...p, duration: e.target.value }))} placeholder={t('consultation.prescription.duration')} className={inputClass} />
+                                <input value={medForm.quantity} onChange={(e) => setMedForm(p => ({ ...p, quantity: e.target.value }))} placeholder={t('consultation.prescription.quantity')} className={inputClass} />
+                            </div>
+                            <button
+                                onClick={addMedication}
+                                disabled={!medForm.medicineName.trim()}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                {icons.plus}{t('consultation.prescription.add_medicine')}
+                            </button>
+                        </>
+                    )}
+
+                    {medications.length > 0 && (
+                        <div className="space-y-2">
+                            {medications.map((medication, index) => (
+                                <div key={index} className="flex items-start justify-between gap-3 p-3 rounded-xl bg-navy/[0.02] border border-navy/[0.05]">
+                                    <div className="min-w-0">
+                                        <span className="text-sm font-semibold text-navy">{medication.medicineName}</span>
+                                        <span className="block text-[11px] text-navy/40">
+                                            {[medication.dosage, medication.quantity, medication.frequency, medication.duration].filter(Boolean).join(' · ')}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setMedications(prev => prev.filter((_, i) => i !== index))}
+                                        className="p-1.5 text-navy/20 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer bg-transparent border-none flex-shrink-0"
                                     >
-                                        {['15', '30', '45', '60'].map(minutes => (
-                                            <option key={minutes} value={minutes}>{t('consultation.follow_up.minutes', { value: minutes })}</option>
-                                        ))}
-                                    </select>
-                                </Field>
-                                <Field label={t('consultation.follow_up.reason')}>
+                                        {icons.trash}
+                                    </button>
+                                </div>
+                            ))}
+
+                            <Field label={t('consultation.prescription.notes')}>
+                                <textarea
+                                    value={prescriptionNotes}
+                                    onChange={(e) => setPrescriptionNotes(e.target.value)}
+                                    placeholder={t('consultation.prescription.notes_placeholder')}
+                                    className={`${inputClass} resize-y min-h-[64px]`}
+                                />
+                            </Field>
+
+                            <button
+                                onClick={handleSavePrescription}
+                                disabled={isSavingPrescription}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-pink hover:bg-pink-dark text-white text-xs font-bold shadow-[0_2px_8px_rgba(233,30,140,0.2)] transition-colors cursor-pointer border-none disabled:opacity-50"
+                            >
+                                {isSavingPrescription
+                                    ? t('consultation.prescription.generating')
+                                    : t('consultation.prescription.save_and_print')}
+                            </button>
+                        </div>
+                    )}
+
+                    {prescriptions.length > 0 && (
+                        <div className="space-y-2 pt-3 border-t border-navy/[0.06]">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-navy/35">{t('consultation.prescription.issued')}</p>
+                            {prescriptions.map((prescription) => (
+                                <div key={prescription.id} className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                                    <span className="text-xs font-bold text-navy">{t('consultation.prescription.item', { id: prescription.id })}</span>
+                                    <span className="block text-[11px] text-navy/45 mt-0.5">
+                                        {prescription.medicines.map(m => m.medicineName).join(', ')}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {medications.length === 0 && prescriptions.length === 0 && isCompleted && (
+                        <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.prescription.none')}</p>
+                    )}
+                </SectionCard>
+
+                {/* Certificats médicaux */}
+                <SectionCard title={t('certificates.title')} icon={icons.clipboard}>
+                    <CertificateForm
+                        userId={currentUserId}
+                        patientId={patient?.id ?? null}
+                        consultationId={consultation?.id ?? null}
+                        language={prescriptionLanguage}
+                        disabled={isCompleted}
+                    />
+                </SectionCard>
+            </div>
+
+            <div className={phase === 'billing' ? 'space-y-5' : 'hidden'}>
+                {/* Billing */}
+                <SectionCard title={t('consultation.billing.title')} icon={icons.wallet}>
+                    <Field label={t('consultation.billing.fee')}>
+                        <input
+                            value={form.fee}
+                            onChange={(e) => setForm(p => ({ ...p, fee: e.target.value }))}
+                            disabled={isCompleted}
+                            inputMode="decimal"
+                            placeholder={t('consultation.billing.fee_placeholder')}
+                            className={inputClass}
+                        />
+                    </Field>
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={form.isPaid}
+                            onChange={(e) => setForm(p => ({ ...p, isPaid: e.target.checked }))}
+                            disabled={isCompleted}
+                            className="w-4 h-4 accent-pink cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold text-navy/70">{t('consultation.billing.paid')}</span>
+                    </label>
+                    <p className="text-[10px] text-navy/35 leading-relaxed">{t('consultation.billing.hint')}</p>
+
+                    {/* Part-payments, balance and receipts. The checkbox above
+                        stays the settled flag; recording a payment drives it. */}
+                    <div className="pt-3 mt-1 border-t border-navy/[0.06]">
+                        <PaymentPanel
+                            consultationId={consultation?.id ?? null}
+                            userId={currentUserId}
+                            defaultFee={defaultFee}
+                            language={prescriptionLanguage}
+                            // Both come from the form, not the database: the
+                            // fields autosave on a debounce, and reading the
+                            // database back on every keystroke re-ticked the
+                            // box the user had just cleared.
+                            settled={form.isPaid}
+                            fee={toNumber(form.fee)}
+                            onSettledChange={handleSettledChange}
+                        />
+                    </div>
+                </SectionCard>
+
+                {/* Follow-up appointment */}
+                <SectionCard title={t('consultation.follow_up.title')} icon={icons.calendar}>
+                    {bookedFollowUp ? (
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700">
+                            <span className="text-xs font-bold block">{t('consultation.follow_up.confirmed')}</span>
+                            <span className="text-[11px]">
+                                {new Date(bookedFollowUp).toLocaleString(locale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Field label={t('consultation.follow_up.date')}>
                                     <input
-                                        value={followUp.reason}
-                                        onChange={(e) => setFollowUp(p => ({ ...p, reason: e.target.value }))}
-                                        placeholder={t('consultation.follow_up.default_reason')}
+                                        type="date"
+                                        value={followUp.date}
+                                        min={todayKey()}
+                                        onChange={(e) => setFollowUp(p => ({ ...p, date: e.target.value }))}
                                         className={inputClass}
                                     />
                                 </Field>
-                                <button
-                                    onClick={handleBookFollowUp}
-                                    disabled={!followUp.date || isBooking}
-                                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
+                                <Field label={t('consultation.follow_up.time')}>
+                                    <input
+                                        type="time"
+                                        value={followUp.time}
+                                        onChange={(e) => setFollowUp(p => ({ ...p, time: e.target.value }))}
+                                        className={inputClass}
+                                    />
+                                </Field>
+                            </div>
+                            <Field label={t('consultation.follow_up.duration')}>
+                                <select
+                                    value={followUp.duration}
+                                    onChange={(e) => setFollowUp(p => ({ ...p, duration: e.target.value }))}
+                                    className={`${inputClass} cursor-pointer`}
                                 >
-                                    {icons.plus}
-                                    {isBooking ? t('consultation.follow_up.booking') : t('consultation.follow_up.book')}
-                                </button>
-                            </>
-                        )}
-                    </SectionCard>
+                                    {['15', '30', '45', '60'].map(minutes => (
+                                        <option key={minutes} value={minutes}>{t('consultation.follow_up.minutes', { value: minutes })}</option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field label={t('consultation.follow_up.reason')}>
+                                <input
+                                    value={followUp.reason}
+                                    onChange={(e) => setFollowUp(p => ({ ...p, reason: e.target.value }))}
+                                    placeholder={t('consultation.follow_up.default_reason')}
+                                    className={inputClass}
+                                />
+                            </Field>
+                            <button
+                                onClick={handleBookFollowUp}
+                                disabled={!followUp.date || isBooking}
+                                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                {icons.plus}
+                                {isBooking ? t('consultation.follow_up.booking') : t('consultation.follow_up.book')}
+                            </button>
+                        </>
+                    )}
+                </SectionCard>
+            </div>
 
-                    {/* Patient history */}
-                    <SectionCard title={t('consultation.history.title')} icon={icons.clipboard}>
-                        {patientNote && (
-                            <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-100">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/70 block mb-1">
-                                    {t('consultation.history.patient_notes')}
-                                </span>
-                                <p className="text-[11px] text-navy/60 line-clamp-4 whitespace-pre-wrap">{patientNote}</p>
-                            </div>
-                        )}
+            {/* Step navigation. On the last phase the forward action is finishing
+                the visit — the same handler the header button uses. */}
+            <div className="flex items-center justify-between gap-3 bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(30,42,86,0.06)] border border-navy/[0.04]">
+                <button
+                    onClick={() => setPhase(phases[Math.max(0, phaseIndex - 1)].id)}
+                    disabled={phaseIndex === 0}
+                    className="px-4 py-2.5 rounded-xl border border-navy/10 bg-white text-navy/60 hover:text-navy hover:bg-navy/[0.03] text-xs font-bold transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                    {t('consultation.phases.previous')}
+                </button>
 
-                        {pastConsultations.length === 0 ? (
-                            <p className="text-xs text-navy/35 font-medium text-center py-4">{t('consultation.history.empty')}</p>
-                        ) : (
-                            <div className="space-y-2.5 max-h-[320px] overflow-y-auto">
-                                {pastConsultations.slice(0, 8).map((past) => (
-                                    <button
-                                        key={past.id}
-                                        onClick={() => navigate(`/consultation/${past.id}`)}
-                                        className="w-full text-left p-3 rounded-xl bg-navy/[0.02] border border-navy/[0.05] hover:border-pink/20 transition-colors cursor-pointer"
-                                    >
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-navy/35">
-                                                {new Date(past.consultationDatetime).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}
-                                            </span>
-                                            {past.isWalkIn && (
-                                                <span className="text-[9px] font-bold text-amber-600">{t('consultation.walk_in_badge')}</span>
-                                            )}
-                                        </div>
-                                        <p className="text-xs font-semibold text-navy mt-1 line-clamp-2">
-                                            {past.diagnosis || past.reason || t('consultation.history.no_diagnosis')}
-                                        </p>
-                                        {(past.prescriptionCount > 0 || past.documentCount > 0) && (
-                                            <p className="text-[10px] text-navy/35 mt-1">
-                                                {t('consultation.history.artifacts', { prescriptions: past.prescriptionCount, documents: past.documentCount })}
-                                            </p>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </SectionCard>
-                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-navy/30">
+                    {t('consultation.phases.step', { current: phaseIndex + 1, total: phases.length })}
+                </span>
+
+                {phaseIndex < phases.length - 1 ? (
+                    <button
+                        onClick={() => setPhase(phases[phaseIndex + 1].id)}
+                        className="px-5 py-2.5 rounded-xl bg-navy/5 text-navy hover:bg-navy/10 text-xs font-bold transition-colors cursor-pointer border-none"
+                    >
+                        {t('consultation.phases.next')}
+                    </button>
+                ) : isCompleted || isAssistant ? (
+                    <span />
+                ) : (
+                    <button
+                        onClick={handleFinish}
+                        disabled={isFinishing}
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-pink hover:bg-pink-dark text-white text-xs font-bold shadow-[0_2px_8px_rgba(233,30,140,0.25)] transition-colors cursor-pointer border-none disabled:opacity-50"
+                    >
+                        {icons.check}
+                        {isFinishing ? t('consultation.header.finishing') : t('consultation.header.finish')}
+                    </button>
+                )}
             </div>
         </div>
     );

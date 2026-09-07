@@ -9,6 +9,8 @@ import type { PaymentDraft } from '../types/payment'
 import type { AuditQuery } from '../types/audit'
 import type { ReminderOutcome } from '../types/reminder'
 import type { BackupScope } from '../types/backup'
+import type { MedicationFilters } from '../types/medication'
+import type { NetworkConfig } from '../types/network'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -52,6 +54,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   //gestion profil médecin
   createDoctorProfile: (userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string) => ipcRenderer.invoke('create-doctor-profile', userId, fullName, speciality, phoneNumber, address, email),
   getDoctorProfile: (userId: number) => ipcRenderer.invoke('get-doctor-profile', userId),
+  getPracticeDoctorProfile: () => ipcRenderer.invoke('get-practice-doctor-profile'),
   updateDoctorProfile: (userId: number, input: DoctorProfileInput) => ipcRenderer.invoke('update-doctor-profile', userId, input),
   setPrescriptionPdf: (doctorId: number) => ipcRenderer.invoke('set-prescription-pdf', doctorId),
   //gestion des prescriptions
@@ -69,6 +72,11 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getPrescriptionTemplates: (userId: number) => ipcRenderer.invoke('get-prescription-templates', userId),
   savePrescriptionTemplate: (userId: number, name: string, medicines: MedicineLine[], notes?: string) => ipcRenderer.invoke('save-prescription-template', userId, name, medicines, notes),
   deletePrescriptionTemplate: (id: number) => ipcRenderer.invoke('delete-prescription-template', id),
+
+  //catalogue national des médicaments (référence en lecture seule, pas en base)
+  browseMedications: (filters?: MedicationFilters, page?: number, pageSize?: number) => ipcRenderer.invoke('browse-medications', filters, page, pageSize),
+  getMedicationDetail: (key: string) => ipcRenderer.invoke('get-medication-detail', key),
+  getMedicationFacets: () => ipcRenderer.invoke('get-medication-facets'),
 
   //gestion des certificats médicaux
   createCertificate: (userId: number, draft: CertificateDraft) => ipcRenderer.invoke('create-certificate', userId, draft),
@@ -92,9 +100,34 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 
   //gestion authentification
   createUser: (user: { fullName: string; password: string }) => ipcRenderer.invoke('create-user', user),
+  needsRegistration: () => ipcRenderer.invoke('needs-registration'),
   login: (fullName: string, password: string, stayLogged: boolean) => ipcRenderer.invoke('login', fullName, password, stayLogged),
   checkAuth: () => ipcRenderer.invoke('check-auth'),
   logout: () => ipcRenderer.invoke('logout'),
+
+  //file d'impression (salle de consultation → accueil)
+  enqueuePrintJob: (documentPath: string) => ipcRenderer.invoke('enqueue-print-job', documentPath),
+  getPrintQueue: () => ipcRenderer.invoke('get-print-queue'),
+  markPrintJobPrinted: (id: number) => ipcRenderer.invoke('mark-print-job-printed', id),
+  cancelPrintJob: (id: number) => ipcRenderer.invoke('cancel-print-job', id),
+  printDocument: (filePath: string) => ipcRenderer.invoke('print-document', filePath),
+  listPrinters: () => ipcRenderer.invoke('list-printers'),
+
+  //réseau local (poste autonome / hôte / client)
+  getNetworkConfig: () => ipcRenderer.invoke('get-network-config'),
+  setNetworkConfig: (patch: Partial<NetworkConfig>) => ipcRenderer.invoke('set-network-config', patch),
+  getHostInfo: () => ipcRenderer.invoke('get-host-info'),
+  testHostConnection: () => ipcRenderer.invoke('test-host-connection'),
+  getPinnedFingerprint: () => ipcRenderer.invoke('get-pinned-fingerprint'),
+  unpairHost: () => ipcRenderer.invoke('unpair-host'),
+  checkFirewallRule: () => ipcRenderer.invoke('check-firewall-rule'),
+  addFirewallRule: () => ipcRenderer.invoke('add-firewall-rule'),
+
+  //gestion des comptes (médecin uniquement)
+  listUsers: () => ipcRenderer.invoke('list-users'),
+  createAssistant: (fullName: string, password: string) => ipcRenderer.invoke('create-assistant', fullName, password),
+  deleteUser: (id: number) => ipcRenderer.invoke('delete-user', id),
+  resetUserPassword: (id: number, newPassword: string) => ipcRenderer.invoke('reset-user-password', id, newPassword),
 
   //Patient prescription
   generatePatientPrescriptionPDF: (patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string, consultationId?: number) => ipcRenderer.invoke('generate-patient-prescription-pdf', patientId, prescriptions, doctor, weight, language, consultationId),
@@ -124,6 +157,19 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   getConsultationsByPatientId: (patientId: number) => ipcRenderer.invoke('get-consultations-by-patient-id', patientId),
   getConsultationsByDay: (doctorId: number, date: string) => ipcRenderer.invoke('get-consultations-by-day', doctorId, date),
   getConsultationsByDateRange: (doctorId: number, startDate: string, endDate: string) => ipcRenderer.invoke('get-consultations-by-date-range', doctorId, startDate, endDate),
+
+  //salle d'attente (accueil → salle de consultation)
+  getWaitingRoom: () => ipcRenderer.invoke('get-waiting-room'),
+  checkInPatient: (patientId: number, appointmentId?: number) => ipcRenderer.invoke('check-in-patient', patientId, appointmentId),
+  callPatientIn: (consultationId: number) => ipcRenderer.invoke('call-patient-in', consultationId),
+  setQueuePriority: (consultationId: number, priority: boolean) => ipcRenderer.invoke('set-queue-priority', consultationId, priority),
+  removeFromQueue: (consultationId: number) => ipcRenderer.invoke('remove-from-queue', consultationId),
+
+  //écran d'affichage de la salle d'attente
+  listDisplays: () => ipcRenderer.invoke('list-displays'),
+  openQueueDisplay: (displayId?: number | null) => ipcRenderer.invoke('open-queue-display', displayId),
+  closeQueueDisplay: () => ipcRenderer.invoke('close-queue-display'),
+  getQueueDisplayStatus: () => ipcRenderer.invoke('get-queue-display-status'),
 
   //gestion des statistiques
   getFinancialStatistics: (startDate: string, endDate: string, appointmentPrice: number) => ipcRenderer.invoke('get-financial-statistics', startDate, endDate, appointmentPrice),

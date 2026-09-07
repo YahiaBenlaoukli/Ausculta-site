@@ -57,7 +57,7 @@ export default function OutstandingBalances({ defaultFee }: OutstandingBalancesP
     <div className="bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)]">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div className="min-w-0">
-          <h3 className="text-base font-bold text-[#1E2A56]">{t('billing.outstanding.title')}</h3>
+          <h3 className="text-base font-bold text-navy">{t('billing.outstanding.title')}</h3>
           <p className="text-xs text-gray-400 mt-0.5">{t('billing.outstanding.subtitle')}</p>
         </div>
         {total > 0 && (
@@ -99,7 +99,7 @@ export default function OutstandingBalances({ defaultFee }: OutstandingBalancesP
                       <Link
                         to={`/patients/${entry.patientId}`}
                         onClick={e => e.stopPropagation()}
-                        className="text-sm font-semibold text-[#1E2A56] hover:text-pink no-underline"
+                        className="text-sm font-semibold text-navy hover:text-pink no-underline"
                       >
                         {entry.patientName}
                       </Link>
@@ -126,7 +126,7 @@ export default function OutstandingBalances({ defaultFee }: OutstandingBalancesP
                             <div key={visit.consultationId} className="flex items-center justify-between gap-3 text-xs">
                               <Link
                                 to={`/consultation/${visit.consultationId}`}
-                                className="text-[#1E2A56]/70 hover:text-pink no-underline"
+                                className="text-navy/70 hover:text-pink no-underline"
                               >
                                 {new Date(visit.consultationDatetime).toLocaleDateString(locale, {
                                   day: '2-digit', month: 'short', year: 'numeric',

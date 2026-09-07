@@ -3,24 +3,81 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initializeDatabase } from './db/db'
-import { addPatient, getPatient, getAllPatients, updatePatient, deletePatient, searchPatients, countPatients, resetMedicalDatabase } from './services/patient'
-import { uploadDocument, getDocumentsByPatientId, getAllDocuments, deleteDocument, openDocument } from './services/documents'
-import { addPrescription, getPrescriptionById, getPatientPrescriptions, getAllPrescriptions, updatePrescription, deletePrescription, searchPrescription, countPrescriptions, createDoctorProfile, getDoctorProfileByUserId, updateDoctorProfile, setPrescriptionPdf, generatePatientPrescriptionPDF } from './services/prescription'
-import { createUser, login, checkAuth, logout } from './services/auth'
-import { bookAppointment, cancelAppointment, deleteAppointment, updateAppointment, getAppointmentsByDay, getAppointmentsByPatientId, getAppointmentsByDateRange } from './services/appointments'
-import { getFinancialStatistics, getAppointmentStatistics, getConsultationStatistics, getNoShowRate, getConsultationVolume } from './services/statistics'
-import { startConsultation, getConsultationById, getActiveConsultation, updateConsultation, completeConsultation, deleteConsultation, getConsultationArtifacts, getConsultationsByPatientId, getConsultationsByDay, getConsultationsByDateRange } from './services/consultations'
-import { getTrialStatus, activateLicense } from './services/trial'
-import { initializeUpdater, getUpdateStatus, checkForUpdates, downloadUpdate, quitAndInstall } from './services/updater'
-import { globalSearch } from './services/search'
-import { suggestMedicines, getPrescriptionTemplates, savePrescriptionTemplate, deletePrescriptionTemplate } from './services/prescriptionLibrary'
-import { createCertificate, getCertificatesByPatientId, getCertificatesByConsultationId, reprintCertificate, deleteCertificate, getCertificateStatistics } from './services/certificates'
-import { recordPayment, getPaymentsByConsultationId, deletePayment, getConsultationBalance, getOutstandingBalances, generateReceiptPdf } from './services/payments'
-import { getAuditLog, getAuditLogForEntity } from './services/audit'
-import { getTomorrowReminders, openWhatsAppReminder, setReminderOutcome } from './services/reminders'
-import { backupDatabase, restoreDatabase, relaunchApp } from './services/backup'
+import { CHANNEL_TABLE, type ChannelEntry, type ChannelName } from './ipc/registry'
+import { callRemote, remoteLogin, remoteCheckAuth, remoteLogout, remoteUploadDocument, remoteOpenDocument, remotePrintDocument, setStatusWindow } from './ipc/remote'
+import { clearClientCache } from './server/files'
+import { checkPermission } from './services/permissions'
+import { getCurrentUser } from './services/session'
+import { initializeUpdater } from './services/updater'
+import { getNetworkConfig, ownsDatabase } from './services/networkConfig'
+import { startServer, stopServer } from './server/server'
+import { openQueueDisplay, closeQueueDisplay } from './services/queueDisplay'
+import { APP_WINDOW_BACKGROUND } from '../theme/palette'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Registers one channel from the registry, behind the role check.
+ *
+ * Every channel goes through here, so there is exactly one place that asks
+ * "may this user do this?" and exactly one place that admits the wire is
+ * untyped. Adding a channel is an entry in `electron/ipc/registry.ts` plus a
+ * decision in permissions.ts — the allowlist there refuses anything it has not
+ * been told about, so forgetting costs a visible refusal, not a silent hole.
+ */
+function registerChannel(channel: ChannelName, entry: ChannelEntry) {
+  ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
+    const denial = checkPermission(channel, getCurrentUser())
+    if (denial) return denial
+
+    // Arguments arrive as whatever the preload wrapper sent — there is no
+    // type to recover at a process boundary, and pretending otherwise would
+    // just move the cast somewhere less obvious.
+    const call = entry.fn as (...callArgs: unknown[]) => unknown
+    return entry.withWindow ? call(...args, win) : call(...args)
+  })
+}
+
+/**
+ * Registers a channel that this seat answers by asking the host.
+ *
+ * The local permission check still runs, and it is the same function over the
+ * same allowlist that the host will apply — so it cannot drift, and it saves a
+ * round trip on a call that was never going to be allowed. The host remains
+ * the authority; this is only about not asking.
+ */
+function registerRemoteChannel(channel: ChannelName, entry: ChannelEntry) {
+  ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
+    const denial = checkPermission(channel, getCurrentUser())
+    if (denial) return denial
+    return callRemote(channel, args, entry.fallback)
+  })
+}
+
+/**
+ * The three session channels, which a client answers differently.
+ *
+ * They are marked `local` because they manage THIS seat's session — the token
+ * on this disk, this process's signed-in user — but on a client the password
+ * check and the token verification can only happen where the users table is.
+ * So the storage half stays here and the credential half goes to the host.
+ */
+const CLIENT_SESSION_OVERRIDES: Partial<Record<ChannelName, (...args: unknown[]) => unknown>> = {
+  'login': (fullName, password, stayLogged) =>
+    remoteLogin(fullName as string, password as string, stayLogged === true),
+  'check-auth': () => remoteCheckAuth(),
+  'logout': () => remoteLogout(),
+
+  // The two channels that move bytes rather than JSON. Both name a path on the
+  // machine that called them, which on a client is the wrong disk in opposite
+  // directions: an upload reads a file that only exists here, and opening one
+  // names a file that only exists on the host.
+  'upload-document': (document) => remoteUploadDocument(document as Parameters<typeof remoteUploadDocument>[0]),
+  'open-document': (filePath) => remoteOpenDocument(filePath as string),
+  // Same shape: printing happens at this seat, but the document being printed
+  // lives on the host and has to come across first.
+  'print-document': (filePath) => remotePrintDocument(filePath as string),
+}
 
 // The built directory structure
 //
@@ -45,15 +102,15 @@ let win: BrowserWindow | null
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'logo.ico'),
-    // Matches the app's body background (--background in src/index.css).
+    // What the compositor presents for any region the renderer has not painted
+    // yet — during startup, a resize, or a route change that briefly empties the
+    // content area. Left unset, those frames come out black on Windows, which
+    // reads as a flicker when navigating.
     //
-    // This is what the compositor presents for any region the renderer has not
-    // painted yet — during startup, a resize, or a route change that briefly
-    // empties the content area. Left unset, those frames come out black on
-    // Windows, which reads as a flicker when navigating. Keep this in sync with
-    // the CSS: a mismatch turns the same moments into a visible colour flash
-    // instead of a seamless one.
-    backgroundColor: '#e9f1f1',
+    // Shares one source with `--background` in src/index.css, which is what
+    // keeps those moments seamless rather than a flash of the wrong colour;
+    // `npm run check:palette` fails the build if the two ever drift.
+    backgroundColor: APP_WINDOW_BACKGROUND,
     // Do not present the window until there is a painted frame to show.
     // Without this the window appears while the document is still blank, so
     // every launch starts with a flash of empty window.
@@ -64,6 +121,12 @@ function createWindow() {
   })
 
   win.once('ready-to-show', () => win?.show())
+
+  // The waiting-room board is a second window, and 'window-all-closed' below
+  // only fires once EVERY window has gone. Without this, closing the app at the
+  // end of the day would leave Ausculta running invisibly behind the TV — no
+  // main window, no way back to it, and the process still holding the database.
+  win.on('closed', () => { closeQueueDisplay() })
 
   // External links (target="_blank" / window.open) go to the default browser,
   // never a new Electron window.
@@ -92,6 +155,9 @@ function createWindow() {
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    // Close the LAN socket before quitting, so the other seat gets a refused
+    // connection it can report as "host unreachable" rather than a hang.
+    stopServer()
     app.quit()
     win = null
   }
@@ -105,151 +171,83 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(() => {
-  // A database that refuses to open must not take the window down with it.
-  // Unguarded, a throw here skips every ipcMain.handle registration AND
-  // createWindow() at the bottom of this block — so the app starts with no
-  // window and no message, which from the outside is indistinguishable from a
-  // silent crash. Registering the handlers anyway means the renderer's calls
-  // reject with a real reason instead of hanging, and the window can at least
-  // say something.
-  try {
-    initializeDatabase();
-  } catch (error) {
-    console.error('Fatal: the database could not be opened:', error);
-    // No renderer exists yet, so there is no i18n to reach for; French is the
-    // default locale for this market.
-    dialog.showErrorBox(
-      'Ausculta',
-      `La base de données n'a pas pu être ouverte.\n\n${(error as Error).message}`
-    );
+app.whenReady().then(async () => {
+  const network = getNetworkConfig();
+
+  // A client has no database of its own, and must not create one. Beyond the
+  // empty file, initializeDatabase() runs the startup repairs and
+  // syncMissedAppointments() — work that belongs to whoever owns the data, and
+  // that a second machine doing it concurrently would only duplicate.
+  if (ownsDatabase()) {
+    // A database that refuses to open must not take the window down with it.
+    // Unguarded, a throw here skips every channel registration AND
+    // createWindow() below — so the app starts with no window and no message,
+    // which from the outside is indistinguishable from a silent crash.
+    // Registering the handlers anyway means the renderer's calls reject with a
+    // real reason instead of hanging, and the window can at least say
+    // something.
+    try {
+      initializeDatabase();
+    } catch (error) {
+      console.error('Fatal: the database could not be opened:', error);
+      // No renderer exists yet, so there is no i18n to reach for; French is the
+      // default locale for this market.
+      dialog.showErrorBox(
+        'Ausculta',
+        `La base de données n'a pas pu être ouverte.\n\n${(error as Error).message}`
+      );
+    }
   }
-  ipcMain.handle('add-patient', async (_event, patient) => await addPatient(patient));
-  ipcMain.handle('get-patient-by-id', async (_event, id) => await getPatient(id));
-  ipcMain.handle('get-all-patients', async () => await getAllPatients());
-  ipcMain.handle('update-patient', async (_event, patient) => await updatePatient(patient));
-  ipcMain.handle('delete-patient', async (_event, id) => await deletePatient(id));
-  ipcMain.handle('search-patients', async (_event, query) => await searchPatients(query));
-  ipcMain.handle('count-patients', async () => await countPatients());
-  ipcMain.handle('reset-database', async () => await resetMedicalDatabase());
 
-  //recherche globale
-  ipcMain.handle('global-search', async (_event, query) => globalSearch(query));
+  // Every channel, from the one table. What decides where a call goes is the
+  // registry's `local` flag plus this seat's mode — never the channel name
+  // spelled out somewhere, which is how the two transports would drift.
+  const isClient = network.mode === 'client';
+  for (const [name, entry] of Object.entries(CHANNEL_TABLE)) {
+    const channel = name as ChannelName;
+    const override = isClient ? CLIENT_SESSION_OVERRIDES[channel] : undefined;
 
-  //gestion des documents
-  ipcMain.handle('get-documents-by-patient-id', async (_event, patientId) => getDocumentsByPatientId(patientId));
-  ipcMain.handle('get-all-documents', async () => getAllDocuments());
-  ipcMain.handle('upload-document', async (_event, document) => await uploadDocument(document));
-  ipcMain.handle('delete-document', async (_event, id) => deleteDocument(id));
-  ipcMain.handle('open-document', async (_event, path) => await openDocument(path));
-
-  //gestion profil médecin
-  ipcMain.handle('create-doctor-profile', async (_event, userId, fullName, speciality, phoneNumber, address, email) => await createDoctorProfile(userId, fullName, speciality, phoneNumber, address, email));
-  ipcMain.handle('get-doctor-profile', async (_event, userId) => getDoctorProfileByUserId(userId));
-  ipcMain.handle('update-doctor-profile', async (_event, userId, input) => await updateDoctorProfile(userId, input));
-  ipcMain.handle('set-prescription-pdf', async (_event, doctorId) => await setPrescriptionPdf(doctorId));
-
-  //gestion des prescriptions 
-  ipcMain.handle('add-prescription', async (_event, userId, patientId, medicines, notes, consultationId) => await addPrescription(userId, patientId, medicines, notes, consultationId));
-  ipcMain.handle('get-prescription-by-id', async (_event, id, patientId) => getPrescriptionById(id, patientId));
-  ipcMain.handle('get-patient-prescriptions', async (_event, patientId) => getPatientPrescriptions(patientId));
-  ipcMain.handle('get-all-prescriptions', async () => await getAllPrescriptions());
-  ipcMain.handle('update-prescription', async (_event, prescription) => await updatePrescription(prescription));
-  ipcMain.handle('delete-prescription', async (_event, id) => await deletePrescription(id));
-  ipcMain.handle('search-prescriptions', async (_event, query) => await searchPrescription(query));
-  ipcMain.handle('count-prescriptions', async () => await countPrescriptions());
-
-  //bibliothèque d'ordonnances (suggestions + modèles)
-  ipcMain.handle('suggest-medicines', async (_event, query, limit) => suggestMedicines(query, limit));
-  ipcMain.handle('get-prescription-templates', async (_event, userId) => getPrescriptionTemplates(userId));
-  ipcMain.handle('save-prescription-template', async (_event, userId, name, medicines, notes) => savePrescriptionTemplate(userId, name, medicines, notes));
-  ipcMain.handle('delete-prescription-template', async (_event, id) => deletePrescriptionTemplate(id));
-
-  //gestion des certificats médicaux
-  ipcMain.handle('create-certificate', async (_event, userId, draft) => await createCertificate(userId, draft));
-  ipcMain.handle('get-certificates-by-patient-id', async (_event, patientId) => getCertificatesByPatientId(patientId));
-  ipcMain.handle('get-certificates-by-consultation-id', async (_event, consultationId) => getCertificatesByConsultationId(consultationId));
-  ipcMain.handle('reprint-certificate', async (_event, id) => await reprintCertificate(id));
-  ipcMain.handle('delete-certificate', async (_event, id) => deleteCertificate(id));
-  ipcMain.handle('get-certificate-statistics', async (_event, userId, year) => getCertificateStatistics(userId, year));
-
-  //gestion des paiements et des impayés
-  ipcMain.handle('record-payment', async (_event, draft, userId, defaultFee) => recordPayment(draft, userId, defaultFee));
-  ipcMain.handle('get-payments-by-consultation-id', async (_event, consultationId) => getPaymentsByConsultationId(consultationId));
-  ipcMain.handle('delete-payment', async (_event, id, defaultFee) => deletePayment(id, defaultFee));
-  ipcMain.handle('get-consultation-balance', async (_event, consultationId, defaultFee) => getConsultationBalance(consultationId, defaultFee));
-  ipcMain.handle('get-outstanding-balances', async (_event, defaultFee) => getOutstandingBalances(defaultFee));
-  ipcMain.handle('generate-receipt-pdf', async (_event, paymentId, language, defaultFee) => await generateReceiptPdf(paymentId, language, defaultFee));
-
-  //journal d'activité (audit)
-  // Read-only on purpose: there is no delete-audit-entry channel, and adding
-  // one would defeat the point of the table.
-  ipcMain.handle('get-audit-log', async (_event, query) => getAuditLog(query));
-  ipcMain.handle('get-audit-log-for-entity', async (_event, entityType, entityId) => getAuditLogForEntity(entityType, entityId));
-  ipcMain.handle('generate-patient-prescription-pdf', async (_event, patientId, prescriptions, doctor, weight, language, consultationId) => await generatePatientPrescriptionPDF(patientId, prescriptions, doctor, weight, language, consultationId));
-
-  //gestion authentification
-  ipcMain.handle('create-user', async (_event, user) => await createUser(user));
-  ipcMain.handle('login', async (_event, fullName, password, stayLogged) => login(fullName, password, stayLogged));
-  ipcMain.handle('check-auth', async () => checkAuth());
-  ipcMain.handle('logout', async () => logout());
-
-  //gestion des rendez-vous
-  ipcMain.handle('book-appointment', async (_event, patientId, doctorId, datetime, duration, reason) => bookAppointment(patientId, doctorId, datetime, duration, reason));
-  ipcMain.handle('cancel-appointment', async (_event, id) => cancelAppointment(id));
-  ipcMain.handle('delete-appointment', async (_event, id) => deleteAppointment(id));
-  ipcMain.handle('update-appointment', async (_event, id, status) => updateAppointment(id, status));
-  ipcMain.handle('get-appointments-by-day', async (_event, doctorId, date) => getAppointmentsByDay(doctorId, date));
-  ipcMain.handle('get-appointments-by-patient-id', async (_event, patientId) => getAppointmentsByPatientId(patientId));
-  ipcMain.handle('get-appointments-by-date-range', async (_event, doctorId, startDate, endDate) => getAppointmentsByDateRange(doctorId, startDate, endDate));
-
-  //rappels de rendez-vous (WhatsApp)
-  // openWhatsAppReminder takes the message body from the renderer: the wording
-  // is patient-facing prose that lives in the locale files, in three languages.
-  ipcMain.handle('get-tomorrow-reminders', async (_event, doctorId) => getTomorrowReminders(doctorId));
-  ipcMain.handle('open-whatsapp-reminder', async (_event, appointmentId, message) => await openWhatsAppReminder(appointmentId, message));
-  ipcMain.handle('set-reminder-outcome', async (_event, appointmentId, outcome) => setReminderOutcome(appointmentId, outcome));
-
-  //gestion des consultations
-  ipcMain.handle('start-consultation', async (_event, patientId, doctorId, appointmentId) => startConsultation(patientId, doctorId, appointmentId));
-  ipcMain.handle('get-consultation-by-id', async (_event, id) => getConsultationById(id));
-  ipcMain.handle('get-active-consultation', async (_event, doctorId) => getActiveConsultation(doctorId));
-  ipcMain.handle('update-consultation', async (_event, id, draft) => updateConsultation(id, draft));
-  ipcMain.handle('complete-consultation', async (_event, id, draft) => completeConsultation(id, draft));
-  ipcMain.handle('delete-consultation', async (_event, id) => deleteConsultation(id));
-  ipcMain.handle('get-consultation-artifacts', async (_event, consultationId) => getConsultationArtifacts(consultationId));
-  ipcMain.handle('get-consultations-by-patient-id', async (_event, patientId) => getConsultationsByPatientId(patientId));
-  ipcMain.handle('get-consultations-by-day', async (_event, doctorId, date) => getConsultationsByDay(doctorId, date));
-  ipcMain.handle('get-consultations-by-date-range', async (_event, doctorId, startDate, endDate) => getConsultationsByDateRange(doctorId, startDate, endDate));
-
-  //gestion des statistiques
-  ipcMain.handle('get-financial-statistics', async (_event, startDate, endDate, appointmentPrice) => getFinancialStatistics(startDate, endDate, appointmentPrice));
-  ipcMain.handle('get-consultation-statistics', async (_event, startDate, endDate, defaultFee) => getConsultationStatistics(startDate, endDate, defaultFee));
-  ipcMain.handle('get-appointment-statistics', async (_event, startDate, endDate, appointmentPrice) => getAppointmentStatistics(startDate, endDate, appointmentPrice));
-  ipcMain.handle('get-noshow-rate', async (_event, startDate, endDate) => getNoShowRate(startDate, endDate));
-  ipcMain.handle('get-consultation-volume', async (_event, startDate, endDate) => getConsultationVolume(startDate, endDate));
-
-  //gestion de la licence / période d'essai
-  ipcMain.handle('get-trial-status', async () => getTrialStatus());
-  ipcMain.handle('activate-license', async (_event, key) => activateLicense(key));
-
-  //sauvegarde / restauration de la base (licence requise, vérifiée côté main)
-  // The window is passed so the OS dialogs are modal to it rather than free
-  // floating, which is what makes them impossible to lose behind the app.
-  ipcMain.handle('backup-database', async (_event, scope) => await backupDatabase(scope, win));
-  ipcMain.handle('restore-database', async (_event, scope) => await restoreDatabase(scope, win));
-  // Separate channel on purpose: the renderer gets the restore result, shows the
-  // user what happened, and only then asks for the restart.
-  ipcMain.handle('relaunch-app', async () => relaunchApp());
-
-  //gestion des mises à jour
-  ipcMain.handle('get-update-status', async () => getUpdateStatus());
-  ipcMain.handle('check-for-updates', async () => checkForUpdates());
-  ipcMain.handle('download-update', async () => downloadUpdate());
-  ipcMain.handle('quit-and-install', async () => quitAndInstall());
+    if (override) {
+      registerChannel(channel, { ...entry, fn: override as ChannelEntry['fn'] });
+    } else if (isClient && !entry.local) {
+      registerRemoteChannel(channel, entry);
+    } else {
+      registerChannel(channel, entry);
+    }
+  }
 
   createWindow();
 
   // Needs the window: update progress is pushed to the renderer over IPC.
   if (win) initializeUpdater(win);
+  // And so does the host-reachability banner.
+  if (isClient) {
+    setStatusWindow(win);
+    // Fetched documents are copies, not the record. Clearing at startup rather
+    // than at quit means a crash cannot leave patient files sitting in the
+    // temp directory until someone notices.
+    clearClientCache();
+  }
+
+  // The waiting-room TV comes back by itself. This is what lets the front desk
+  // have a board at all: Settings is doctor-only, so if opening it were a manual
+  // step, the assistant would have to fetch the doctor every morning.
+  if (getNetworkConfig().queueDisplayEnabled) {
+    const opened = openQueueDisplay();
+    if (opened.status === 'fail') {
+      // A TV that is switched off is not a startup failure.
+      console.error('Waiting-room display could not open:', opened.message);
+    }
+  }
+
+  // Serving the other seat comes last and never blocks the window. A host
+  // whose port is taken is still a perfectly good standalone install for the
+  // doctor sitting at it — the failure belongs in Settings, not in a dialog
+  // over the app they just opened.
+  if (network.mode === 'host') {
+    const started = await startServer(win);
+    if (started.status === 'fail') {
+      console.error('Ausculta host could not start:', started.message);
+    }
+  }
 })

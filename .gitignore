@@ -161,5 +161,10 @@ vite.config.ts.timestamp-*
 # License signing keys — the private key must NEVER be committed
 scripts/keys/
 
+# Raw DZ-Pharma dump feeding scripts/build-drug-list.mjs. Not committed: the upstream
+# repo declares no license, so re-download it rather than vendoring it here.
+# https://raw.githubusercontent.com/fennecinspace/DZ-Pharma-Data/master/data/meds.json
+scripts/sources/dz-pharma-meds.json
+
 # Vercel CLI state for the activation server
 .vercel

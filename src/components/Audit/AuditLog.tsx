@@ -12,7 +12,7 @@ const PAGE_SIZE = 25
  */
 const ACTION_GROUPS: { key: string; actions: AuditAction[] }[] = [
   { key: 'patients', actions: ['patient.create', 'patient.update', 'patient.delete'] },
-  { key: 'consultations', actions: ['consultation.complete', 'consultation.delete'] },
+  { key: 'consultations', actions: ['consultation.check_in', 'consultation.call_in', 'consultation.remove_from_queue', 'consultation.complete', 'consultation.delete'] },
   { key: 'prescriptions', actions: ['prescription.create', 'prescription.delete'] },
   { key: 'documents', actions: ['document.upload', 'document.delete'] },
   { key: 'certificates', actions: ['certificate.create', 'certificate.delete'] },
@@ -23,7 +23,7 @@ const ACTION_GROUPS: { key: string; actions: AuditAction[] }[] = [
 
 /** Destructive actions are tinted so a deletion is findable by eye. */
 const DESTRUCTIVE = new Set<AuditAction>([
-  'patient.delete', 'consultation.delete', 'prescription.delete',
+  'patient.delete', 'consultation.delete', 'consultation.remove_from_queue', 'prescription.delete',
   'document.delete', 'certificate.delete', 'payment.delete',
   // A restore replaces every record in the practice, so it is tinted like a
   // deletion. A backup only reads, so it is not.

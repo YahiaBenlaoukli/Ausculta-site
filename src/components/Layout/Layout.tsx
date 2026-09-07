@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Sidebar from '../Sidebar/Sidebar'
 import GlobalSearch from '../GlobalSearch/GlobalSearch'
 import { LayoutContext } from './LayoutContext'
+import PrintQueuePanel from '../Print/PrintQueuePanel'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -62,6 +63,10 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {/* Inside Layout rather than beside the router: the queue only means
+          anything to someone who is signed in, and Layout is exactly the set of
+          routes that are. */}
+      <PrintQueuePanel />
     </LayoutContext.Provider>
   )
 }

@@ -1,8 +1,12 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { DoctorProfile } from "../../../types/doctor";
 import TomorrowReminders from "../../components/Reminders/TomorrowReminders";
+import BookingModal from "../../components/Appointments/BookingModal";
+import { TIME_SLOTS, dateKey } from "../../components/Appointments/schedule";
+// Recharts takes colours as props and inline data, so these cannot be classes.
+import { PALETTE } from "../../../theme/palette";
 import {
   ResponsiveContainer,
   PieChart,
@@ -23,8 +27,14 @@ type Appointment = {
   phone_number: string;
 };
 
+/** 'HH:MM' out of the stored 'YYYY-MM-DDTHH:MM:SS'. */
+function slotOf(appointment: Appointment) {
+  return appointment.appointment_datetime.split('T')[1]?.substring(0, 5) || '--:--';
+}
+
 export default function Dashboard() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const locale = i18n.language || 'fr';
 
   // Auth and profile states
@@ -43,14 +53,13 @@ export default function Dashboard() {
   // Today's appointments list
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
 
-  // Get today's YYYY-MM-DD date string
-  const todayDateStr = useMemo(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
+  // Booking straight from the dashboard planner.
+  const [showBooking, setShowBooking] = useState(false);
+  const [bookingSlot, setBookingSlot] = useState("11:00");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const today = useMemo(() => new Date(), []);
+  const todayDateStr = useMemo(() => dateKey(today), [today]);
 
   // Fetch authentication and doctor profile
   useEffect(() => {
@@ -74,7 +83,9 @@ export default function Dashboard() {
     if (currentUserId !== null) {
       (async () => {
         try {
-          const profileResult = await window.ipcRenderer.getDoctorProfile(currentUserId);
+          // The practice's profile, not the signed-in user's: appointments and
+          // consultations key off doctor_profile, and an assistant has none.
+          const profileResult = await window.ipcRenderer.getPracticeDoctorProfile();
           if (profileResult.status === 'success' && profileResult.data) {
             setDoctorProfile(profileResult.data);
           }
@@ -122,6 +133,66 @@ export default function Dashboard() {
     }
   }, [doctorProfile, loadDashboardData]);
 
+  /* The planner grid: every consulting slot, plus any booking that does not
+     land on one — the calendar page hides those, and a hidden appointment on
+     the day's own summary would be worse than an off-grid row. */
+  const plannerRows = useMemo(() => {
+    const times = new Set<string>(TIME_SLOTS);
+    todayAppointments.forEach(a => times.add(slotOf(a)));
+    return [...times].sort().map(time => ({
+      time,
+      appointment: todayAppointments.find(a => slotOf(a) === time),
+    }));
+  }, [todayAppointments]);
+
+  const openBooking = (slot: string) => {
+    setBookingSlot(slot);
+    setShowBooking(true);
+  };
+
+  const handleBooked = () => {
+    setSuccessMessage(t('appointments.success_message'));
+    setTimeout(() => setSuccessMessage(""), 3000);
+    loadDashboardData();
+  };
+
+  const handleUpdateStatus = async (id: number, status: string) => {
+    try {
+      const result = await window.ipcRenderer.updateAppointment(id, status);
+      if (result.status === "success") loadDashboardData();
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    }
+  };
+
+  const handleDeleteAppointment = async (id: number) => {
+    if (!confirm(t('appointments.confirm_delete'))) return;
+    try {
+      const result = await window.ipcRenderer.deleteAppointment(id);
+      if (result.status === "success") loadDashboardData();
+    } catch (error) {
+      console.error("Failed to delete appointment:", error);
+    }
+  };
+
+  // Same handoff the calendar uses: the consultation page opens the visit
+  // record linked to this booking and completes it when the doctor is done.
+  const handleStartConsultation = async (appointment: Appointment) => {
+    try {
+      const patient = await window.ipcRenderer.getPatientById(appointment.patient_id);
+      if (!patient) return;
+      navigate('/consultation', { state: { patient, appointmentId: appointment.id } });
+    } catch (error) {
+      console.error("Failed to start consultation:", error);
+    }
+  };
+
+  const statusLabel = (status: Appointment['status']) =>
+    status === 'Scheduled' ? t('appointments.status.scheduled')
+      : status === 'Completed' ? t('appointments.status.completed')
+        : status === 'Cancelled' ? t('appointments.status.cancelled')
+          : t('appointments.status.no_show');
+
   // Calculate status breakdown for the chart
   const distributionData = useMemo(() => {
     const counts = { Completed: 0, Scheduled: 0, Cancelled: 0, 'No-Show': 0 };
@@ -133,8 +204,8 @@ export default function Dashboard() {
 
     return [
       { name: t("appointments.status.completed"), value: counts.Completed, color: "#10b981" },
-      { name: t("appointments.status.scheduled"), value: counts.Scheduled, color: "#1e2a56" },
-      { name: t("appointments.status.cancelled"), value: counts.Cancelled, color: "#e91e8c" },
+      { name: t("appointments.status.scheduled"), value: counts.Scheduled, color: PALETTE.navy },
+      { name: t("appointments.status.cancelled"), value: counts.Cancelled, color: PALETTE.pink },
       { name: t("appointments.status.no_show"), value: counts['No-Show'], color: "#f59e0b" }
     ].filter(item => item.value > 0);
   }, [todayAppointments, t]);
@@ -154,17 +225,17 @@ export default function Dashboard() {
   }, [doctorProfile, t]);
 
   return (
-    <div className="space-y-6 text-[#1E2A56]">
+    <div className="space-y-7 text-navy">
       {/* Page Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1E2A56]">{t('dashboard.title')}</h1>
-          <p className="text-sm text-[#1E2A56]/50 mt-1">{t('dashboard.welcome')}</p>
+          <h1 className="text-3xl font-bold text-navy">{t('dashboard.title')}</h1>
+          <p className="text-sm text-navy/50 mt-1.5">{t('dashboard.welcome')}</p>
         </div>
         {/* The one action that has no calendar entry to start from. */}
         <Link
           to="/consultation"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#e91e8c] hover:bg-[#be185d] text-white text-xs font-bold shadow-lg shadow-[#e91e8c]/20 transition-colors no-underline"
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-pink hover:bg-pink-dark text-white text-sm font-bold shadow-lg shadow-pink/20 transition-colors no-underline"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
@@ -200,10 +271,16 @@ export default function Dashboard() {
         </div>
       )}
 
+      {successMessage && (
+        <div className="p-3.5 text-center bg-green-50 text-green-700 font-semibold rounded-2xl border border-green-200 animate-fade-in">
+          {successMessage}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="w-10 h-10 border-4 border-[#e91e8c] border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-semibold text-[#1E2A56]/60">{t("appointments.loading")}</span>
+          <div className="w-10 h-10 border-4 border-pink border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-semibold text-navy/60">{t("appointments.loading")}</span>
         </div>
       ) : (
         <>
@@ -243,48 +320,48 @@ export default function Dashboard() {
             ];
 
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {cards.map((card, idx) => (
                   <Link
                     key={idx}
                     to={card.path}
-                    className={`relative overflow-hidden rounded-2xl p-5 transition-all duration-300 group no-underline block border ${
+                    className={`relative overflow-hidden rounded-3xl p-7 transition-all duration-300 group no-underline block border ${
                       card.highlighted
-                        ? 'bg-gradient-to-br from-[#1E2A56] to-[#2d3d6e] border-[#1E2A56]/20 shadow-[0_4px_20px_rgba(30,42,86,0.18)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.25)]'
+                        ? 'bg-gradient-to-br from-navy to-navy-light border-navy/20 shadow-[0_4px_20px_rgba(30,42,86,0.18)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.25)]'
                         : 'bg-white border-white/20 shadow-[0_2px_12px_rgba(30,42,86,0.04)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.08)]'
                     }`}
                   >
                     {/* Top row: label + arrow icon */}
-                    <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center justify-between mb-6">
                       <span className={`text-xs font-bold uppercase tracking-wider ${
                         card.highlighted ? 'text-white/70' : 'text-gray-400'
                       }`}>
                         {card.label}
                       </span>
-                      <span className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                         card.highlighted
                           ? 'bg-white/10 text-white/60 group-hover:bg-white/20 group-hover:text-white'
-                          : 'bg-gray-50 text-gray-400 group-hover:bg-[#e91e8c]/10 group-hover:text-[#e91e8c]'
+                          : 'bg-gray-50 text-gray-400 group-hover:bg-pink/10 group-hover:text-pink'
                       }`}>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M7 17L17 7M17 7H7M17 7v10" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
                     </div>
 
                     {/* Big number */}
-                    <div className={`text-4xl font-extrabold tracking-tight ${
-                      card.highlighted ? 'text-white' : 'text-[#1E2A56]'
+                    <div className={`text-5xl font-extrabold tracking-tight ${
+                      card.highlighted ? 'text-white' : 'text-navy'
                     }`}>
                       {card.value}
                     </div>
 
                     {/* Subtitle */}
-                    <div className={`text-xs font-semibold mt-2 flex items-center gap-1.5 ${
-                      card.highlighted ? 'text-[#e91e8c]/80' : 'text-[#e91e8c]/60'
+                    <div className={`text-xs font-semibold mt-3 flex items-center gap-1.5 ${
+                      card.highlighted ? 'text-pink/80' : 'text-pink/60'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
-                        card.highlighted ? 'bg-[#e91e8c]' : 'bg-[#e91e8c]/50'
+                        card.highlighted ? 'bg-pink' : 'bg-pink/50'
                       }`} />
                       {card.subtitle}
                     </div>
@@ -300,81 +377,162 @@ export default function Dashboard() {
           {doctorProfile && <TomorrowReminders doctor={doctorProfile} />}
 
           {/* Today's Appointments & Distribution Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Today's Appointments List (Left column - 2 cols wide) */}
-            <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col">
-              <div className="flex items-center justify-between mb-4 border-b border-gray-50 pb-3">
-                <h2 className="text-base font-bold text-[#1E2A56]">{t('dashboard.upcoming.title')}</h2>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  {new Date().toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })}
-                </span>
-              </div>
-
-              {todayAppointments.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-                  <span className="text-3xl mb-2">📅</span>
-                  <div className="text-sm font-semibold text-gray-400">{t('dashboard.upcoming.empty')}</div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            {/* Today's planner — the calendar page's day view, compacted, and
+                bookable in place so a call during a consultation does not cost
+                a page change. */}
+            <div className="lg:col-span-2 bg-white rounded-3xl p-7 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5 border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-navy">{t('dashboard.upcoming.title')}</h2>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider capitalize">
+                    {today.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   <Link
                     to="/appointments"
-                    className="mt-4 px-5 py-2 rounded-xl bg-[#e91e8c] text-white text-xs font-bold shadow-md shadow-[#e91e8c]/25 hover:scale-[1.02] transition-transform no-underline"
+                    className="px-4 py-2 rounded-xl border border-gray-200 text-navy/60 hover:text-navy hover:bg-gray-50 text-xs font-bold transition-colors no-underline"
                   >
-                    {t('appointments.book_button')}
+                    {t('dashboard.upcoming.view_all')}
                   </Link>
+                  <button
+                    onClick={() => openBooking("11:00")}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-pink hover:bg-pink-dark text-white text-xs font-bold shadow-md shadow-pink/20 transition-colors cursor-pointer border-none"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    {t('appointments.book_button')}
+                  </button>
                 </div>
-              ) : (
-                <div className="divide-y divide-gray-50 max-h-[380px] overflow-y-auto pr-1">
-                  {todayAppointments.map((app) => {
-                    const timeStr = app.appointment_datetime.split('T')[1]?.substring(0, 5) || '--:--';
-                    
-                    return (
-                      <div key={app.id} className="flex items-center justify-between py-3.5 hover:bg-gray-50/50 rounded-xl px-2 transition-all">
-                        <div className="flex items-center gap-4">
-                          <span className="text-xs font-black text-gray-400 w-12">{timeStr}</span>
-                          <div>
-                            <span className="font-bold text-sm text-[#1E2A56] block">{app.full_name}</span>
-                            {app.reason && (
-                              <span className="text-[11px] text-gray-400 block truncate max-w-[250px] md:max-w-[400px]">
-                                {app.reason}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+              </div>
 
-                        {/* Status Badge */}
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          app.status === 'Completed' ? 'bg-green-50 text-green-700 border border-green-200' :
-                          app.status === 'Cancelled' ? 'bg-red-50 text-red-600 border border-red-200' :
-                          app.status === 'No-Show' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
-                          'bg-[#e91e8c]/5 text-[#e91e8c] border border-[#e91e8c]/20'
-                        }`}>
-                          {app.status === 'Scheduled' ? t('appointments.status.scheduled') : app.status === 'Completed' ? t('appointments.status.completed') : app.status === 'Cancelled' ? t('appointments.status.cancelled') : t('appointments.status.no_show')}
+              <div className="space-y-1.5 max-h-[560px] overflow-y-auto pr-1.5">
+                {plannerRows.map(({ time, appointment }) => {
+                  if (!appointment) {
+                    return (
+                      <button
+                        key={time}
+                        onClick={() => openBooking(time)}
+                        className="w-full group flex items-center gap-3 py-2 px-3.5 rounded-xl bg-white border border-gray-100 text-gray-400 hover:border-pink/40 hover:bg-pink/[0.03] hover:text-pink transition-all cursor-pointer"
+                      >
+                        <span className="text-xs font-black tracking-wider w-11 text-left">{time}</span>
+                        <span className="flex-1 text-left text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                          {t('appointments.book_button')}
                         </span>
-                      </div>
+                        <svg className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      </button>
                     );
-                  })}
-                </div>
-              )}
+                  }
+
+                  return (
+                    <div
+                      key={time}
+                      className="relative flex flex-wrap items-center justify-between gap-2 py-2.5 pl-5 pr-3 rounded-xl bg-gray-50/70 border border-gray-200/70 overflow-hidden"
+                    >
+                      {/* Status side indicator */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                        appointment.status === 'Completed' ? 'bg-green-500' :
+                        appointment.status === 'Cancelled' ? 'bg-red-400' :
+                        appointment.status === 'No-Show' ? 'bg-amber-400' : 'bg-navy'
+                      }`} />
+
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <span className="text-xs font-black text-gray-400 w-11 flex-shrink-0">{time}</span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-sm text-navy block truncate">{appointment.full_name}</span>
+                          {appointment.reason && (
+                            <span className="text-[11px] text-gray-400 block truncate max-w-[240px]">{appointment.reason}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          appointment.status === 'Completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                          appointment.status === 'Cancelled' ? 'bg-red-50 text-red-600 border border-red-200' :
+                          appointment.status === 'No-Show' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                          'bg-pink/5 text-pink border border-pink/20'
+                        }`}>
+                          {statusLabel(appointment.status)}
+                        </span>
+
+                        {appointment.status === 'Scheduled' && (
+                          <button
+                            onClick={() => handleStartConsultation(appointment)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink/10 text-pink hover:bg-pink hover:text-white text-[11px] font-bold transition-colors cursor-pointer border-none"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+                              <path d="M8 15v1a6 6 0 0 0 6 6 6 6 0 0 0 6-6v-4" />
+                              <circle cx="20" cy="10" r="2" />
+                            </svg>
+                            {t('appointments.start_consultation')}
+                          </button>
+                        )}
+
+                        <div className="flex items-center gap-0.5 bg-white border border-gray-100 rounded-full p-0.5">
+                          {appointment.status === 'Scheduled' && (
+                            <button
+                              onClick={() => handleUpdateStatus(appointment.id, 'Completed')}
+                              title={t('appointments.actions.complete')}
+                              className="p-1.5 rounded-full hover:bg-green-50 text-green-600 cursor-pointer transition-all bg-transparent border-none"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </button>
+                          )}
+                          {appointment.status !== 'Cancelled' && (
+                            <button
+                              onClick={() => handleUpdateStatus(appointment.id, 'Cancelled')}
+                              title={t('appointments.actions.cancel')}
+                              className="p-1.5 rounded-full hover:bg-red-50 text-red-500 cursor-pointer transition-all bg-transparent border-none"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteAppointment(appointment.id)}
+                            title={t('appointments.actions.delete')}
+                            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-500 cursor-pointer transition-all bg-transparent border-none"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Distribution Pie Chart (Right Column - 1 col wide) */}
-            <div className="bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col justify-between">
+            <div className="bg-white rounded-3xl p-7 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col justify-between">
               <div>
-                <h3 className="text-base font-bold text-[#1E2A56] mb-2">
+                <h3 className="text-lg font-bold text-navy mb-2">
                   {t("dashboard.chart.distribution_title")}
                 </h3>
-                <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mb-4">
+                <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mb-5">
                   {t("dashboard.chart.breakdown_subtitle")}
                 </p>
 
-                <div className="h-44 w-full flex items-center justify-center relative">
+                <div className="h-56 w-full flex items-center justify-center relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={distributionPieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={50}
-                        outerRadius={68}
+                        innerRadius={62}
+                        outerRadius={86}
                         paddingAngle={3}
                         dataKey="value"
                       >
@@ -396,7 +554,7 @@ export default function Dashboard() {
 
                   {/* Inside Center Content */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-xl font-black text-[#1E2A56]">
+                    <span className="text-3xl font-black text-navy">
                       {stats.todayAppointmentsCount}
                     </span>
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
@@ -407,16 +565,16 @@ export default function Dashboard() {
               </div>
 
               {/* Pie Breakdown Legend */}
-              <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-gray-100">
                 {distributionData.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <span
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: item.color }}
                     />
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-400 truncate max-w-[80px]">{item.name}</span>
-                      <span className="text-xs font-black text-[#1E2A56]">{item.value}</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] font-bold text-gray-400 truncate">{item.name}</span>
+                      <span className="text-sm font-black text-navy">{item.value}</span>
                     </div>
                   </div>
                 ))}
@@ -430,6 +588,15 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      <BookingModal
+        open={showBooking}
+        date={today}
+        doctorId={doctorProfile?.id ?? null}
+        initialTime={bookingSlot}
+        onClose={() => setShowBooking(false)}
+        onBooked={handleBooked}
+      />
     </div>
   );
 }

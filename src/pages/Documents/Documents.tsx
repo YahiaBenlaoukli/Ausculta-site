@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { Patient } from '../../../types/patient';
+import SendToPrintIcon from '../../components/Print/SendToPrintIcon';
 
 type PatientDocumentDetail = {
     id: number;
@@ -551,6 +552,7 @@ export default function Documents() {
                                             </td>
                                             <td className="px-6 py-4.5 text-right" onClick={e => e.stopPropagation()}>
                                                 <div className="flex items-center justify-end gap-1">
+                                                    <SendToPrintIcon documentPath={doc.localPath} />
                                                     <button
                                                         onClick={() => handleOpenDocument(doc.localPath)}
                                                         className="p-2 rounded-xl text-navy/40 hover:text-pink hover:bg-pink/5 transition-all cursor-pointer"

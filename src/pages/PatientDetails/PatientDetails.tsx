@@ -116,6 +116,30 @@ function getInitials(name: string) {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
+/** How many rows of a history list are shown before "show more". */
+const HISTORY_PAGE = 10;
+
+/**
+ * The "show N more" control under a truncated history list.
+ *
+ * Deliberately a reveal rather than numbered pages: these lists are in reverse
+ * chronological order, so the interesting end is always the top, and someone
+ * looking for an old visit scrolls back through time rather than hunting for
+ * the page it landed on.
+ */
+function ShowMore({ remaining, onClick, label }: { remaining: number; onClick: () => void; label: string }) {
+    if (remaining <= 0) return null;
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="w-full mt-3 py-2.5 rounded-2xl border border-navy/[0.08] text-navy/60 hover:text-navy hover:bg-navy/[0.03] text-xs font-bold transition-colors cursor-pointer select-none"
+        >
+            {label}
+        </button>
+    );
+}
+
 function getAvatarColor(name: string) {
     const colors = [
         'from-pink to-pink-light',
@@ -166,6 +190,19 @@ export default function PatientDetails() {
     const [isLoading, setIsLoading] = useState(true);
     const [showEditModal, setShowEditModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'activity' | 'consultations' | 'prescriptions' | 'documents' | 'appointments' | 'notes'>('activity');
+
+    /**
+     * How much of each history list is on screen.
+     *
+     * A patient seen monthly for five years has sixty consultations and as many
+     * prescriptions again; rendering all of it made the record a wall to scroll
+     * past to reach anything. One counter shared by every tab, reset whenever
+     * the tab or the patient changes, so opening a list always starts at the top
+     * of the most recent ten rather than wherever the last one was left.
+     */
+    const [visibleCount, setVisibleCount] = useState(HISTORY_PAGE);
+    useEffect(() => { setVisibleCount(HISTORY_PAGE); }, [activeTab, id]);
+    const showMore = () => setVisibleCount((count) => count + HISTORY_PAGE);
 
     // Notes are a timestamped log stored as JSON in patients.notes.
     const [noteEntries, setNoteEntries] = useState<NoteEntry[]>([]);
@@ -548,7 +585,7 @@ export default function PatientDetails() {
                                 {t('patient_details.activity_empty')}
                             </div>
                         ) : (
-                            timelineItems.map((item) => (
+                            timelineItems.slice(0, visibleCount).map((item) => (
                                 <div key={item.id} className="relative">
                                     <span className="absolute -left-[31px] top-0.5 bg-pink/10 text-pink w-6 h-6 rounded-full flex items-center justify-center border border-white">
                                         {item.type === 'prescription' ? icons.pill : item.type === 'consultation' ? icons.stethoscope : icons.fileDoc}
@@ -565,6 +602,14 @@ export default function PatientDetails() {
                                 </div>
                             ))
                         )}
+                        {/* Sits outside the timeline's left rule, hence the negative start. */}
+                        <div className="-ms-6">
+                            <ShowMore
+                                remaining={timelineItems.length - visibleCount}
+                                onClick={showMore}
+                                label={t('patient_details.show_more', { count: Math.min(HISTORY_PAGE, timelineItems.length - visibleCount) })}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -592,7 +637,7 @@ export default function PatientDetails() {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {consultations.map((consultation) => (
+                                {consultations.slice(0, visibleCount).map((consultation) => (
                                     <div key={consultation.id} className="p-4 bg-navy/[0.01] border border-navy/[0.06] rounded-2xl space-y-2 hover:border-pink/20 transition-all duration-200">
                                         <div className="flex items-center justify-between gap-3 flex-wrap">
                                             <div className="flex items-center gap-2 flex-wrap">
@@ -644,6 +689,11 @@ export default function PatientDetails() {
                                         )}
                                     </div>
                                 ))}
+                                <ShowMore
+                                    remaining={consultations.length - visibleCount}
+                                    onClick={showMore}
+                                    label={t('patient_details.show_more', { count: Math.min(HISTORY_PAGE, consultations.length - visibleCount) })}
+                                />
                             </div>
                         )}
                     </div>
@@ -664,7 +714,7 @@ export default function PatientDetails() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {prescriptions.map((presc) => (
+                                {prescriptions.slice(0, visibleCount).map((presc) => (
                                     <div key={presc.id} className="p-4 bg-navy/[0.01] border border-navy/[0.06] rounded-2xl space-y-3 hover:border-pink/20 transition-all duration-200">
                                         <div className="flex items-center justify-between border-b border-navy/[0.04] pb-2">
                                             <div>
@@ -717,6 +767,11 @@ export default function PatientDetails() {
                                         )}
                                     </div>
                                 ))}
+                                <ShowMore
+                                    remaining={prescriptions.length - visibleCount}
+                                    onClick={showMore}
+                                    label={t('patient_details.show_more', { count: Math.min(HISTORY_PAGE, prescriptions.length - visibleCount) })}
+                                />
                             </div>
                         )}
                     </div>
@@ -743,7 +798,7 @@ export default function PatientDetails() {
                             </div>
                         ) : (
                             <div className="divide-y divide-navy/[0.04]">
-                                {documents.map((doc) => (
+                                {documents.slice(0, visibleCount).map((doc) => (
                                     <div key={doc.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-lg bg-navy/5 text-navy/40 flex items-center justify-center">
@@ -775,6 +830,11 @@ export default function PatientDetails() {
                                         </div>
                                     </div>
                                 ))}
+                                <ShowMore
+                                    remaining={documents.length - visibleCount}
+                                    onClick={showMore}
+                                    label={t('patient_details.show_more', { count: Math.min(HISTORY_PAGE, documents.length - visibleCount) })}
+                                />
                             </div>
                         )}
                     </div>
@@ -805,7 +865,7 @@ export default function PatientDetails() {
                             </div>
                         ) : (
                             <div className="divide-y divide-navy/[0.04]">
-                                {appointments.map((app) => (
+                                {appointments.slice(0, visibleCount).map((app) => (
                                     <div key={app.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
@@ -838,6 +898,11 @@ export default function PatientDetails() {
                                         </span>
                                     </div>
                                 ))}
+                                <ShowMore
+                                    remaining={appointments.length - visibleCount}
+                                    onClick={showMore}
+                                    label={t('patient_details.show_more', { count: Math.min(HISTORY_PAGE, appointments.length - visibleCount) })}
+                                />
                             </div>
                         )}
                     </div>

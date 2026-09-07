@@ -158,12 +158,15 @@ export default function Prescriptions() {
     }, []);
 
     useEffect(() => {
-        if (currentUserId !== null) loadData(currentUserId);
+        // Gated on currentUserId, not parameterised by it: the profile fetched
+        // is the practice's, but there is no point asking for it until we know
+        // somebody is actually signed in.
+        if (currentUserId !== null) loadData();
     }, [currentUserId]);
 
-    const loadData = async (userId: number) => {
+    const loadData = async () => {
         try {
-            const profileResult = await window.ipcRenderer.getDoctorProfile(userId);
+            const profileResult = await window.ipcRenderer.getPracticeDoctorProfile();
             if (profileResult.status === 'success' && profileResult.data) {
                 setDoctorProfile(profileResult.data);
                 setStep(profileResult.data.pdfPath ? 'prescriptions' : 'generate-pdf');

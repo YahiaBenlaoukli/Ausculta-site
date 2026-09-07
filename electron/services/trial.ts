@@ -24,11 +24,25 @@ import { execFileSync } from "node:child_process";
  *            could not do this — a signed key verified on every PC on earth,
  *            so one customer could pass their key around indefinitely.
  *
+ * A licence is per MACHINE, not per practice. Each seat activates itself with
+ * the same key and consumes one of the key's three device slots — a two-seat
+ * clinic uses two and has one spare for the day a PC is replaced. That is why
+ * both entry points here are `local` channels in the registry: a client asks
+ * the activation server on its own behalf, never the host, and the token it
+ * gets back names its own fingerprint.
+ *
  * Trial defence layers:
  *   1. First-run date stored REDUNDANTLY in two places — an encrypted file
  *      (safeStorage, same mechanism as token.enc) and a row in the SQLite DB.
  *      We always trust the EARLIEST first-run date found, so deleting or
  *      resetting one store does not extend the trial.
+ *
+ *      A CLIENT seat has no database, so there only the encrypted file exists;
+ *      every DB call below already degrades to null or a no-op rather than
+ *      throwing, which is what makes that work. The redundancy is genuinely
+ *      weaker there, and deliberately so: hardening the front-desk seat buys
+ *      nothing while the practice's own machine — the one holding the data,
+ *      and the one worth licensing — still keeps both copies.
  *   2. A rolling `lastSeen` timestamp. If the clock ever reads earlier than
  *      the last time we ran, we treat it as clock-rollback tampering and
  *      expire immediately instead of granting free days.

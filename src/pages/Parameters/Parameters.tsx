@@ -6,7 +6,12 @@ import type { DoctorProfile, PrescriptionLanguage, PrescriptionStyle } from "../
 import type { Patient } from "../../../types/patient";
 import type { BackupErrorCode, BackupScope } from "../../../types/backup";
 import AuditLog from "../../components/Audit/AuditLog";
+import UserAccounts from "../../components/Settings/UserAccounts";
+import PrinterPicker from "../../components/Settings/PrinterPicker";
+import NetworkSettings from "../../components/Settings/NetworkSettings";
+import QueueDisplaySettings from "../../components/Settings/QueueDisplaySettings";
 import { licenseErrorKey } from "../../services/licenseErrors";
+import { clearCachedUser } from "../../hooks/useCurrentUser";
 
 export default function Parameters() {
   const { t } = useTranslation();
@@ -42,7 +47,6 @@ export default function Parameters() {
 
   // Consultation Preferences
   const [defaultPrice, setDefaultPrice] = useState("2000");
-  const [defaultDuration, setDefaultDuration] = useState("30");
   // Default language pre-selected in the prescription-generation popup.
   const [prescriptionLang, setPrescriptionLang] = useState<PrescriptionLanguage>("fr");
 
@@ -112,7 +116,6 @@ export default function Parameters() {
 
     // Load LocalStorage Consultation Settings
     setDefaultPrice(localStorage.getItem("default_consultation_price") || "2000");
-    setDefaultDuration(localStorage.getItem("default_consultation_duration") || "30");
     const storedLang = localStorage.getItem("prescription_language");
     setPrescriptionLang(storedLang === "en" ? "en" : "fr");
 
@@ -120,6 +123,21 @@ export default function Parameters() {
     window.ipcRenderer.getTrialStatus()
       .then((status: TrialStatus) => setTrialStatus(status))
       .catch(() => setTrialStatus(null));
+  }, []);
+
+  // How many of the licence key's device slots are in use, once the activation
+  // server has told us. Not persisted — it is only knowable at activation.
+  const [deviceUsage, setDeviceUsage] = useState<{ used: number; max: number } | null>(null);
+
+  // Whether this machine is part of a two-seat setup, which changes what the
+  // licence copy needs to say.
+  const [networkMode, setNetworkMode] = useState<NetworkMode>("standalone");
+  useEffect(() => {
+    let alive = true;
+    window.ipcRenderer.getNetworkConfig()
+      .then((config) => { if (alive) setNetworkMode(config?.mode ?? "standalone"); })
+      .catch(() => { /* standalone is the safe reading */ });
+    return () => { alive = false; };
   }, []);
 
   // License Activation
@@ -134,7 +152,21 @@ export default function Parameters() {
         setTrialStatus(status);
         // Tell TrialGate to re-check so the trial pill disappears immediately
         window.dispatchEvent(new Event("license-activated"));
-        triggerToast("success", t("trial.success"));
+        // The server tells us how many of the key's device slots are now
+        // spoken for. Worth repeating back: a two-seat practice needs to know
+        // it has used two of three, so the third is there for a replaced PC
+        // rather than a surprise on the day one dies.
+        setDeviceUsage(
+          typeof result.devicesInUse === "number" && typeof result.maxActivations === "number"
+            ? { used: result.devicesInUse, max: result.maxActivations }
+            : null
+        );
+        triggerToast(
+          "success",
+          typeof result.devicesInUse === "number" && typeof result.maxActivations === "number"
+            ? t("trial.success_with_devices", { used: result.devicesInUse, max: result.maxActivations })
+            : t("trial.success")
+        );
       } else {
         triggerToast("error", t(licenseErrorKey(result?.code)));
       }
@@ -204,7 +236,6 @@ export default function Parameters() {
   const handleSaveConsultation = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem("default_consultation_price", defaultPrice);
-    localStorage.setItem("default_consultation_duration", defaultDuration);
     localStorage.setItem("prescription_language", prescriptionLang);
     triggerToast("success", t("settings.consultation.success"));
   };
@@ -214,6 +245,7 @@ export default function Parameters() {
     if (window.confirm(t("settings.security.logout_confirm"))) {
       try {
         await window.ipcRenderer.logout();
+        clearCachedUser();
         window.location.hash = "/";
       } catch (err) {
         console.error("Logout failed:", err);
@@ -362,18 +394,18 @@ export default function Parameters() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <div className="w-10 h-10 border-4 border-[#e91e8c] border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-sm font-semibold text-[#1E2A56]/60">{t("appointments.loading")}</span>
+        <div className="w-10 h-10 border-4 border-pink border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-sm font-semibold text-navy/60">{t("appointments.loading")}</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 text-[#1E2A56]">
+    <div className="space-y-6 text-navy">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#1E2A56]">{t("settings.title")}</h1>
-        <p className="text-sm text-[#1E2A56]/50 mt-1">{t("settings.subtitle")}</p>
+        <h1 className="text-2xl font-bold text-navy">{t("settings.title")}</h1>
+        <p className="text-sm text-navy/50 mt-1">{t("settings.subtitle")}</p>
       </div>
 
       {/* Floating Success / Error Alerts */}
@@ -436,8 +468,8 @@ export default function Parameters() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap lg:whitespace-normal w-full select-none ${
                 activeTab === tab.id
-                  ? "bg-[#e91e8c]/10 text-[#e91e8c]"
-                  : "text-navy/60 hover:bg-[#1E2A56]/5"
+                  ? "bg-pink/10 text-pink"
+                  : "text-navy/60 hover:bg-navy/5"
               }`}
             >
               {tab.icon}
@@ -452,8 +484,8 @@ export default function Parameters() {
           {activeTab === "profile" && (
             <form onSubmit={handleSaveProfile} className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-[#1E2A56]">{t("settings.profile.title")}</h2>
-                <p className="text-xs text-[#1E2A56]/50 mt-1">{t("settings.profile.subtitle")}</p>
+                <h2 className="text-lg font-bold text-navy">{t("settings.profile.title")}</h2>
+                <p className="text-xs text-navy/50 mt-1">{t("settings.profile.subtitle")}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -466,7 +498,7 @@ export default function Parameters() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all"
+                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 focus:bg-white transition-all"
                   />
                 </div>
 
@@ -479,7 +511,7 @@ export default function Parameters() {
                     required
                     value={speciality}
                     onChange={(e) => setSpeciality(e.target.value)}
-                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all"
+                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 focus:bg-white transition-all"
                   />
                 </div>
 
@@ -498,7 +530,7 @@ export default function Parameters() {
                       setPhoneError(digits.length > 0 && digits.length !== 10 ? t("settings.profile.phone_error") : "");
                     }}
                     className={`w-full px-4 py-3 text-sm bg-bg/50 border rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:bg-white transition-all ${
-                      phoneError ? "border-red-400 focus:border-red-400" : "border-navy/[0.08] focus:border-[#e91e8c]/40"
+                      phoneError ? "border-red-400 focus:border-red-400" : "border-navy/[0.08] focus:border-pink/40"
                     }`}
                   />
                   {phoneError && (
@@ -514,7 +546,7 @@ export default function Parameters() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all"
+                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 focus:bg-white transition-all"
                   />
                 </div>
 
@@ -526,7 +558,7 @@ export default function Parameters() {
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all"
+                    className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 focus:bg-white transition-all"
                   />
                 </div>
               </div>
@@ -552,7 +584,7 @@ export default function Parameters() {
                         onClick={() => setPrescriptionStyle(option.value)}
                         className={`text-left p-4 rounded-2xl border transition-all cursor-pointer select-none ${
                           active
-                            ? "border-[#e91e8c]/50 bg-[#e91e8c]/[0.04] shadow-[0_2px_10px_rgba(233,30,140,0.08)]"
+                            ? "border-pink/50 bg-pink/[0.04] shadow-[0_2px_10px_rgba(233,30,140,0.08)]"
                             : "border-navy/[0.08] bg-bg/40 hover:border-navy/20"
                         }`}
                       >
@@ -584,7 +616,7 @@ export default function Parameters() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <span className={`text-sm font-bold block ${active ? "text-[#e91e8c]" : "text-navy"}`}>
+                            <span className={`text-sm font-bold block ${active ? "text-pink" : "text-navy"}`}>
                               {option.label}
                             </span>
                             <span className="text-[11px] text-navy/50 block mt-0.5 leading-snug">{option.desc}</span>
@@ -616,7 +648,7 @@ export default function Parameters() {
                         lang="ar"
                         value={fullNameAr}
                         onChange={(e) => setFullNameAr(e.target.value)}
-                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                       />
                     </div>
 
@@ -630,7 +662,7 @@ export default function Parameters() {
                         lang="ar"
                         value={specialityAr}
                         onChange={(e) => setSpecialityAr(e.target.value)}
-                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                       />
                     </div>
 
@@ -643,7 +675,7 @@ export default function Parameters() {
                         value={diploma}
                         onChange={(e) => setDiploma(e.target.value)}
                         placeholder={t("settings.profile.diploma_placeholder")}
-                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                       />
                     </div>
 
@@ -657,7 +689,7 @@ export default function Parameters() {
                         lang="ar"
                         value={diplomaAr}
                         onChange={(e) => setDiplomaAr(e.target.value)}
-                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                       />
                     </div>
 
@@ -676,7 +708,7 @@ export default function Parameters() {
                           type="text"
                           value={clinicName}
                           onChange={(e) => setClinicName(e.target.value)}
-                          className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                          className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                         />
                       </div>
 
@@ -690,7 +722,7 @@ export default function Parameters() {
                           lang="ar"
                           value={clinicNameAr}
                           onChange={(e) => setClinicNameAr(e.target.value)}
-                          className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                          className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                         />
                       </div>
                     </div>
@@ -704,7 +736,7 @@ export default function Parameters() {
                         value={orderNumber}
                         onChange={(e) => setOrderNumber(e.target.value)}
                         placeholder={t("settings.profile.order_number_placeholder")}
-                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                       />
                     </div>
 
@@ -717,7 +749,7 @@ export default function Parameters() {
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder={t("settings.profile.city_placeholder")}
-                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 transition-all"
+                        className="w-full px-4 py-3 text-sm bg-white border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 transition-all"
                       />
                     </div>
                   </div>
@@ -771,8 +803,8 @@ export default function Parameters() {
           {activeTab === "consultation" && (
             <form onSubmit={handleSaveConsultation} className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-[#1E2A56]">{t("settings.consultation.title")}</h2>
-                <p className="text-xs text-[#1E2A56]/50 mt-1">{t("settings.consultation.subtitle")}</p>
+                <h2 className="text-lg font-bold text-navy">{t("settings.consultation.title")}</h2>
+                <p className="text-xs text-navy/50 mt-1">{t("settings.consultation.subtitle")}</p>
               </div>
 
               <div className="space-y-5">
@@ -786,9 +818,9 @@ export default function Parameters() {
                       required
                       value={defaultPrice}
                       onChange={(e) => setDefaultPrice(e.target.value)}
-                      className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all"
+                      className="w-full px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy focus:outline-none focus:border-pink/40 focus:bg-white transition-all"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#e91e8c]">
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-pink">
                       DA
                     </span>
                   </div>
@@ -797,22 +829,11 @@ export default function Parameters() {
                   </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
-                    {t("settings.consultation.duration")}
-                  </label>
-                  <select
-                    value={defaultDuration}
-                    onChange={(e) => setDefaultDuration(e.target.value)}
-                    className="w-full max-w-sm px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="15">{t("settings.consultation.duration_minutes", { count: 15 })}</option>
-                    <option value="20">{t("settings.consultation.duration_minutes", { count: 20 })}</option>
-                    <option value="30">{t("settings.consultation.duration_minutes", { count: 30 })}</option>
-                    <option value="45">{t("settings.consultation.duration_minutes", { count: 45 })}</option>
-                    <option value="60">{t("settings.consultation.duration_minutes", { count: 60 })}</option>
-                  </select>
-                </div>
+                {/* There was a "default consultation duration" picker here. It
+                    was removed because it changed nothing: the value went to
+                    localStorage and no other screen ever read it back. The slot
+                    length is chosen per appointment in BookingModal, which is
+                    where it actually takes effect. */}
 
                 <div>
                   <label className="block text-xs font-bold text-navy/55 uppercase tracking-wider mb-2">
@@ -829,7 +850,7 @@ export default function Parameters() {
                         onClick={() => setPrescriptionLang(opt.value)}
                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 text-sm font-semibold transition-all cursor-pointer select-none ${
                           prescriptionLang === opt.value
-                            ? "border-[#e91e8c] bg-[#e91e8c]/[0.04] text-[#e91e8c]"
+                            ? "border-pink bg-pink/[0.04] text-pink"
                             : "border-navy/[0.08] text-navy/60 hover:border-navy/20"
                         }`}
                       >
@@ -857,8 +878,8 @@ export default function Parameters() {
           {activeTab === "security" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-[#1E2A56]">{t("settings.security.title")}</h2>
-                <p className="text-xs text-[#1E2A56]/50 mt-1">{t("settings.security.subtitle")}</p>
+                <h2 className="text-lg font-bold text-navy">{t("settings.security.title")}</h2>
+                <p className="text-xs text-navy/50 mt-1">{t("settings.security.subtitle")}</p>
               </div>
 
               {currentUser && (
@@ -875,10 +896,24 @@ export default function Parameters() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="px-8 py-3 rounded-2xl bg-gradient-to-r from-[#e91e8c] to-pink-light hover:from-pink-light hover:to-[#e91e8c] text-white text-sm font-semibold shadow-[0_4px_14px_rgba(233,30,140,0.25)] active:scale-[0.98] transition-all cursor-pointer select-none"
+                className="px-8 py-3 rounded-2xl bg-gradient-to-r from-pink to-pink-light hover:from-pink-light hover:to-pink text-white text-sm font-semibold shadow-[0_4px_14px_rgba(233,30,140,0.25)] active:scale-[0.98] transition-all cursor-pointer select-none"
               >
                 {t("settings.security.logout")}
               </button>
+
+              <div className="pt-6 border-t border-navy/[0.06]">
+                <UserAccounts currentUserId={currentUser?.id ?? null} />
+              </div>
+
+              <div className="pt-6 border-t border-navy/[0.06]">
+                <PrinterPicker />
+              </div>
+
+              {/* Beside the printer: both answer "what hardware is plugged into
+                  this particular machine", and both are stored in network.json. */}
+              <div className="pt-6 border-t border-navy/[0.06]">
+                <QueueDisplaySettings />
+              </div>
             </div>
           )}
 
@@ -889,8 +924,14 @@ export default function Parameters() {
           {activeTab === "data" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-[#1E2A56]">{t("settings.data.title")}</h2>
-                <p className="text-xs text-[#1E2A56]/50 mt-1">{t("settings.data.subtitle")}</p>
+                <h2 className="text-lg font-bold text-navy">{t("settings.data.title")}</h2>
+                <p className="text-xs text-navy/50 mt-1">{t("settings.data.subtitle")}</p>
+              </div>
+
+              {/* Where this machine's data comes from — first, because it
+                  determines what everything below this even applies to. */}
+              <div className="pb-6 border-b border-navy/[0.06]">
+                <NetworkSettings />
               </div>
 
               {/* Data Export Card */}
@@ -899,7 +940,7 @@ export default function Parameters() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={handleExportJSON}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-navy/10 hover:border-pink/40 text-navy hover:text-[#e91e8c] text-xs font-bold px-4 py-3 rounded-2xl transition-all cursor-pointer select-none"
+                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-navy/10 hover:border-pink/40 text-navy hover:text-pink text-xs font-bold px-4 py-3 rounded-2xl transition-all cursor-pointer select-none"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -909,7 +950,7 @@ export default function Parameters() {
 
                   <button
                     onClick={handleExportCSV}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-navy/10 hover:border-pink/40 text-navy hover:text-[#e91e8c] text-xs font-bold px-4 py-3 rounded-2xl transition-all cursor-pointer select-none"
+                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-navy/10 hover:border-pink/40 text-navy hover:text-pink text-xs font-bold px-4 py-3 rounded-2xl transition-all cursor-pointer select-none"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -941,7 +982,7 @@ export default function Parameters() {
                         disabled={dbBusy !== null}
                         className="text-start flex items-start gap-3 bg-white border border-navy/10 hover:border-pink/40 disabled:opacity-50 disabled:cursor-wait px-4 py-3.5 rounded-2xl transition-all cursor-pointer select-none group"
                       >
-                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-navy/40 group-hover:text-[#e91e8c] transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-navy/40 group-hover:text-pink transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
                         </svg>
                         <span className="min-w-0">
@@ -955,7 +996,7 @@ export default function Parameters() {
                         disabled={dbBusy !== null}
                         className="text-start flex items-start gap-3 bg-white border border-navy/10 hover:border-pink/40 disabled:opacity-50 disabled:cursor-wait px-4 py-3.5 rounded-2xl transition-all cursor-pointer select-none group"
                       >
-                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-navy/40 group-hover:text-[#e91e8c] transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-navy/40 group-hover:text-pink transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75" />
                         </svg>
                         <span className="min-w-0">
@@ -1045,7 +1086,7 @@ export default function Parameters() {
                   </div>
                   <button
                     onClick={() => setActiveTab("license")}
-                    className="flex-shrink-0 px-5 py-2.5 rounded-2xl bg-[#e91e8c] hover:bg-[#be185d] text-white text-xs font-bold shadow-md shadow-[#e91e8c]/20 transition-colors cursor-pointer select-none"
+                    className="flex-shrink-0 px-5 py-2.5 rounded-2xl bg-pink hover:bg-pink-dark text-white text-xs font-bold shadow-md shadow-pink/20 transition-colors cursor-pointer select-none"
                   >
                     {t("settings.data.db_locked_action")}
                   </button>
@@ -1109,9 +1150,26 @@ export default function Parameters() {
           {activeTab === "license" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-bold text-[#1E2A56]">{t("settings.license.title")}</h2>
-                <p className="text-xs text-[#1E2A56]/50 mt-1">{t("settings.license.subtitle")}</p>
+                <h2 className="text-lg font-bold text-navy">{t("settings.license.title")}</h2>
+                <p className="text-xs text-navy/50 mt-1">{t("settings.license.subtitle")}</p>
               </div>
+
+              {/* A licence covers a MACHINE, not the practice. On a two-seat
+                  install that is the single most surprising thing about it, and
+                  the surprise otherwise arrives as the front desk locking out
+                  on the fifteenth day. */}
+              {networkMode !== "standalone" && (
+                <div className="p-4 rounded-3xl bg-navy/[0.03] border border-navy/[0.06]">
+                  <p className="text-xs text-navy/70 leading-relaxed">
+                    {t("settings.license.per_machine")}
+                  </p>
+                  {networkMode === "client" && !trialStatus?.licensed && (
+                    <p className="text-xs text-navy font-semibold mt-2 leading-relaxed">
+                      {t("settings.license.client_needs_activation")}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Current status card */}
               {trialStatus?.licensed ? (
@@ -1124,6 +1182,11 @@ export default function Parameters() {
                   <div>
                     <h3 className="text-sm font-bold text-emerald-800">{t("settings.license.status_licensed")}</h3>
                     <p className="text-xs text-emerald-700/80 mt-0.5">{t("settings.license.status_licensed_hint")}</p>
+                    {deviceUsage && (
+                      <p className="text-xs text-emerald-700/80 mt-1 font-semibold tabular-nums">
+                        {t("settings.license.devices_used", { used: deviceUsage.used, max: deviceUsage.max })}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1177,7 +1240,7 @@ export default function Parameters() {
                         autoComplete="off"
                         spellCheck={false}
                         required
-                        className="w-full max-w-xl px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-[#e91e8c]/40 focus:bg-white transition-all font-mono"
+                        className="w-full max-w-xl px-4 py-3 text-sm bg-bg/50 border border-navy/[0.08] rounded-2xl text-navy placeholder:text-navy/20 focus:outline-none focus:border-pink/40 focus:bg-white transition-all font-mono"
                       />
                       <p className="mt-2 text-xs text-navy/40 max-w-xl">
                         {t("trial.internet_note")}
@@ -1199,7 +1262,7 @@ export default function Parameters() {
                       href="https://www.ausculta.site/"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[#e91e8c] font-semibold underline underline-offset-2 hover:text-navy transition-colors"
+                      className="text-pink font-semibold underline underline-offset-2 hover:text-navy transition-colors"
                     >
                       www.ausculta.site
                     </a>

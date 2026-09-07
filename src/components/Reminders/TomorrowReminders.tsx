@@ -251,13 +251,13 @@ export default function TomorrowReminders({ doctor }: { doctor: DoctorProfile })
         <div className="bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)]">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-4 border-b border-gray-50 pb-3">
                 <div className="group relative flex items-center gap-2">
-                    <h2 className="text-base font-bold text-[#1E2A56]">{t('dashboard.reminders.title')}</h2>
-                    <svg className="w-4 h-4 text-gray-300 group-hover:text-[#e91e8c] transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <h2 className="text-base font-bold text-navy">{t('dashboard.reminders.title')}</h2>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-pink transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
                     </svg>
                     {/* Opacity rather than display so there is no layout shift, and
                         centred with a translate so it lands correctly in RTL too. */}
-                    <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 w-60 rounded-xl bg-[#1E2A56] px-3 py-2 text-[11px] font-semibold leading-snug text-white text-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 w-60 rounded-xl bg-navy px-3 py-2 text-[11px] font-semibold leading-snug text-white text-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                         {t('dashboard.reminders.hint')}
                     </span>
                 </div>
@@ -275,8 +275,8 @@ export default function TomorrowReminders({ doctor }: { doctor: DoctorProfile })
                                 onClick={() => chooseLanguage(language)}
                                 className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors ${
                                     messageLanguage === language
-                                        ? 'bg-white text-[#1E2A56] shadow-sm'
-                                        : 'text-gray-400 hover:text-[#1E2A56]'
+                                        ? 'bg-white text-navy shadow-sm'
+                                        : 'text-gray-400 hover:text-navy'
                                 }`}
                             >
                                 {language}
@@ -288,7 +288,7 @@ export default function TomorrowReminders({ doctor }: { doctor: DoctorProfile })
 
             {loading ? (
                 <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-[#e91e8c] border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-pink border-t-transparent rounded-full animate-spin" />
                 </div>
             ) : list.targets.length === 0 ? (
                 <div className="py-8 text-center text-sm font-semibold text-gray-400">
@@ -298,7 +298,7 @@ export default function TomorrowReminders({ doctor }: { doctor: DoctorProfile })
                 <>
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                         {[
-                            { value: counts.toRemind, label: t('dashboard.reminders.stats.to_remind'), className: 'bg-[#e91e8c]/5 text-[#e91e8c] border-[#e91e8c]/20' },
+                            { value: counts.toRemind, label: t('dashboard.reminders.stats.to_remind'), className: 'bg-pink/5 text-pink border-pink/20' },
                             { value: counts.reminded, label: t('dashboard.reminders.stats.reminded'), className: 'bg-green-50 text-green-700 border-green-200' },
                             { value: counts.unreachable, label: t('dashboard.reminders.stats.unreachable'), className: 'bg-gray-100 text-gray-500 border-gray-200' },
                         ].filter((chip) => chip.value > 0).map((chip) => (
@@ -329,7 +329,7 @@ export default function TomorrowReminders({ doctor }: { doctor: DoctorProfile })
                                     <div className="flex items-center gap-4 min-w-0">
                                         <span className="text-xs font-black text-gray-400 w-12 flex-shrink-0">{time}</span>
                                         <div className="min-w-0">
-                                            <span className="font-bold text-sm text-[#1E2A56] block truncate">{target.patientName}</span>
+                                            <span className="font-bold text-sm text-navy block truncate">{target.patientName}</span>
                                             {/* A phone number reads left-to-right even in the Arabic UI. */}
                                             <span className="text-[11px] text-gray-400 block truncate" dir="ltr">
                                                 {target.phoneDisplay || '—'}

@@ -110,7 +110,17 @@
     "suggestions": {
       "frequent": "Your most prescribed medicines",
       "uses_one": "{{count}}×",
-      "uses_other": "{{count}}×"
+      "uses_other": "{{count}}×",
+      "catalog": "Registered in Algeria",
+      "schedule_narcotic": "Narcotic",
+      "schedule_list2": "List II",
+      "details": "View record",
+      "back": "Back to list",
+      "use_this": "Use this medicine",
+      "alternatives": "Other brands ({{n}})",
+      "no_alternatives": "No other brand of this molecule in the registry.",
+      "same_product": "Identical",
+      "substitution_note": "Matched on the molecule alone — no interactions or contraindications."
     },
     "templates": {
       "apply_one": "Templates ({{count}})",
@@ -133,19 +143,126 @@
     "nav": {
       "dashboard": "Dashboard",
       "patients": "Patients",
+      "waiting": "Waiting room",
       "appointments": "Appointments",
       "documents": "Documents",
       "prescriptions": "Prescriptions",
       "statistics": "Statistics",
       "settings": "Settings",
-      "consultation": "Consultation"
+      "consultation": "Consultation",
+      "medications": "Medicines"
     },
     "user": {
       "role": "General Practitioner"
     },
     "actions": {
       "collapse": "Collapse",
-      "expand": "Expand menu"
+      "expand": "Expand menu",
+      "logout": "Sign out"
+    }
+  },
+  "roles": {
+    "doctor": "Doctor",
+    "assistant": "Assistant"
+  },
+  "print": {
+    "send": "Print at the desk",
+    "sending": "Sending…",
+    "sent": "Sent to the desk",
+    "send_failed": "Could not send",
+    "send_hint": "Send this document to the front desk to be printed",
+    "queue_title": "Printing",
+    "pending_count": "{{count}} document waiting",
+    "pending_count_plural": "{{count}} documents waiting",
+    "nothing_pending": "Nothing waiting",
+    "print": "Print",
+    "printing": "Printing…",
+    "cancel": "Cancel this print",
+    "cancelled": "Cancelled",
+    "recent": "Recently",
+    "printed_by": "Printed by {{name}}",
+    "categories": {
+      "prescription": "Prescription",
+      "certificate": "Certificate",
+      "receipt": "Receipt",
+      "analysis": "Lab result",
+      "radiology": "Imaging",
+      "other": "Document"
+    },
+    "errors": {
+      "print": "Printing failed. Check the printer."
+    },
+    "settings": {
+      "title": "This machine's printer",
+      "subtitle": "Pick a printer so documents sent from the consulting room come out with one click. With none picked, the document opens and you print it yourself.",
+      "printer": "Printer",
+      "ask_every_time": "Open the document (ask each time)",
+      "system_default": "default",
+      "none_found": "No printers found on this machine."
+    }
+  },
+  "network": {
+    "banner": {
+      "unreachable": "Main machine unreachable — check that it is switched on and connected to the network.",
+      "not_ausculta": "The configured address is not an Ausculta machine.",
+      "fingerprint_mismatch": "The main machine's certificate has changed. The connection was refused for safety — re-pair the machines in Settings.",
+      "retry": "Retry",
+      "retrying": "Connecting…"
+    },
+    "settings": {
+      "title": "Practice machines and network",
+      "subtitle": "Choose whether this machine works alone, holds the practice's data, or reads another machine's.",
+      "loading": "Loading configuration…",
+      "open_from_login": "Set up this machine",
+      "back_to_login": "Back to sign in",
+      "port": "Port",
+      "fingerprint": "Certificate fingerprint",
+      "fingerprint_hint": "Both machines should show the same fingerprint. If it changes and you have not reinstalled anything, do not re-pair — this may not be the right machine.",
+      "save": "Save",
+      "restart_required": "Saved — restart to apply.",
+      "restart_now": "Restart now",
+      "unpair_confirm": "Forget the main machine's certificate?\n\nThe next test will accept whatever certificate it presents. Only do this if the main machine really was reinstalled.",
+      "modes": {
+        "standalone": {
+          "label": "Standalone",
+          "hint": "This machine keeps its own data and talks to no other."
+        },
+        "host": {
+          "label": "Main machine",
+          "hint": "This machine keeps the practice's data and serves it to the front desk."
+        },
+        "client": {
+          "label": "Second machine",
+          "hint": "This machine keeps no data of its own; it reads the main machine's."
+        }
+      },
+      "host": {
+        "intro": "Note one of these addresses and the port below, then enter them on the front-desk machine.",
+        "addresses": "This machine's addresses",
+        "no_addresses": "No network addresses found.",
+                "firewall_ok": "The firewall allows Ausculta on this port.",
+        "firewall_missing": "Windows Firewall is probably blocking this port.",
+        "firewall_allow": "Allow through the firewall",
+        "firewall_allowing": "Allowing…",
+        "running": "The service is running.",
+        "not_running": "The service will start on the next launch."
+      },
+      "client": {
+        "intro": "Enter the address shown on the main machine, then test the connection.",
+        "address": "Main machine address",
+        "test": "Test connection",
+        "testing": "Testing…",
+        "reachable": "Main machine reachable.",
+        "paired": "Machines paired. Check that the fingerprint below matches the one shown on the main machine.",
+        "paired_with": "Paired with",
+        "unpair": "Forget this pairing"
+      },
+      "notes": {
+        "host_must_be_on": "The main machine must be switched on and awake for the front desk to work.",
+        "backups": "Backups and restores are done from the main machine only.",
+        "firewall": "Windows Firewall must allow Ausculta on private networks (the installer adds the rule).",
+        "fixed_address": "Reserve the main machine's address on your router, or it may change."
+      }
     }
   },
   "dashboard": {
@@ -167,7 +284,8 @@
     },
     "upcoming": {
       "title": "Today's Schedule",
-      "empty": "The calendar of your upcoming appointments will appear here."
+      "empty": "The calendar of your upcoming appointments will appear here.",
+      "view_all": "Open the calendar"
     },
     "chart": {
       "distribution_title": "Today's Distribution",
@@ -313,6 +431,8 @@
     "tab_prescriptions": "Prescriptions ({{count}})",
     "tab_appointments": "Appointments",
     "activity_empty": "No recent activity",
+    "show_more_one": "Show {{count}} more",
+    "show_more_other": "Show {{count}} more",
     "activity_prescription": "Prescription issued (No. {{id}})",
     "activity_document": "Document uploaded ({{name}})",
     "activity_category": "Category: {{value}}",
@@ -398,6 +518,7 @@
       "submit": "Sign in",
       "loading": "Signing in...",
       "no_account": "Don't have an account?",
+      "ask_doctor": "Need access? The doctor can create an account for you in Settings › Security.",
       "register_link": "Create account",
       "error_invalid": "Invalid username or password",
       "error_connection": "Connection error"
@@ -424,6 +545,83 @@
     "hide_password": "Hide password",
     "license_note": "Have a license key? Create an account and sign in, then activate it from Settings.",
     "footer": "Ausculta © {{year}} — Medical clinic"
+  },
+  "queue_display": {
+    "in_room": "In consultation",
+    "nobody_in_room": "—",
+    "next": "Next",
+    "empty": "Nobody is waiting.",
+    "starting": "Starting…",
+    "up_next": "You're next",
+    "since": "Since {{time}}",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "and_more_one": "and {{count}} more patient",
+    "and_more_other": "and {{count}} more patients",
+    "estimate_note": "Times shown are approximate and may vary from one consultation to the next.",
+    "settings": {
+      "title": "Waiting-room display",
+      "subtitle": "Shows the queue fullscreen on a second screen — a TV in the waiting room. This setting belongs to this machine.",
+      "on": "On",
+      "on_hint": "The display reopens at every launch.",
+      "off": "Off",
+      "off_hint": "No display is opened automatically.",
+      "screen": "Screen",
+      "screen_auto": "Automatic (secondary screen)",
+      "primary": "primary screen",
+      "one_screen": "Only one screen is detected on this machine. Connect the TV, then reopen this page.",
+      "name_mode": "Name shown",
+      "name_mode_full": "Full name",
+      "name_mode_initial": "First name + initial",
+      "name_mode_number": "Number only",
+      "name_mode_hint": "The screen is visible to everyone in the waiting room.",
+      "open_now": "Open the display",
+      "close": "Close",
+      "is_open": "Display open."
+    }
+  },
+  "waiting_room": {
+    "title": "Waiting room",
+    "subtitle": "Who is in the practice right now.",
+    "count_one": "{{count}} waiting",
+    "count_other": "{{count}} waiting",
+    "loading": "Loading...",
+    "empty": "Nobody is waiting at the moment.",
+    "in_room": "In consultation",
+    "queue": "Queue",
+    "check_in": "Check someone in",
+    "walk_in": "Walk-in",
+    "scheduled_at": "Appt {{time}}",
+    "arrived_at": "arrived {{time}}",
+    "waited_one": "{{count}} min",
+    "waited_other": "{{count}} min",
+    "started_at": "Started at {{time}}",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "waited_before_one": "waited {{count}} min",
+    "waited_before_other": "waited {{count}} min",
+    "already_here": "Already here",
+    "eta_one": "≈ {{count}} min",
+    "eta_other": "≈ {{count}} min",
+    "eta_next": "≈ soon",
+    "eta_hint": "Estimated from queue position and how long a consultation usually takes here.",
+    "search_placeholder": "Search for a walk-in patient…",
+    "confirm_remove": "Remove {{name}} from the waiting room?",
+    "actions": {
+      "arrived": "Arrived",
+      "call_in": "Call in",
+      "vitals": "Vitals",
+      "open_visit": "Open visit",
+      "prioritise": "Move to the front",
+      "unprioritise": "Back to arrival order",
+      "remove": "Remove from queue"
+    },
+    "errors": {
+      "check_in_failed": "Could not record the arrival.",
+      "call_failed": "Could not call this patient in.",
+      "remove_failed": "Could not remove this patient from the queue.",
+      "remove_has_content": "Vitals have already been recorded — this visit has to be deleted by the doctor."
+    }
   },
   "appointments": {
     "title": "Appointments",
@@ -458,7 +656,9 @@
       "delete": "Delete"
     },
     "book_button": "Book an appointment",
-    "start_consultation": "Start consultation"
+    "start_consultation": "Start consultation",
+    "patient_meta": "Born {{dob}} | Tel: {{phone}}",
+    "booking_error": "This appointment could not be saved."
   },
   "statistics": {
     "title": "Statistics & Analytics",
@@ -533,6 +733,9 @@
       "subtitle": "Activate your license key to unlock the full version.",
       "status_licensed": "Full version activated",
       "status_licensed_hint": "Your license is active. Thank you for using Ausculta!",
+      "devices_used": "{{used}} of {{max}} machines allowed by this key are in use.",
+      "per_machine": "A licence activates per machine, not per practice: each machine activates with the same key, up to 3 machines. A two-seat practice uses two and keeps the third for a replaced computer.",
+      "client_needs_activation": "This machine is still on trial. Activate it with the same key as the main machine, or the front desk will lock out when the trial ends.",
       "warning_title": "Your trial ends in {{days}} days!",
       "warning_text": "When the trial expires, Ausculta locks completely: your patient records, appointments and documents will be inaccessible until a license is activated. Don't get locked out of your data — activate now.",
       "warning_countdown": "{{days}} of {{total}} days remaining"
@@ -578,8 +781,6 @@
       "subtitle": "Set default consultation prices and appointment slot durations.",
       "price": "Default Consultation Price",
       "price_hint": "This rate is used to calculate revenue in the Statistics tab.",
-      "duration": "Default Appointment Duration",
-      "duration_minutes": "{{count}} minutes",
       "save": "Save Settings",
       "success": "Consultation settings saved!",
       "prescription_language": "Default prescription language",
@@ -592,6 +793,32 @@
       "subtitle": "Manage your connection and securely sign out of your account.",
       "logout": "Sign Out",
       "logout_confirm": "Are you sure you want to sign out?"
+    },
+    "accounts": {
+      "title": "Practice accounts",
+      "subtitle": "Create a sign-in for your assistant: patients, appointments, documents and payments. Statistics, prescriptions and settings stay with the doctor.",
+      "add": "Add an assistant",
+      "cancel": "Cancel",
+      "create": "Create account",
+      "name": "Full name",
+      "password": "Password",
+      "password_hint": "At least 6 characters. Pass it on to them — it is not shown again.",
+      "new_password": "New password",
+      "reset": "Password",
+      "confirm_reset": "Reset",
+      "delete": "Delete",
+      "delete_confirm": "Delete {{name}}'s account?\n\nThey will no longer be able to sign in. Patient records are not affected.",
+      "you": "you",
+      "loading": "Loading accounts…",
+      "created": "Account created for {{name}}.",
+      "deleted": "{{name}}'s account deleted.",
+      "password_reset": "Password reset.",
+      "errors": {
+        "load": "Could not load the accounts.",
+        "create": "Could not create the account.",
+        "delete": "Could not delete the account.",
+        "reset": "Could not reset the password."
+      }
     },
     "data": {
       "title": "Database & Storage",
@@ -892,6 +1119,7 @@
       "bad_request": "Invalid license key. Check it and try again."
     },
     "success": "License activated. Thank you!",
+    "success_with_devices": "Licence activated. {{used}} of {{max}} machines used.",
     "contact": "To get a license key, contact us.",
     "activate_title": "Activate your license",
     "activate_now": "Activate now",
@@ -912,6 +1140,7 @@
       "age": "{{age}} years",
       "no_blood_type": "Blood type unknown",
       "open_file": "Patient file",
+      "back": "Back",
       "discard": "Discard",
       "finish": "Finish consultation",
       "finishing": "Finishing…"
@@ -920,6 +1149,11 @@
       "saving": "Saving…",
       "saved": "Saved",
       "error": "Not saved"
+    },
+    "phases": {
+      "previous": "Previous",
+      "next": "Next",
+      "step": "Step {{current}} of {{total}}"
     },
     "select": {
       "walk_in_title": "Patient without an appointment",
@@ -968,6 +1202,7 @@
     },
     "prescription": {
       "title": "Prescription",
+      "phase_title": "Prescription and certificates",
       "medicine": "Medicine",
       "dosage": "Dosage",
       "frequency": "Frequency",
@@ -996,6 +1231,7 @@
     },
     "billing": {
       "title": "Fee",
+      "phase_title": "Billing and follow-up",
       "fee": "Amount (DA)",
       "fee_placeholder": "Practice default",
       "paid": "Paid",
@@ -1067,9 +1303,16 @@
       "auth.login": "Signed in",
       "auth.login_failed": "Failed sign-in",
       "auth.logout": "Signed out",
+      "auth.register_refused": "Registration refused",
+      "user.create": "Account created",
+      "user.delete": "Account deleted",
+      "user.password_reset": "Password reset",
       "patient.create": "Patient created",
       "patient.update": "Patient updated",
       "patient.delete": "Patient deleted",
+      "consultation.check_in": "Patient arrived",
+      "consultation.call_in": "Patient called in",
+      "consultation.remove_from_queue": "Removed from the waiting room",
       "consultation.complete": "Consultation completed",
       "consultation.delete": "Consultation deleted",
       "prescription.create": "Prescription created",
@@ -1081,9 +1324,86 @@
       "payment.record": "Payment recorded",
       "payment.delete": "Payment voided",
       "reminder.send": "WhatsApp reminder opened",
+      "print.queue": "Sent to print",
+      "print.done": "Document printed",
       "database.backup": "Backup created",
       "database.restore": "Database restored",
       "database.reset": "Database reset"
+    }
+  },
+  "medications": {
+    "title": "Medicines",
+    "subtitle": "National registry — {{total}} products, {{current}} on the 2025 registration list",
+    "scope_note": "An identification directory: name, molecule, strength, form, schedule, reimbursement and manufacturer. It carries no interactions, contraindications or dosing — it does not replace a clinical check.",
+    "toolbar": {
+      "search_placeholder": "Brand name or molecule…",
+      "form": "Form",
+      "therapeutic": "Class",
+      "schedule": "Schedule",
+      "refundable": "Reimbursable",
+      "current_list": "Registered 2025",
+      "all": "All",
+      "clear": "Reset",
+      "results_one": "{{count}} result",
+      "results_other": "{{count}} results"
+    },
+    "table": {
+      "brand": "Medicine",
+      "molecule": "Molecule",
+      "form": "Form",
+      "therapeutic": "Therapeutic class",
+      "schedule": "Schedule",
+      "refundable": "Reimb.",
+      "lab": "Manufacturer"
+    },
+    "schedule": {
+      "I": "List I",
+      "II": "List II",
+      "STUPEFIANT": "Narcotic"
+    },
+    "provenance": {
+      "current": "2025 list",
+      "current_hint": "Appears on the 2025 registered-products list.",
+      "legacy": "Pre-2020",
+      "legacy_hint": "Known from a 2020 snapshot only — may have been withdrawn."
+    },
+    "value": {
+      "yes": "Yes",
+      "no": "No",
+      "unknown": "Not recorded"
+    },
+    "detail": {
+      "title": "Medicine record",
+      "close": "Close",
+      "missing": "Product not found",
+      "packaging": "Pack sizes",
+      "composition": "Composition",
+      "pharmacological": "Pharmacological class",
+      "class_code": "Nomenclature code",
+      "country": "Country",
+      "registration": "Registration no.",
+      "refundable": "Reimbursement",
+      "narcotic_note": "Narcotic: prescribe on a carnet à souches, not an ordinary prescription.",
+      "alternatives": "Other brands ({{n}})",
+      "tier_0": "Same strength, same form",
+      "tier_1": "Same strength, other form",
+      "tier_2": "Other strength",
+      "no_alternatives": "No other brand of this molecule in the registry.",
+      "no_molecule": "No molecule recorded for this product — no equivalence possible.",
+      "substitution_note": "Matched on the molecule alone. The registry holds no interactions, contraindications or dosing: substitution remains a clinical decision."
+    },
+    "empty": {
+      "title": "No medicine found",
+      "hint": "Try another name or molecule, or widen the filters."
+    },
+    "unavailable": {
+      "title": "Registry unavailable",
+      "hint": "The medicines file could not be loaded. Reinstalling the app will restore it."
+    },
+    "pagination": {
+      "page": "Page {{page}} of {{total}}",
+      "prev": "Previous page",
+      "next": "Next page"
     }
   }
 }

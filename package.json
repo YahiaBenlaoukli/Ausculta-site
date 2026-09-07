@@ -1,14 +1,16 @@
 {
   "name": "gestion-cabinet-medicale",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.2.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "npm run check:palette && tsc && vite build && electron-builder",
+    "check:palette": "node scripts/check-palette.mjs",
     "release": "npm run build && node scripts/publish-release.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:drugs": "node scripts/build-drug-list.mjs && node scripts/sources/verify.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
@@ -25,6 +27,7 @@
     "react-i18next": "^17.0.8",
     "react-router-dom": "^7.16.0",
     "recharts": "^3.8.1",
+    "selfsigned": "^5.5.0",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

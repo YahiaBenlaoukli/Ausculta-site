@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { clearCachedUser } from '../../hooks/useCurrentUser';
+import NetworkSettings from '../../components/Settings/NetworkSettings';
 
 /* ─── Heart Animation (simplified for login — gentle auto-loop) ─── */
 const TOTAL_FRAMES = 150;
@@ -209,6 +211,15 @@ export default function Authentification() {
     // Register-only
     const [confirmPassword, setConfirmPassword] = useState('');
 
+    /* Registration creates the practice's DOCTOR, and only ever the first
+       account — assistants are added by the doctor in Paramètres. So once
+       anyone has registered, the toggle disappears rather than leading to a
+       refusal. Starts false: on an install that already has an account, which
+       is every launch after the first, showing the link and then removing it
+       would flicker. */
+    const [canRegister, setCanRegister] = useState(false);
+    const [showNetwork, setShowNetwork] = useState(false);
+
     // Check for existing session on mount
     useEffect(() => {
         (async () => {
@@ -216,9 +227,17 @@ export default function Authentification() {
                 const result = await window.ipcRenderer.checkAuth();
                 if (result?.status === 'success') {
                     navigate('/dashboard', { replace: true });
+                    return;
                 }
             } catch {
                 // No saved session — stay on login
+            }
+            try {
+                const registration = await window.ipcRenderer.needsRegistration();
+                setCanRegister(registration?.status === 'success' && registration.data === true);
+            } catch {
+                // Leave registration hidden: a doctor who genuinely has no
+                // account will see the empty-database message on first launch.
             }
         })();
     }, [navigate]);
@@ -251,6 +270,9 @@ export default function Authentification() {
         try {
             const result = await window.ipcRenderer.login(fullName, password, stayLogged);
             if (result?.status === 'success') {
+                // Drop whatever role the previous session cached, or the
+                // sidebar renders the last user's permissions for this one.
+                clearCachedUser();
                 navigate('/dashboard', { replace: true });
             } else {
                 setError(result?.message || t('auth.login.error_invalid'));
@@ -311,6 +333,29 @@ export default function Authentification() {
 
     const isLogin = mode === 'login';
     const prefix = isLogin ? 'auth.login' : 'auth.register';
+
+    if (showNetwork) {
+        return (
+            <div className="min-h-screen w-full bg-bg overflow-y-auto">
+                <div className="max-w-3xl mx-auto px-6 py-12">
+                    <button
+                        type="button"
+                        onClick={() => setShowNetwork(false)}
+                        className="mb-6 inline-flex items-center gap-2 text-sm text-navy/50 hover:text-navy transition-colors cursor-pointer"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12" />
+                            <polyline points="12 19 5 12 12 5" />
+                        </svg>
+                        {t('network.settings.back_to_login')}
+                    </button>
+                    <div className="bg-white rounded-3xl p-7 border border-navy/[0.04] shadow-[0_4px_24px_rgba(30,42,86,0.06)]">
+                        <NetworkSettings />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen w-full">
@@ -553,17 +598,26 @@ export default function Authentification() {
                         </button>
                     </form>
 
-                    {/* Toggle login / register */}
-                    <p className="text-center text-navy/40 text-sm mt-6">
-                        {isLogin ? t('auth.login.no_account') : t('auth.register.has_account')}{' '}
-                        <button
-                            type="button"
-                            onClick={() => switchMode(isLogin ? 'register' : 'login')}
-                            className="text-pink font-semibold hover:text-pink-dark transition-colors cursor-pointer"
-                        >
-                            {isLogin ? t('auth.login.register_link') : t('auth.register.login_link')}
-                        </button>
-                    </p>
+                    {/* Toggle login / register — only while the practice has no
+                        account yet. Afterwards the way to get a login is the
+                        doctor creating one in Paramètres, which is what the
+                        note below says. */}
+                    {canRegister ? (
+                        <p className="text-center text-navy/40 text-sm mt-6">
+                            {isLogin ? t('auth.login.no_account') : t('auth.register.has_account')}{' '}
+                            <button
+                                type="button"
+                                onClick={() => switchMode(isLogin ? 'register' : 'login')}
+                                className="text-pink font-semibold hover:text-pink-dark transition-colors cursor-pointer"
+                            >
+                                {isLogin ? t('auth.login.register_link') : t('auth.register.login_link')}
+                            </button>
+                        </p>
+                    ) : (
+                        <p className="text-center text-navy/35 text-xs mt-6 leading-relaxed">
+                            {t('auth.login.ask_doctor')}
+                        </p>
+                    )}
 
                     {/* License hint — activating a license requires an account first.
                         The trial "Activate now" pill leads to Settings, which needs a
@@ -576,6 +630,17 @@ export default function Authentification() {
                     {/* Footer note */}
                     <p className="text-center text-navy/25 text-xs mt-4">
                         {t('auth.footer', { year: new Date().getFullYear() })}
+                        {' · '}
+                        {/* A client cannot sign in until it can reach the host,
+                            so pairing has to be possible from here — there is no
+                            account on this machine to get past this screen with. */}
+                        <button
+                            type="button"
+                            onClick={() => setShowNetwork(true)}
+                            className="text-navy/40 hover:text-pink transition-colors cursor-pointer underline underline-offset-2"
+                        >
+                            {t('network.settings.open_from_login')}
+                        </button>
                     </p>
                 </div>
             </div>

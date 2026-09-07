@@ -81,12 +81,68 @@ export async function createDoctorProfile(userId: number, fullName: string, spec
     }
 }
 
+/**
+ * The practice's doctor profile, whoever is asking.
+ *
+ * Every clinical table keys off doctor_profile — appointments.doctor_id and
+ * consultations.doctor_id reference doctor_profile(id), prescriptions.user_id
+ * references doctor_profile(user_id) — so this, not the signed-in user, is what
+ * the renderer needs to load a calendar or open a consultation. An assistant
+ * has no profile of their own and never will; they work the doctor's schedule.
+ *
+ * One install, one doctor: the join picks the profile whose owner is not an
+ * assistant, and falls back to the oldest profile for a database whose roles
+ * predate this code.
+ */
+export async function getPracticeDoctorProfile() {
+    try {
+        const db = getDatabase();
+        const row = db.prepare(`
+            SELECT dp.* FROM doctor_profile dp
+            JOIN users u ON u.id = dp.user_id
+            WHERE u.role IS NOT 'assistant'
+            ORDER BY dp.id ASC
+            LIMIT 1
+        `).get() as Record<string, unknown> | undefined
+            ?? db.prepare(`SELECT * FROM doctor_profile ORDER BY id ASC LIMIT 1`)
+                .get() as Record<string, unknown> | undefined;
+
+        if (row) {
+            return { status: "success", data: mapRowToDoctorProfile(row) };
+        }
+
+        // No profile yet. Only the doctor's own first visit to a screen should
+        // conjure one — creating it under an assistant's session would attach
+        // the practice's entire clinical history to the front-desk account.
+        const doctorRow = db.prepare(
+            `SELECT id FROM users WHERE role IS NOT 'assistant' ORDER BY id ASC LIMIT 1`
+        ).get() as { id: number } | undefined;
+        if (!doctorRow) {
+            return { status: "not_found", data: null };
+        }
+        return await getDoctorProfileByUserId(doctorRow.id);
+    } catch (error) {
+        console.error("getPracticeDoctorProfile error:", error);
+        return { status: "fail", message: (error as Error).message };
+    }
+}
+
 export async function getDoctorProfileByUserId(userId: number) {
     try {
         const db = getDatabase();
         const stmt = db.prepare(`SELECT * FROM doctor_profile WHERE user_id = ?`);
         let row = stmt.get(userId) as Record<string, unknown> | undefined;
         if (!row) {
+            // Auto-creation is for the doctor's first launch only. Without this
+            // guard, an assistant landing on any screen that asks for "my
+            // profile" would mint a second doctor_profile row, and the practice
+            // would quietly acquire a second doctor.
+            const owner = db.prepare(`SELECT role FROM users WHERE id = ?`).get(userId) as
+                | { role: string }
+                | undefined;
+            if (owner?.role === 'assistant') {
+                return { status: "not_found", data: null };
+            }
             console.log("Doctor profile not found for user", userId, ". Initializing default profile...");
             const userStmt = db.prepare(`SELECT full_name FROM users WHERE id = ?`);
             const userRow = userStmt.get(userId) as { full_name: string } | undefined;

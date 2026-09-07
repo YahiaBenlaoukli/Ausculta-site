@@ -11,7 +11,7 @@ import { buildPatientSearchText, normalizeSearchText } from './normalize';
  * restore a file produced by a NEWER build: migrations only run forwards, so
  * loading a future schema would leave the app reading columns it cannot see.
  */
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 18;
 
 /**
  * The version a pre-versioning database is treated as.
@@ -55,6 +55,7 @@ export function initializeDatabase(): Database.Database {
 
   createSchema(db);
   ensureColumns(db);
+  ensureIndexes(db);
 
   if (version > SCHEMA_VERSION) {
     // A newer database opened by an older build. Nothing safe to do about it
@@ -283,6 +284,33 @@ function createSchema(db: Database.Database) {
       -- prescriptions and documents created mid-visit can be linked to it.
       status TEXT DEFAULT 'InProgress' CHECK(status IN ('InProgress', 'Completed')),
 
+      -- The waiting room (v17), as two timestamps rather than a third status.
+      --
+      -- consultation_datetime is when the row was opened; these two say what
+      -- happened either side of the wait. A patient is WAITING while arrived_at
+      -- is set and called_at is not, and IN THE ROOM once called_at is stamped.
+      --
+      -- Timestamps and not a 'Waiting' status value for two reasons: widening
+      -- the CHECK above would mean rebuilding a table three others hold foreign
+      -- keys into, and the difference between the two is the actual wait, which
+      -- a status flag could never give back.
+      arrived_at TEXT,
+      called_at TEXT,
+
+      -- When the doctor closed the visit (v18). Completes the pair above, so
+      -- called_at → completed_at is how long a consultation actually took —
+      -- which is the only honest basis for telling a waiting patient how much
+      -- longer. The status column alone said that it ended but never when.
+      --
+      -- NULL on every visit completed before v18: we do not know, and guessing
+      -- would corrupt the very average this exists to measure.
+      completed_at TEXT,
+
+      -- 1 floats a patient to the front of the queue ("faire passer en
+      -- premier"). Not a general ordering column: the queue is arrival order,
+      -- and this is the exception the desk needs for an emergency.
+      queue_priority INTEGER NOT NULL DEFAULT 0,
+
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
@@ -496,6 +524,40 @@ function createSchema(db: Database.Database) {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_appointment_reminders_target
       ON appointment_reminders(appointment_id, appointment_datetime);
 
+    -- The doctor asks for something to come out of the printer at the front
+    -- desk. Keyed on patient_documents rather than on prescriptions, so
+    -- certificates and receipts ride the same queue with no extra machinery —
+    -- by the time anything is printable it is already a filed document.
+    --
+    -- Nothing here carries the file: what gets handed to the patient must be
+    -- the same bytes as the patient's record, so the job is a pointer and the
+    -- desk fetches the document itself.
+    CREATE TABLE IF NOT EXISTS print_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      document_id INTEGER NOT NULL,
+      requested_by INTEGER,
+
+      -- 'cancelled' is the doctor withdrawing a job, or the desk rejecting one
+      -- it cannot print. Left unCHECKed for the same reason as elsewhere:
+      -- SQLite cannot widen a CHECK without rebuilding the table.
+      status TEXT NOT NULL DEFAULT 'pending',
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      printed_at DATETIME,
+      printed_by INTEGER,
+
+      -- The queue entry goes when the document does: a job pointing at a
+      -- deleted document could only ever fail.
+      FOREIGN KEY (document_id) REFERENCES patient_documents(id) ON DELETE CASCADE,
+      -- Deliberately NOT cascading on users: an account being deleted must not
+      -- erase the record that someone asked for a prescription to be printed.
+      FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (printed_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    -- The desk polls for pending work every few seconds; this is that query.
+    CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs(status, created_at);
+
     CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id);
     CREATE INDEX IF NOT EXISTS idx_consultations_datetime ON consultations(consultation_datetime);
 
@@ -526,7 +588,52 @@ function ensureColumns(db: Database.Database) {
     ensureColumn(db, 'doctor_profile', column, 'TEXT');
   }
   ensureColumn(db, 'doctor_profile', 'prescription_style', `TEXT NOT NULL DEFAULT 'classic'`);
+  for (const [column, definition] of VISIT_TIMING_COLUMNS) {
+    ensureColumn(db, 'consultations', column, definition);
+  }
 }
+
+/**
+ * Indexes over columns that ensureColumns() adds, and therefore cannot live in
+ * createSchema().
+ *
+ * createSchema() runs FIRST, and its `CREATE TABLE IF NOT EXISTS` is a no-op on
+ * a database that already has the table — so on every existing install the new
+ * columns do not exist yet at that point. An index naming one there does not
+ * merely fail: the whole createSchema() exec aborts at that statement, silently
+ * skipping every table and index declared after it.
+ */
+function ensureIndexes(db: Database.Database) {
+  try {
+    // Both seats poll the waiting room every few seconds; this is that query.
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_consultations_queue
+        ON consultations(doctor_id, status, called_at);
+    `);
+  } catch (error) {
+    console.error('ensureIndexes:', error);
+  }
+}
+
+/**
+ * When a visit happened, listed once so ensureColumns and migrations 17 and 18
+ * cannot drift apart — the same arrangement DOCTOR_LETTERHEAD_COLUMNS uses.
+ *
+ * queue_priority is NOT NULL with a default because an ALTER carrying a default
+ * backfills every existing row, which is what keeps the ORDER BY total.
+ */
+const WAITING_ROOM_COLUMNS = [
+  ['arrived_at', 'TEXT'],
+  ['called_at', 'TEXT'],
+  ['queue_priority', 'INTEGER NOT NULL DEFAULT 0'],
+] as const;
+
+/** v18. Separate from the list above so migration 17 keeps adding exactly what it always added. */
+const COMPLETED_AT_COLUMN = [
+  ['completed_at', 'TEXT'],
+] as const;
+
+const VISIT_TIMING_COLUMNS = [...WAITING_ROOM_COLUMNS, ...COMPLETED_AT_COLUMN];
 
 /**
  * The bilingual-letterhead columns, listed once so ensureColumns and migration
@@ -633,6 +740,48 @@ const MIGRATIONS: Migration[] = [
     // empty: reminders sent by hand before this existed left no trace to
     // backfill, and inventing "already reminded" rows would suppress the first
     // real reminder for every appointment already on the calendar.
+  },
+  {
+    version: 16,
+    name: 'print_jobs',
+    // Table and index only, so createSchema() has already built it. Starts
+    // empty by definition: a queue describes work outstanding right now, and
+    // every prescription printed before this existed was printed.
+  },
+  {
+    version: 17,
+    name: 'consultations.waiting_room',
+    // The backfill is the whole point of this entry. Every visit already in the
+    // database was called in — nobody is still sitting in a waiting room from
+    // last year — and the queue reads "waiting" as called_at IS NULL. Without
+    // this, upgrading would present the practice's entire history as a queue.
+    up: (db) => {
+      for (const [column, definition] of WAITING_ROOM_COLUMNS) {
+        ensureColumn(db, 'consultations', column, definition);
+      }
+      db.exec(`
+        UPDATE consultations
+        SET called_at = consultation_datetime,
+            arrived_at = consultation_datetime
+        WHERE called_at IS NULL
+      `);
+    },
+  },
+  {
+    version: 18,
+    name: 'consultations.completed_at',
+    // Deliberately no backfill, unlike v17. There the right answer was knowable
+    // — every past visit had been called in — so filling it in was restoring a
+    // fact. Here it is not: nothing in the database says when a visit ended, and
+    // consultation_datetime is when it STARTED. Writing that in would make every
+    // historic consultation appear to have taken zero minutes and drag the
+    // median this column exists to compute down to nothing. NULL means "not
+    // measured", and typicalVisitMinutes() excludes those rows.
+    up: (db) => {
+      for (const [column, definition] of COMPLETED_AT_COLUMN) {
+        ensureColumn(db, 'consultations', column, definition);
+      }
+    },
   },
 ];
 
@@ -792,7 +941,15 @@ function syncMissedAppointments() {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const localNow = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const stmt = db.prepare(`UPDATE appointments SET status = 'No-Show' WHERE appointment_datetime < ? AND status = 'Scheduled'`);
+    // An appointment the patient actually turned up for is never a no-show,
+    // even while the visit is still open. Without this exclusion, someone who
+    // checked in at 14:00 for a 14:15 slot and is still in the waiting room
+    // gets marked absent by the next restart — while sitting in the room.
+    const stmt = db.prepare(`
+      UPDATE appointments SET status = 'No-Show'
+      WHERE appointment_datetime < ? AND status = 'Scheduled'
+        AND NOT EXISTS (SELECT 1 FROM consultations c WHERE c.appointment_id = appointments.id)
+    `);
     const result = stmt.run(localNow);
     return result;
   } catch (error) {

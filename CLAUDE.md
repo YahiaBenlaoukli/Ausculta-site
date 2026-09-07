@@ -24,16 +24,26 @@ There is no test runner configured in this repo (no `test` script, no test files
 - `electron/services/*.ts` — business logic run in the main process, one file per domain: `auth.ts`, `patient.ts`, `documents.ts`, `prescription.ts`, `appointments.ts`, `statistics.ts`. Each exported function is wired to exactly one IPC handler in `main.ts`.
 - `electron/db/db.ts` — single `better-sqlite3` connection (`getDatabase()` / `initializeDatabase()`). Schema is created with `CREATE TABLE IF NOT EXISTS` directly in code (no migration framework); `user_version` pragma is bumped manually when the schema changes. WAL mode and `foreign_keys = ON` are set explicitly. `initializeDatabase()` also runs one-off data-repair logic (e.g. auto-linking legacy prescription documents) and `syncMissedAppointments()` (flips past `Scheduled` appointments to `No-Show`) on every startup.
 
-**Adding a new capability that touches the DB** means touching four places in lockstep: the service function in `electron/services/`, the `ipcMain.handle` registration in `electron/main.ts`, the wrapper method in `electron/preload.ts`, and the type in `types/*.ts` used by both sides.
+**Adding a new capability that touches the DB** means touching five places in lockstep: the service function in `electron/services/`, the `ipcMain.handle` registration in `electron/main.ts`, the wrapper method in `electron/preload.ts`, the method signature on the `AuscultaIpc` interface in `electron/electron-env.d.ts` (this is what types `window.ipcRenderer` for the renderer — omitting it is a build error, not a silent gap), and the type in `types/*.ts` used by both sides.
 
 Service functions consistently return `{ status: "success" | "fail", data?, message? }` (or `"not_found"`) rather than throwing — callers in the renderer branch on `.status`.
+
+### Drug catalogue (reference data, deliberately not in SQLite)
+
+`public/data/medications.json` holds ~5,350 products registered for sale in Algeria, built from two public sources by `scripts/build-drug-list.mjs` (see `scripts/README.md` for provenance, licence constraints and the yearly refresh). `electron/services/medicationCatalog.ts` reads it once into memory and answers lookups with a linear scan and a scoring function.
+
+**Why no table.** It is read-only reference data that changes once a year when the ministry publishes a new registration list. A table would add a migration, a seeding step and a second source of truth to buy nothing measurable at 5,350 rows. It resolves through `process.env.VITE_PUBLIC` — the same indirection `htmlPdf.ts` uses for the Amiri fonts — so it is `public/` in dev and `dist/` in production. A missing bundle is non-fatal: autocomplete degrades to the doctor's own history.
+
+**What it cannot do.** Neither upstream source carries interactions, contraindications or posology, so the catalogue is safe for name/strength/form lookup, generic substitution and schedule warnings, and unsafe as an input to anything resembling a prescription safety check. `types/medication.ts`, the service, the `Médicaments` page header and the substitution panels all say so — if you surface catalogue data somewhere new, say it there too.
+
+It is surfaced in two places: `suggestMedicines` in `prescriptionLibrary.ts` tops up history-based autocomplete with catalogue rows (history wins, and always keeps `CATALOG_SLOTS` back for the registry), and `src/pages/Medications/` browses the registry with facet filters and a molecule-based substitution panel.
 
 ### Renderer (`src/`)
 
 - Routing is a flat `HashRouter` table in `src/main.tsx` (hash routing because the app is loaded via `file://` in production, not a web server). `/` is the login screen (`Authentification`); every other route is wrapped in `Layout` (sidebar + content area).
 - `src/components/Layout/Layout.tsx` owns sidebar-collapsed state via a small context (`useLayout`) and flips `document.documentElement.dir`/`lang` for i18n/RTL.
-- `src/pages/<Feature>/<Feature>.tsx` — one folder per route/feature (Dashboard, Patients, PatientDetails, Prescriptions, Documents, Appointments, Statistics, Parameters/Settings, Authentification). Pages call `window.ipcRenderer.<method>()` directly to talk to the main process — there is no separate API/service layer or state-management library in the renderer.
-- `types/` (repo root, shared by both `src` and `electron` via the `tsconfig.json` `include`) defines the domain models: `patient.ts`, `doctor.ts` (includes `Prescription`, `DoctorProfile`), `documents.ts`, `user.ts`.
+- `src/pages/<Feature>/<Feature>.tsx` — one folder per route/feature (Dashboard, Patients, PatientDetails, Prescriptions, Medications, Documents, Appointments, Statistics, Parameters/Settings, Authentification). Pages call `window.ipcRenderer.<method>()` directly to talk to the main process — there is no separate API/service layer or state-management library in the renderer.
+- `types/` (repo root, shared by both `src` and `electron` via the `tsconfig.json` `include`) defines the domain models: `patient.ts`, `doctor.ts` (includes `Prescription`, `DoctorProfile`), `documents.ts`, `user.ts`, `medication.ts`.
 
 ### i18n
 

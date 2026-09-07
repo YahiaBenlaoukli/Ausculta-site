@@ -197,3 +197,49 @@ export async function openDocument(filePath: string): Promise<string> {
     if (error) console.log('Failed to open file:', error);
     return error; // empty string = success, non-empty = error message
 }
+
+/**
+ * Decides whether the host is willing to send this file to a client.
+ *
+ * The renderer opens documents BY PATH — every call site does
+ * `openDocument(somethingsLocalPath)` — so a client asking the host for a file
+ * necessarily asks by path too. That makes this the security boundary: an
+ * unchecked version would be a "read any file on the doctor's computer"
+ * endpoint reachable by anyone holding a front-desk password.
+ *
+ * So a path is servable only if the database already refers to it — a row in
+ * patient_documents, or one of the doctor's own letterhead previews, which the
+ * Settings screen opens the same way. The path is a lookup key here, not a
+ * filesystem path: anything the query does not return is refused, and the
+ * containment check below is the second line for a row that has been edited by
+ * hand to point somewhere else entirely.
+ */
+export function resolveServablePath(requested: string): string | null {
+    try {
+        if (typeof requested !== 'string' || !requested) return null;
+        const db = getDatabase();
+
+        const known = db.prepare(`
+            SELECT local_path AS p FROM patient_documents WHERE local_path = ?
+            UNION ALL
+            SELECT pdf_path AS p FROM doctor_profile WHERE pdf_path = ?
+            UNION ALL
+            SELECT pdf_path_en AS p FROM doctor_profile WHERE pdf_path_en = ?
+            LIMIT 1
+        `).get(requested, requested, requested) as { p: string } | undefined;
+
+        if (!known?.p) return null;
+
+        // Belt and braces: whatever the row says, it must land inside the
+        // directory this app owns.
+        const resolved = path.resolve(known.p);
+        const root = path.resolve(app.getPath('userData'));
+        if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
+        if (!fs.existsSync(resolved)) return null;
+
+        return resolved;
+    } catch (error) {
+        console.error('resolveServablePath error:', error);
+        return null;
+    }
+}

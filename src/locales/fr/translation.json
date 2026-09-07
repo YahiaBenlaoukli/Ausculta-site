@@ -110,7 +110,17 @@
     "suggestions": {
       "frequent": "Vos médicaments les plus prescrits",
       "uses_one": "{{count}}×",
-      "uses_other": "{{count}}×"
+      "uses_other": "{{count}}×",
+      "catalog": "Enregistrés en Algérie",
+      "schedule_narcotic": "Stupéfiant",
+      "schedule_list2": "Liste II",
+      "details": "Voir la fiche",
+      "back": "Retour à la liste",
+      "use_this": "Utiliser ce médicament",
+      "alternatives": "Autres marques ({{n}})",
+      "no_alternatives": "Aucune autre marque de cette molécule au registre.",
+      "same_product": "Identique",
+      "substitution_note": "Équivalences établies sur la molécule seule — ni interactions ni contre-indications."
     },
     "templates": {
       "apply_one": "Modèles ({{count}})",
@@ -133,19 +143,126 @@
     "nav": {
       "dashboard": "Tableau de bord",
       "patients": "Patients",
+      "waiting": "Salle d'attente",
       "appointments": "Rendez-vous",
       "documents": "Documents",
       "prescriptions": "Ordonnances",
       "statistics": "Statistiques",
       "settings": "Paramètres",
-      "consultation": "Consultation"
+      "consultation": "Consultation",
+      "medications": "Médicaments"
     },
     "user": {
       "role": "Médecin Généraliste"
     },
     "actions": {
       "collapse": "Réduire",
-      "expand": "Étendre le menu"
+      "expand": "Étendre le menu",
+      "logout": "Se déconnecter"
+    }
+  },
+  "roles": {
+    "doctor": "Médecin",
+    "assistant": "Assistant(e)"
+  },
+  "print": {
+    "send": "Imprimer à l'accueil",
+    "sending": "Envoi…",
+    "sent": "Envoyé à l'accueil",
+    "send_failed": "Échec de l'envoi",
+    "send_hint": "Envoyer ce document au poste d'accueil pour impression",
+    "queue_title": "Impressions",
+    "pending_count": "{{count}} document en attente",
+    "pending_count_plural": "{{count}} documents en attente",
+    "nothing_pending": "Rien en attente",
+    "print": "Imprimer",
+    "printing": "Impression…",
+    "cancel": "Annuler l'impression",
+    "cancelled": "Annulé",
+    "recent": "Récemment",
+    "printed_by": "Imprimé par {{name}}",
+    "categories": {
+      "prescription": "Ordonnance",
+      "certificate": "Certificat",
+      "receipt": "Reçu",
+      "analysis": "Analyse",
+      "radiology": "Radiologie",
+      "other": "Document"
+    },
+    "errors": {
+      "print": "L'impression a échoué. Vérifiez l'imprimante."
+    },
+    "settings": {
+      "title": "Imprimante de ce poste",
+      "subtitle": "Choisissez une imprimante pour que les documents envoyés depuis la salle de consultation sortent en un clic. Sans imprimante choisie, le document s'ouvre et vous l'imprimez vous-même.",
+      "printer": "Imprimante",
+      "ask_every_time": "Ouvrir le document (demander à chaque fois)",
+      "system_default": "par défaut",
+      "none_found": "Aucune imprimante détectée sur ce poste."
+    }
+  },
+  "network": {
+    "banner": {
+      "unreachable": "Poste principal injoignable — vérifiez qu'il est allumé et connecté au réseau.",
+      "not_ausculta": "L'adresse configurée ne correspond pas à un poste Ausculta.",
+      "fingerprint_mismatch": "Le certificat du poste principal a changé. Par sécurité, la connexion est refusée — réappariez les postes depuis les Paramètres.",
+      "retry": "Réessayer",
+      "retrying": "Connexion…"
+    },
+    "settings": {
+      "title": "Postes et réseau du cabinet",
+      "subtitle": "Choisissez si ce poste travaille seul, s'il héberge les données du cabinet, ou s'il consulte celles d'un autre poste.",
+      "loading": "Chargement de la configuration…",
+      "open_from_login": "Configurer ce poste",
+      "back_to_login": "Retour à la connexion",
+      "port": "Port",
+      "fingerprint": "Empreinte du certificat",
+      "fingerprint_hint": "Les deux postes doivent afficher la même empreinte. Si elle change alors que vous n'avez rien réinstallé, ne réappariez pas : ce n'est peut-être pas le bon poste.",
+      "save": "Enregistrer",
+      "restart_required": "Enregistré — redémarrez pour appliquer.",
+      "restart_now": "Redémarrer maintenant",
+      "unpair_confirm": "Oublier le certificat du poste principal ?\n\nLe prochain test acceptera le certificat qu'il présentera, quel qu'il soit. Ne faites ceci que si le poste principal a réellement été réinstallé.",
+      "modes": {
+        "standalone": {
+          "label": "Poste autonome",
+          "hint": "Ce poste garde ses propres données et ne communique avec aucun autre."
+        },
+        "host": {
+          "label": "Poste principal",
+          "hint": "Ce poste garde les données du cabinet et les met à disposition de l'accueil."
+        },
+        "client": {
+          "label": "Poste secondaire",
+          "hint": "Ce poste ne garde aucune donnée : il consulte celles du poste principal."
+        }
+      },
+      "host": {
+        "intro": "Notez une de ces adresses et le port ci-dessous, puis saisissez-les sur le poste de l'accueil.",
+        "addresses": "Adresses de ce poste",
+        "no_addresses": "Aucune adresse réseau détectée.",
+                "firewall_ok": "Le pare-feu autorise Ausculta sur ce port.",
+        "firewall_missing": "Le pare-feu Windows bloque probablement ce port.",
+        "firewall_allow": "Autoriser dans le pare-feu",
+        "firewall_allowing": "Autorisation…",
+        "running": "Le service est démarré.",
+        "not_running": "Le service démarrera au prochain lancement."
+      },
+      "client": {
+        "intro": "Saisissez l'adresse affichée sur le poste principal, puis testez la connexion.",
+        "address": "Adresse du poste principal",
+        "test": "Tester la connexion",
+        "testing": "Test en cours…",
+        "reachable": "Poste principal joignable.",
+        "paired": "Postes appariés. Vérifiez que l'empreinte ci-dessous correspond à celle affichée sur le poste principal.",
+        "paired_with": "Apparié avec",
+        "unpair": "Oublier cet appariement"
+      },
+      "notes": {
+        "host_must_be_on": "Le poste principal doit être allumé et sorti de veille pour que l'accueil puisse travailler.",
+        "backups": "Les sauvegardes et les restaurations se font uniquement depuis le poste principal.",
+        "firewall": "Le pare-feu Windows doit autoriser Ausculta sur le réseau privé (l'installateur ajoute la règle).",
+        "fixed_address": "Réservez l'adresse du poste principal sur votre box ou routeur, sinon elle peut changer."
+      }
     }
   },
   "dashboard": {
@@ -167,7 +284,8 @@
     },
     "upcoming": {
       "title": "Planning d'aujourd'hui",
-      "empty": "Le calendrier de vos prochains rendez-vous apparaîtra ici."
+      "empty": "Le calendrier de vos prochains rendez-vous apparaîtra ici.",
+      "view_all": "Ouvrir le planning"
     },
     "chart": {
       "distribution_title": "Distribution du Jour",
@@ -313,6 +431,8 @@
     "tab_prescriptions": "Ordonnances ({{count}})",
     "tab_appointments": "Rendez-vous",
     "activity_empty": "Aucune activité récente",
+    "show_more_one": "Afficher {{count}} de plus",
+    "show_more_other": "Afficher {{count}} de plus",
     "activity_prescription": "Ordonnance émise (N° {{id}})",
     "activity_document": "Document téléversé ({{name}})",
     "activity_category": "Catégorie : {{value}}",
@@ -398,6 +518,7 @@
       "submit": "Se connecter",
       "loading": "Connexion...",
       "no_account": "Pas encore de compte ?",
+      "ask_doctor": "Besoin d'un accès ? Le médecin peut vous créer un compte depuis Paramètres › Sécurité.",
       "register_link": "Créer un compte",
       "error_invalid": "Nom d'utilisateur ou mot de passe incorrect",
       "error_connection": "Erreur de connexion"
@@ -424,6 +545,83 @@
     "hide_password": "Masquer le mot de passe",
     "license_note": "Vous avez une clé de licence ? Créez un compte et connectez-vous, puis activez-la depuis les Paramètres.",
     "footer": "Ausculta © {{year}} — Cabinet médical"
+  },
+  "queue_display": {
+    "in_room": "En consultation",
+    "nobody_in_room": "—",
+    "next": "Suivant",
+    "empty": "Aucun patient en attente.",
+    "starting": "Démarrage…",
+    "up_next": "C'est bientôt à vous",
+    "since": "Depuis {{time}}",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "and_more_one": "et {{count}} autre patient",
+    "and_more_other": "et {{count}} autres patients",
+    "estimate_note": "Les durées affichées sont approximatives et peuvent varier selon les consultations.",
+    "settings": {
+      "title": "Écran d'affichage (salle d'attente)",
+      "subtitle": "Affiche la file d'attente en plein écran sur un second écran — un téléviseur dans la salle d'attente. Réglage propre à ce poste.",
+      "on": "Activé",
+      "on_hint": "L'affichage se rouvre à chaque démarrage.",
+      "off": "Désactivé",
+      "off_hint": "Aucun affichage n'est ouvert automatiquement.",
+      "screen": "Écran",
+      "screen_auto": "Automatique (écran secondaire)",
+      "primary": "écran principal",
+      "one_screen": "Un seul écran est détecté sur ce poste. Branchez le téléviseur, puis rouvrez cette page.",
+      "name_mode": "Nom affiché",
+      "name_mode_full": "Nom complet",
+      "name_mode_initial": "Prénom + initiale",
+      "name_mode_number": "Numéro uniquement",
+      "name_mode_hint": "L'écran est visible par toute la salle d'attente.",
+      "open_now": "Ouvrir l'affichage",
+      "close": "Fermer",
+      "is_open": "Affichage ouvert."
+    }
+  },
+  "waiting_room": {
+    "title": "Salle d'attente",
+    "subtitle": "Qui est au cabinet en ce moment.",
+    "count_one": "{{count}} en attente",
+    "count_other": "{{count}} en attente",
+    "loading": "Chargement...",
+    "empty": "Personne n'attend pour le moment.",
+    "in_room": "En consultation",
+    "queue": "File d'attente",
+    "check_in": "Signaler une arrivée",
+    "walk_in": "Sans rendez-vous",
+    "scheduled_at": "RDV {{time}}",
+    "arrived_at": "arrivé(e) à {{time}}",
+    "waited_one": "{{count}} min",
+    "waited_other": "{{count}} min",
+    "started_at": "Commencée à {{time}}",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "waited_before_one": "a attendu {{count}} min",
+    "waited_before_other": "a attendu {{count}} min",
+    "already_here": "Déjà présent(e)",
+    "eta_one": "≈ {{count}} min",
+    "eta_other": "≈ {{count}} min",
+    "eta_next": "≈ bientôt",
+    "eta_hint": "Estimation d'après la position dans la file et la durée habituelle d'une consultation.",
+    "search_placeholder": "Chercher un patient sans rendez-vous…",
+    "confirm_remove": "Retirer {{name}} de la salle d'attente ?",
+    "actions": {
+      "arrived": "Est arrivé(e)",
+      "call_in": "Appeler",
+      "vitals": "Constantes",
+      "open_visit": "Ouvrir la visite",
+      "prioritise": "Faire passer en premier",
+      "unprioritise": "Remettre dans l'ordre d'arrivée",
+      "remove": "Retirer de la file"
+    },
+    "errors": {
+      "check_in_failed": "Impossible d'enregistrer l'arrivée.",
+      "call_failed": "Impossible d'appeler ce patient.",
+      "remove_failed": "Impossible de retirer ce patient de la file.",
+      "remove_has_content": "Des constantes ont déjà été saisies : cette visite doit être supprimée par le médecin."
+    }
   },
   "appointments": {
     "title": "Rendez-vous",
@@ -458,7 +656,9 @@
       "delete": "Supprimer"
     },
     "book_button": "Prendre un rendez-vous",
-    "start_consultation": "Démarrer la consultation"
+    "start_consultation": "Démarrer la consultation",
+    "patient_meta": "Né(e) le {{dob}} | Tél : {{phone}}",
+    "booking_error": "Impossible d'enregistrer ce rendez-vous."
   },
   "statistics": {
     "title": "Statistiques & Analyses",
@@ -533,6 +733,9 @@
       "subtitle": "Activez votre clé de licence pour débloquer la version complète.",
       "status_licensed": "Version complète activée",
       "status_licensed_hint": "Votre licence est active. Merci d'utiliser Ausculta !",
+      "devices_used": "{{used}} des {{max}} postes autorisés par cette clé sont utilisés.",
+      "per_machine": "Une licence s'active par poste, pas par cabinet : chaque poste s'active avec la même clé, jusqu'à 3 postes. Un cabinet à deux postes en utilise deux et garde le troisième pour un ordinateur remplacé.",
+      "client_needs_activation": "Ce poste est encore en essai. Activez-le avec la même clé que le poste principal, sinon l'accueil se verrouillera à la fin de l'essai.",
       "warning_title": "Votre essai se termine dans {{days}} jours !",
       "warning_text": "À l'expiration de l'essai, Ausculta se verrouille complètement : vos dossiers patients, rendez-vous et documents seront inaccessibles jusqu'à l'activation d'une licence. Ne perdez pas l'accès à vos données — activez maintenant.",
       "warning_countdown": "{{days}} jours restants sur {{total}}"
@@ -578,8 +781,6 @@
       "subtitle": "Définissez les tarifs et durées par défaut de vos consultations.",
       "price": "Prix par défaut de la consultation",
       "price_hint": "Ce tarif est utilisé pour calculer les revenus dans l'onglet Statistiques.",
-      "duration": "Durée par défaut d'un rendez-vous",
-      "duration_minutes": "{{count}} minutes",
       "save": "Enregistrer les paramètres",
       "success": "Configuration de consultation enregistrée !",
       "prescription_language": "Langue par défaut de l’ordonnance",
@@ -592,6 +793,32 @@
       "subtitle": "Gérez votre connexion et déconnectez-vous en toute sécurité.",
       "logout": "Se déconnecter",
       "logout_confirm": "Êtes-vous sûr de vouloir vous déconnecter ?"
+    },
+    "accounts": {
+      "title": "Comptes du cabinet",
+      "subtitle": "Créez un accès pour votre assistant(e) : patients, rendez-vous, documents et encaissements. Les statistiques, les ordonnances et les paramètres restent réservés au médecin.",
+      "add": "Ajouter un(e) assistant(e)",
+      "cancel": "Annuler",
+      "create": "Créer le compte",
+      "name": "Nom complet",
+      "password": "Mot de passe",
+      "password_hint": "6 caractères minimum. Communiquez-le à la personne concernée ; il n'est plus affiché ensuite.",
+      "new_password": "Nouveau mot de passe",
+      "reset": "Mot de passe",
+      "confirm_reset": "Réinitialiser",
+      "delete": "Supprimer",
+      "delete_confirm": "Supprimer le compte de {{name}} ?\n\nLa personne ne pourra plus se connecter. Les dossiers patients ne sont pas affectés.",
+      "you": "vous",
+      "loading": "Chargement des comptes…",
+      "created": "Compte créé pour {{name}}.",
+      "deleted": "Compte de {{name}} supprimé.",
+      "password_reset": "Mot de passe réinitialisé.",
+      "errors": {
+        "load": "Impossible de charger les comptes.",
+        "create": "Impossible de créer le compte.",
+        "delete": "Impossible de supprimer le compte.",
+        "reset": "Impossible de réinitialiser le mot de passe."
+      }
     },
     "data": {
       "title": "Base de données & Données",
@@ -892,6 +1119,7 @@
       "bad_request": "Clé de licence invalide. Vérifiez-la et réessayez."
     },
     "success": "Licence activée. Merci !",
+    "success_with_devices": "Licence activée. {{used}} des {{max}} postes utilisés.",
     "contact": "Pour obtenir une clé de licence, contactez-nous.",
     "activate_title": "Activer votre licence",
     "activate_now": "Activer maintenant",
@@ -912,6 +1140,7 @@
       "age": "{{age}} ans",
       "no_blood_type": "Groupe sanguin inconnu",
       "open_file": "Dossier patient",
+      "back": "Retour",
       "discard": "Supprimer",
       "finish": "Terminer la consultation",
       "finishing": "Finalisation…"
@@ -920,6 +1149,11 @@
       "saving": "Enregistrement…",
       "saved": "Enregistré",
       "error": "Non enregistré"
+    },
+    "phases": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "step": "Étape {{current}} sur {{total}}"
     },
     "select": {
       "walk_in_title": "Patient sans rendez-vous",
@@ -968,6 +1202,7 @@
     },
     "prescription": {
       "title": "Ordonnance",
+      "phase_title": "Ordonnance et certificats",
       "medicine": "Médicament",
       "dosage": "Dosage",
       "frequency": "Fréquence",
@@ -996,6 +1231,7 @@
     },
     "billing": {
       "title": "Honoraires",
+      "phase_title": "Facturation et suivi",
       "fee": "Montant (DA)",
       "fee_placeholder": "Tarif par défaut",
       "paid": "Payé",
@@ -1067,9 +1303,16 @@
       "auth.login": "Connexion",
       "auth.login_failed": "Échec de connexion",
       "auth.logout": "Déconnexion",
+      "auth.register_refused": "Inscription refusée",
+      "user.create": "Compte créé",
+      "user.delete": "Compte supprimé",
+      "user.password_reset": "Mot de passe réinitialisé",
       "patient.create": "Patient créé",
       "patient.update": "Patient modifié",
       "patient.delete": "Patient supprimé",
+      "consultation.check_in": "Patient arrivé",
+      "consultation.call_in": "Patient appelé",
+      "consultation.remove_from_queue": "Retiré de la salle d'attente",
       "consultation.complete": "Consultation terminée",
       "consultation.delete": "Consultation supprimée",
       "prescription.create": "Ordonnance créée",
@@ -1081,9 +1324,86 @@
       "payment.record": "Paiement encaissé",
       "payment.delete": "Paiement annulé",
       "reminder.send": "Rappel WhatsApp ouvert",
+      "print.queue": "Envoyé à l'impression",
+      "print.done": "Document imprimé",
       "database.backup": "Sauvegarde créée",
       "database.restore": "Base restaurée",
       "database.reset": "Base réinitialisée"
+    }
+  },
+  "medications": {
+    "title": "Médicaments",
+    "subtitle": "Registre national — {{total}} produits, dont {{current}} sur la liste d'enregistrement 2025",
+    "scope_note": "Répertoire d'identification : nom, molécule, dosage, forme, liste, remboursement et fabricant. Ne contient ni interactions, ni contre-indications, ni posologie — il ne remplace pas une vérification clinique.",
+    "toolbar": {
+      "search_placeholder": "Nom commercial ou molécule…",
+      "form": "Forme",
+      "therapeutic": "Classe",
+      "schedule": "Liste",
+      "refundable": "Remboursable",
+      "current_list": "Enregistrés 2025",
+      "all": "Toutes",
+      "clear": "Réinitialiser",
+      "results_one": "{{count}} résultat",
+      "results_other": "{{count}} résultats"
+    },
+    "table": {
+      "brand": "Médicament",
+      "molecule": "Molécule",
+      "form": "Forme",
+      "therapeutic": "Classe thérapeutique",
+      "schedule": "Liste",
+      "refundable": "Remb.",
+      "lab": "Laboratoire"
+    },
+    "schedule": {
+      "I": "Liste I",
+      "II": "Liste II",
+      "STUPEFIANT": "Stupéfiant"
+    },
+    "provenance": {
+      "current": "Liste 2025",
+      "current_hint": "Figure sur la liste des produits enregistrés 2025.",
+      "legacy": "Avant 2020",
+      "legacy_hint": "Connu d'un relevé de 2020 seulement — peut avoir été retiré du marché."
+    },
+    "value": {
+      "yes": "Oui",
+      "no": "Non",
+      "unknown": "Non renseigné"
+    },
+    "detail": {
+      "title": "Fiche du médicament",
+      "close": "Fermer",
+      "missing": "Produit introuvable",
+      "packaging": "Conditionnement",
+      "composition": "Composition",
+      "pharmacological": "Classe pharmacologique",
+      "class_code": "Code nomenclature",
+      "country": "Pays",
+      "registration": "N° d'enregistrement",
+      "refundable": "Remboursement",
+      "narcotic_note": "Stupéfiant : prescription sur carnet à souches, pas sur ordonnance ordinaire.",
+      "alternatives": "Autres marques ({{n}})",
+      "tier_0": "Même dosage, même forme",
+      "tier_1": "Même dosage, autre forme",
+      "tier_2": "Autre dosage",
+      "no_alternatives": "Aucune autre marque de cette molécule au registre.",
+      "no_molecule": "Molécule non renseignée pour ce produit — aucune équivalence possible.",
+      "substitution_note": "Équivalences établies sur la molécule seule. Le registre ne porte ni interactions, ni contre-indications, ni posologie : la substitution reste une décision clinique."
+    },
+    "empty": {
+      "title": "Aucun médicament trouvé",
+      "hint": "Essayez un autre nom, une molécule, ou élargissez les filtres."
+    },
+    "unavailable": {
+      "title": "Registre indisponible",
+      "hint": "Le fichier des médicaments n'a pas pu être chargé. Réinstaller l'application le rétablira."
+    },
+    "pagination": {
+      "page": "Page {{page}} sur {{total}}",
+      "prev": "Page précédente",
+      "next": "Page suivante"
     }
   }
 }

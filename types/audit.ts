@@ -8,11 +8,35 @@ export type AuditAction =
     | 'auth.login'
     | 'auth.login_failed'
     | 'auth.logout'
+    /**
+     * Someone tried to register from the login screen on an install that
+     * already has an account. Worth a line: on a two-seat practice this is
+     * either an assistant who does not know how they get access, or someone
+     * trying to mint themselves a doctor account.
+     */
+    | 'auth.register_refused'
+    | 'user.create'
+    | 'user.delete'
+    | 'user.password_reset'
     | 'patient.create'
     | 'patient.update'
     | 'patient.delete'
     | 'consultation.complete'
     | 'consultation.delete'
+    /**
+     * A patient arrived and was put in the waiting room. Usually the desk, and
+     * the first record that they were here at all — a walk-in who leaves before
+     * being seen leaves no other trace.
+     */
+    | 'consultation.check_in'
+    /** The doctor called a waiting patient into the room. */
+    | 'consultation.call_in'
+    /**
+     * Someone was taken out of the queue without being seen — they left, or
+     * were checked in by mistake. Worth a line precisely because it deletes the
+     * draft, so nothing else survives to say it happened.
+     */
+    | 'consultation.remove_from_queue'
     | 'prescription.create'
     | 'prescription.delete'
     | 'document.upload'
@@ -23,6 +47,10 @@ export type AuditAction =
     | 'payment.delete'
     /** A WhatsApp appointment reminder was opened for a patient. */
     | 'reminder.send'
+    /** A document was sent to the front desk to be printed. */
+    | 'print.queue'
+    /** The front desk confirmed it came out of the printer. */
+    | 'print.done'
     | 'database.backup'
     /**
      * Recorded in the database being REPLACED, moments before the swap — the

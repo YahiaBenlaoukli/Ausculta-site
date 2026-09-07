@@ -20,7 +20,9 @@ export default function TrialGate({ children }: { children: React.ReactNode }) {
     // Shown next to the trial pill when it's clicked while no one is signed in:
     // license activation lives in Settings, which needs an account, so we point
     // the user there instead of navigating to a page they can't use yet.
-    const [loginHint, setLoginHint] = useState(false);
+    // The pill opens the activation form in place. It used to route to Settings,
+    // which no assistant can open and no signed-out user can reach.
+    const [showPanel, setShowPanel] = useState(false);
 
     const refresh = useCallback(async () => {
         try {
@@ -185,32 +187,50 @@ export default function TrialGate({ children }: { children: React.ReactNode }) {
             {children}
             {!trial.licensed && (
                 <div className="fixed bottom-4 end-4 z-50 flex flex-col items-end gap-2">
-                    {/* Hint bubble — only when a signed-out user clicks the pill */}
-                    {loginHint && (
-                        <div
-                            className="max-w-[240px] bg-white text-navy/70 text-xs leading-relaxed px-3.5 py-2.5 rounded-xl shadow-[0_4px_16px_rgba(30,42,86,0.18)] border border-navy/[0.06]"
+                    {/* Activation happens HERE rather than by routing to Settings.
+                        Settings is doctor-only, so sending an assistant there
+                        bounced them silently to the dashboard — on the front-desk
+                        machine, which is precisely the one that needs activating
+                        and whose user is never a doctor. Signed out, it used to
+                        refuse outright. A licence key licenses the machine it is
+                        typed on, so the place to type it is wherever you are. */}
+                    {showPanel && (
+                        <form
+                            onSubmit={handleActivate}
+                            className="w-[280px] bg-white rounded-2xl shadow-[0_4px_24px_rgba(30,42,86,0.18)] border border-navy/[0.06] p-4"
                             style={{ animation: 'scaleIn 0.2s ease-out both' }}
                         >
-                            {t('trial.login_required')}
-                        </div>
+                            <label htmlFor="trial-pill-key" className="block text-[11px] font-semibold text-navy/50 uppercase tracking-wide mb-2">
+                                {t('trial.license_label')}
+                            </label>
+                            <input
+                                id="trial-pill-key"
+                                type="text"
+                                value={licenseKey}
+                                onChange={(e) => setLicenseKey(e.target.value)}
+                                placeholder={t('trial.license_placeholder')}
+                                autoComplete="off"
+                                spellCheck={false}
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-bg/70 border border-navy/[0.08] text-navy text-sm font-mono placeholder:text-navy/25 focus:outline-none focus:border-pink/40 focus:bg-white transition-all"
+                            />
+                            {error && <p className="mt-2 text-xs text-pink-dark">{error}</p>}
+                            {success && <p className="mt-2 text-xs text-emerald-700">{success}</p>}
+                            <button
+                                type="submit"
+                                disabled={isActivating || !licenseKey.trim()}
+                                className="mt-3 w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-pink to-pink-light active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isActivating ? t('trial.activating') : t('trial.activate')}
+                            </button>
+                            <p className="mt-2.5 text-[10px] leading-relaxed text-navy/35">
+                                {t('trial.internet_note')}
+                            </p>
+                        </form>
                     )}
                     <button
                         type="button"
-                        onClick={async () => {
-                            // License activation lives in Settings, which requires a
-                            // logged-in user. Only route there once we confirm a session.
-                            try {
-                                const auth = await window.ipcRenderer.checkAuth();
-                                if (auth?.status === 'success') {
-                                    window.location.hash = '/settings?tab=license';
-                                    return;
-                                }
-                            } catch {
-                                // fall through to the hint
-                            }
-                            setLoginHint(true);
-                            setTimeout(() => setLoginHint(false), 5000);
-                        }}
+                        onClick={() => setShowPanel((open) => !open)}
+                        aria-expanded={showPanel}
                         title={t('trial.activate_title')}
                         className="select-none bg-navy/85 backdrop-blur-sm text-white/90 text-xs font-medium px-3.5 py-2 rounded-full shadow-[0_4px_16px_rgba(30,42,86,0.25)] hover:bg-navy cursor-pointer transition-colors duration-200 flex items-center gap-1.5"
                     >

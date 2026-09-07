@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import OutstandingBalances from "../../components/Billing/OutstandingBalances";
+// Recharts takes colours as props and inline data, so these cannot be classes.
+import { PALETTE } from "../../../theme/palette";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -178,8 +180,8 @@ export default function Statistics() {
   // Distribution chart data
   const distributionData = [
     { name: t("statistics.status.completed", "Completed"), value: appointmentStats.total_completed, color: "#10b981" }, // green
-    { name: t("statistics.status.scheduled", "Scheduled"), value: appointmentStats.total_scheduled, color: "#1e2a56" }, // navy
-    { name: t("statistics.status.cancelled", "Cancelled"), value: appointmentStats.total_cancelled, color: "#e91e8c" }, // pink
+    { name: t("statistics.status.scheduled", "Scheduled"), value: appointmentStats.total_scheduled, color: PALETTE.navy },
+    { name: t("statistics.status.cancelled", "Cancelled"), value: appointmentStats.total_cancelled, color: PALETTE.pink },
     { name: t("statistics.status.no_show", "No-Show"), value: appointmentStats.total_no_show, color: "#f59e0b" } // amber
   ].filter(item => item.value > 0);
 
@@ -189,12 +191,12 @@ export default function Statistics() {
     : [{ name: t("statistics.status.none", "No Data"), value: 1, color: "#e5e7eb" }];
 
   return (
-    <div className="space-y-6 text-[#1E2A56]">
+    <div className="space-y-6 text-navy">
       {/* ── Page Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1E2A56]">{t("statistics.title", "Statistiques & Analyses")}</h1>
-          <p className="text-sm text-[#1E2A56]/50 mt-1">
+          <h1 className="text-2xl font-bold text-navy">{t("statistics.title", "Statistiques & Analyses")}</h1>
+          <p className="text-sm text-navy/50 mt-1">
             {t("statistics.welcome", "Visualisez l'activité médicale, le taux de présence et la performance financière.")}
           </p>
         </div>
@@ -202,13 +204,13 @@ export default function Statistics() {
         {/* Price & Date Selector Box */}
         <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-2xl border border-white/40 shadow-[0_2px_12px_rgba(30,42,86,0.04)]">
           {/* Price Config */}
-          <div className="flex items-center gap-2 border-r border-[#1E2A56]/10 pr-3 mr-1">
+          <div className="flex items-center gap-2 border-r border-navy/10 pr-3 mr-1">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t("statistics.filters.price", "Prix RDV")}:</span>
             <input
               type="number"
               value={priceInput}
               onChange={(e) => setPriceInput(e.target.value)}
-              className="w-20 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-[#1E2A56] text-center focus:outline-none focus:border-[#e91e8c]"
+              className="w-20 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-navy text-center focus:outline-none focus:border-pink"
             />
             <span className="text-xs font-bold text-gray-400">DA</span>
           </div>
@@ -226,8 +228,8 @@ export default function Statistics() {
                 onClick={() => handleRangeChange(btn.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeRange === btn.id
-                    ? "bg-[#1E2A56] text-white shadow-sm"
-                    : "text-[#1E2A56]/60 hover:text-[#1E2A56] hover:bg-gray-150"
+                    ? "bg-navy text-white shadow-sm"
+                    : "text-navy/60 hover:text-navy hover:bg-gray-150"
                 }`}
               >
                 {btn.label}
@@ -244,7 +246,7 @@ export default function Statistics() {
                 setStartDate(e.target.value);
                 setActiveRange("custom");
               }}
-              className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#e91e8c]"
+              className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:border-pink"
             />
             <span className="text-gray-300">/</span>
             <input
@@ -254,7 +256,7 @@ export default function Statistics() {
                 setEndDate(e.target.value);
                 setActiveRange("custom");
               }}
-              className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#e91e8c]"
+              className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:border-pink"
             />
           </div>
         </div>
@@ -262,8 +264,8 @@ export default function Statistics() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="w-10 h-10 border-4 border-[#e91e8c] border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-semibold text-[#1E2A56]/60">{t("statistics.loading", "Chargement des données...")}</span>
+          <div className="w-10 h-10 border-4 border-pink border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-semibold text-navy/60">{t("statistics.loading", "Chargement des données...")}</span>
         </div>
       ) : (
         <div className="space-y-6">
@@ -276,7 +278,7 @@ export default function Statistics() {
                 {t("statistics.metrics.completed", "Consultations")}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-extrabold tracking-tight text-[#1E2A56]">
+                <span className="text-4xl font-extrabold tracking-tight text-navy">
                   {consultationStats.total_consultations}
                 </span>
                 <span className="text-xs font-bold text-green-500 flex items-center gap-0.5">
@@ -296,18 +298,18 @@ export default function Statistics() {
 
             {/* Metric 2: Estimated Revenue */}
             <div className="relative overflow-hidden bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.05)] hover:shadow-[0_8px_30px_rgba(30,42,86,0.1)] transition-all duration-300 group">
-              <div className="absolute top-0 right-0 rounded-bl-[50px] w-24 h-24 bg-gradient-to-br from-[#e91e8c] to-[#be185d] opacity-[0.06] group-hover:opacity-[0.12] transition-opacity duration-300" />
+              <div className="absolute top-0 right-0 rounded-bl-[50px] w-24 h-24 bg-gradient-to-br from-pink to-pink-dark opacity-[0.06] group-hover:opacity-[0.12] transition-opacity duration-300" />
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-1">
                 {t("statistics.metrics.revenue", "Revenus Estimés")}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tracking-tight text-[#1E2A56] truncate max-w-[85%]">
+                <span className="text-3xl font-extrabold tracking-tight text-navy truncate max-w-[85%]">
                   {consultationStats.total_revenue.toLocaleString()}
                 </span>
-                <span className="text-sm font-extrabold text-[#e91e8c]">DA</span>
+                <span className="text-sm font-extrabold text-pink">DA</span>
               </div>
               {/* Card Illustration */}
-              <div className="absolute bottom-4 right-5 text-[#e91e8c] opacity-20 group-hover:scale-110 transition-transform duration-300">
+              <div className="absolute bottom-4 right-5 text-pink opacity-20 group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-14 h-14" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
@@ -326,7 +328,7 @@ export default function Statistics() {
                 {t("statistics.metrics.noshow", "Taux d'Absence")}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-extrabold tracking-tight text-[#1E2A56]">
+                <span className="text-4xl font-extrabold tracking-tight text-navy">
                   {Math.round(noShowRateData.no_show_rate * 10) / 10}%
                 </span>
                 <span className={`text-xs font-bold flex items-center gap-0.5 ${noShowRateData.no_show_rate > 15 ? "text-red-500" : "text-amber-500"}`}>
@@ -351,7 +353,7 @@ export default function Statistics() {
                 {t("statistics.metrics.cancelled", "RDV Annulés")}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-extrabold tracking-tight text-[#1E2A56]">
+                <span className="text-4xl font-extrabold tracking-tight text-navy">
                   {appointmentStats.total_cancelled}
                 </span>
                 <span className="text-xs font-bold text-red-500 flex items-center gap-0.5">
@@ -376,7 +378,7 @@ export default function Statistics() {
             <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-bold text-[#1E2A56]">{t("statistics.charts.volume_title", "Volume des Consultations")}</h3>
+                  <h3 className="text-base font-bold text-navy">{t("statistics.charts.volume_title", "Volume des Consultations")}</h3>
                   <span className="text-xs font-semibold text-gray-400 tracking-wider">
                     {t("statistics.charts.volume_subtitle", "Évolution par mois")}
                   </span>
@@ -395,12 +397,12 @@ export default function Statistics() {
                       >
                         <defs>
                           <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#1E2A56" stopOpacity={0.15} />
-                            <stop offset="95%" stopColor="#1E2A56" stopOpacity={0.0} />
+                            <stop offset="5%" stopColor={PALETTE.navy} stopOpacity={0.15} />
+                            <stop offset="95%" stopColor={PALETTE.navy} stopOpacity={0.0} />
                           </linearGradient>
                           <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#e91e8c" stopOpacity={0.25} />
-                            <stop offset="95%" stopColor="#e91e8c" stopOpacity={0.0} />
+                            <stop offset="5%" stopColor={PALETTE.pink} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={PALETTE.pink} stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -436,7 +438,7 @@ export default function Statistics() {
                           type="monotone"
                           dataKey="total_consultations"
                           name={t("statistics.charts.legend_total", "Total consultations")}
-                          stroke="#1E2A56"
+                          stroke={PALETTE.navy}
                           strokeWidth={2}
                           fillOpacity={1}
                           fill="url(#colorTotal)"
@@ -445,7 +447,7 @@ export default function Statistics() {
                           type="monotone"
                           dataKey="walk_in_consultations"
                           name={t("statistics.charts.legend_walk_in", "Sans rendez-vous")}
-                          stroke="#e91e8c"
+                          stroke={PALETTE.pink}
                           strokeWidth={2.5}
                           fillOpacity={1}
                           fill="url(#colorCompleted)"
@@ -460,7 +462,7 @@ export default function Statistics() {
             {/* Appointment Distribution (Pie chart / Donut) */}
             <div className="bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)] flex flex-col justify-between">
               <div>
-                <h3 className="text-base font-bold text-[#1E2A56] mb-4">
+                <h3 className="text-base font-bold text-navy mb-4">
                   {t("statistics.charts.distribution_title", "Distribution des RDV")}
                 </h3>
 
@@ -494,7 +496,7 @@ export default function Statistics() {
 
                   {/* Inside Center Content */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-black text-[#1E2A56]">
+                    <span className="text-2xl font-black text-navy">
                       {appointmentStats.total_appointments}
                     </span>
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -514,7 +516,7 @@ export default function Statistics() {
                     />
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-gray-400 truncate max-w-[100px]">{item.name}</span>
-                      <span className="text-xs font-black text-[#1E2A56]">{item.value}</span>
+                      <span className="text-xs font-black text-navy">{item.value}</span>
                     </div>
                   </div>
                 ))}
@@ -534,7 +536,7 @@ export default function Statistics() {
             <div className="bg-white rounded-3xl p-6 border border-white/40 shadow-[0_4px_20px_rgba(30,42,86,0.03)]">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-base font-bold text-[#1E2A56]">{t("statistics.table.top_absents_title", "Patients les Plus Absents")}</h3>
+                  <h3 className="text-base font-bold text-navy">{t("statistics.table.top_absents_title", "Patients les Plus Absents")}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {t("statistics.table.top_absents_subtitle", "Patients ayant cumulé des absences (No-Show) sur la période.")}
                   </p>
@@ -583,18 +585,18 @@ export default function Statistics() {
                           <tr key={patient.id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-3.5">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#1E2A56]/5 text-[#1E2A56] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                                <div className="w-9 h-9 rounded-full bg-navy/5 text-navy font-bold text-xs flex items-center justify-center flex-shrink-0">
                                   {initials}
                                 </div>
-                                <span className="font-bold text-sm text-[#1E2A56]">{patient.full_name}</span>
+                                <span className="font-bold text-sm text-navy">{patient.full_name}</span>
                               </div>
                             </td>
                             <td className="py-3.5 text-sm text-gray-500 font-medium">{patient.phone_number || "—"}</td>
-                            <td className="py-3.5 text-sm font-extrabold text-[#e91e8c] text-center">{patient.no_show_count}</td>
+                            <td className="py-3.5 text-sm font-extrabold text-pink text-center">{patient.no_show_count}</td>
                             <td className="py-3.5">
                               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-gradient-to-r from-amber-400 to-[#e91e8c] rounded-full transition-all duration-500"
+                                  className="h-full bg-gradient-to-r from-amber-400 to-pink rounded-full transition-all duration-500"
                                   style={{ width: `${progressPercent}%` }}
                                 />
                               </div>

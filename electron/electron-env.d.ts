@@ -37,6 +37,8 @@ type UpdateActionResult = import('../types/update').UpdateActionResult
 type Consultation = import('../types/consultation').Consultation
 type ConsultationDraft = import('../types/consultation').ConsultationDraft
 type ConsultationListItem = import('../types/consultation').ConsultationListItem
+type WaitingRoom = import('../types/waitingRoom').WaitingRoom
+type WaitingRoomEntry = import('../types/waitingRoom').WaitingRoomEntry
 type GlobalSearchResults = import('../types/search').GlobalSearchResults
 type ReminderList = import('../types/reminder').ReminderList
 type ReminderOutcome = import('../types/reminder').ReminderOutcome
@@ -69,6 +71,29 @@ type PatientBalance = import('../types/payment').PatientBalance
 type AuditEntry = import('../types/audit').AuditEntry
 type AuditQuery = import('../types/audit').AuditQuery
 type AuditPage = import('../types/audit').AuditPage
+type MedicationFilters = import('../types/medication').MedicationFilters
+type MedicationPage = import('../types/medication').MedicationPage
+type MedicationFacets = import('../types/medication').MedicationFacets
+type MedicationDetail = import('../types/medication').MedicationDetail
+type UserRole = import('../types/user').UserRole
+type UserSummary = import('../types/user').UserSummary
+type NetworkConfig = import('../types/network').NetworkConfig
+type NetworkMode = import('../types/network').NetworkMode
+type HostInfo = import('../types/network').HostInfo
+type DisplayOption = import('../types/network').DisplayOption
+type QueueDisplayNameMode = import('../types/network').QueueDisplayNameMode
+type ConnectionTest = import('../types/network').ConnectionTest
+type HostStatus = import('../types/network').HostStatus
+type FirewallResult = import('./services/firewall').FirewallResult
+type PrintJob = import('../types/print').PrintJob
+type PrinterOption = import('../types/print').PrinterOption
+
+/** The signed-in identity the renderer sees. `role` decides what the UI offers. */
+interface AuthUser {
+  id: number
+  fullName: string
+  role: UserRole
+}
 
 interface IpcResult<T = unknown> {
   status: 'success' | 'fail' | 'not_found'
@@ -154,7 +179,14 @@ interface AuscultaIpc {
 
   // gestion profil médecin
   createDoctorProfile(userId: number, fullName: string, speciality: string, phoneNumber: string, address: string, email: string): Promise<IpcResult<DoctorProfile>>
+  /** "My profile" — Settings only. An assistant has none, and gets `not_found`. */
   getDoctorProfile(userId: number): Promise<IpcResult<DoctorProfile>>
+  /**
+   * The practice's doctor profile, whoever is signed in. Every screen that
+   * needs a `doctorId` for appointments or consultations wants this one —
+   * those tables key off doctor_profile, not off the signed-in user.
+   */
+  getPracticeDoctorProfile(): Promise<IpcResult<DoctorProfile>>
   updateDoctorProfile(userId: number, input: DoctorProfileInput): Promise<IpcResult<DoctorProfile>>
   setPrescriptionPdf(doctorId: number): Promise<IpcResult<{ doctor: DoctorProfile; pdfPath: string; pdfPathEn: string }>>
 
@@ -173,6 +205,11 @@ interface AuscultaIpc {
   getPrescriptionTemplates(userId: number): Promise<IpcResult<PrescriptionTemplate[]>>
   savePrescriptionTemplate(userId: number, name: string, medicines: MedicineLine[], notes?: string): Promise<IpcResult<{ templateId: number; replaced: boolean }>>
   deletePrescriptionTemplate(id: number): Promise<IpcResult>
+
+  // catalogue national des médicaments — référence en lecture seule, aucune table
+  browseMedications(filters?: MedicationFilters, page?: number, pageSize?: number): Promise<IpcResult<MedicationPage>>
+  getMedicationDetail(key: string): Promise<IpcResult<MedicationDetail>>
+  getMedicationFacets(): Promise<IpcResult<MedicationFacets>>
 
   // gestion des certificats médicaux
   /** On `unsupported_characters`, `characters` lists the glyphs the PDF font cannot draw. */
@@ -198,10 +235,44 @@ interface AuscultaIpc {
   generatePatientPrescriptionPDF(patientId: number, prescriptions: Prescription[], doctor: DoctorProfile, weight?: string, language?: string, consultationId?: number): Promise<IpcResult<string>>
 
   // gestion authentification
-  createUser(user: { fullName: string; password: string }): Promise<IpcResult<{ id: number; fullName: string }>>
-  login(fullName: string, password: string, stayLogged: boolean): Promise<{ status: 'success' | 'fail'; token?: string; user?: { id: number; fullName: string }; message?: string }>
-  checkAuth(): Promise<{ status: 'success' | 'fail'; token?: string; user?: { id: number; fullName: string }; message?: string }>
+  /** First launch only — creates the practice's doctor. Refused once any account exists. */
+  createUser(user: { fullName: string; password: string }): Promise<IpcResult<AuthUser>>
+  /** True while no account exists, i.e. the login screen should offer to register. */
+  needsRegistration(): Promise<IpcResult<boolean>>
+  login(fullName: string, password: string, stayLogged: boolean): Promise<{ status: 'success' | 'fail'; token?: string; user?: AuthUser; message?: string }>
+  checkAuth(): Promise<{ status: 'success' | 'fail'; token?: string; user?: AuthUser; message?: string }>
   logout(): Promise<IpcResult>
+
+  // file d'impression — salle de consultation → accueil
+  /** Queues a filed document for the front desk. Doctor only. */
+  enqueuePrintJob(documentPath: string): Promise<IpcResult<{ jobId: number; alreadyQueued: boolean }>>
+  getPrintQueue(): Promise<IpcResult<{ pending: PrintJob[]; recent: PrintJob[] }>>
+  markPrintJobPrinted(id: number): Promise<IpcResult<{ alreadyDone: boolean }>>
+  cancelPrintJob(id: number): Promise<IpcResult>
+  /** Prints at THIS seat; fetches the document from the host first if needed. */
+  printDocument(filePath: string): Promise<{ status: 'success' | 'fail'; opened?: boolean; message?: string }>
+  listPrinters(): Promise<IpcResult<PrinterOption[]>>
+
+  // réseau local — poste autonome / hôte / client
+  getNetworkConfig(): Promise<NetworkConfig>
+  /** Persisted immediately; takes effect on the next launch. */
+  setNetworkConfig(patch: Partial<NetworkConfig>): Promise<IpcResult<NetworkConfig>>
+  /** Host only: the addresses and fingerprint to read off when pairing. */
+  getHostInfo(): Promise<HostInfo>
+  /** Client only: reaches the host and pairs with it on first success. */
+  testHostConnection(): Promise<ConnectionTest>
+  getPinnedFingerprint(): Promise<string | null>
+  unpairHost(): Promise<IpcResult>
+  /** Host only: whether inbound TCP on the configured port is already allowed. */
+  checkFirewallRule(): Promise<FirewallResult>
+  /** Prompts for elevation (UAC). 'cancelled' means the user declined. */
+  addFirewallRule(): Promise<FirewallResult>
+
+  // gestion des comptes — médecin uniquement
+  listUsers(): Promise<IpcResult<UserSummary[]>>
+  createAssistant(fullName: string, password: string): Promise<IpcResult<AuthUser>>
+  deleteUser(id: number): Promise<IpcResult>
+  resetUserPassword(id: number, newPassword: string): Promise<IpcResult>
 
   // gestion des rendez-vous
   bookAppointment(patientId: number, doctorId: number, datetime: string, duration?: number, reason?: string): Promise<IpcResult<{ appointmentId: number }>>
@@ -232,6 +303,31 @@ interface AuscultaIpc {
   getConsultationsByPatientId(patientId: number): Promise<ConsultationListItem[]>
   getConsultationsByDay(doctorId: number, date: string): Promise<ConsultationListItem[]>
   getConsultationsByDateRange(doctorId: number, startDate: string, endDate: string): Promise<ConsultationListItem[]>
+
+  // salle d'attente — accueil → salle de consultation
+  /**
+   * The queue and the room in one call. Takes no doctor id: a practice has one
+   * doctor_profile, and the main process resolves it rather than making a poll
+   * fetch the profile first.
+   *
+   * Resolves to an empty waiting room — never a failure object — when a client
+   * cannot reach the host, so a poll can render the result unconditionally.
+   */
+  getWaitingRoom(): Promise<WaitingRoom>
+  /** The desk: this patient is here. Opens the visit draft, leaves them waiting. */
+  checkInPatient(patientId: number, appointmentId?: number): Promise<IpcResult<Consultation>>
+  /** The doctor: come through. Doctor only. `alreadyCalled` when another seat beat you to it. */
+  callPatientIn(consultationId: number): Promise<IpcResult<{ alreadyCalled: boolean }>>
+  setQueuePriority(consultationId: number, priority: boolean): Promise<IpcResult<{ changes: number }>>
+  /** Refused with `code: 'has_content'` once anything has been recorded on the visit. */
+  removeFromQueue(consultationId: number): Promise<IpcResult<{ changes: number }> & { code?: 'has_content' }>
+
+  // écran d'affichage de la salle d'attente — local to this machine
+  listDisplays(): Promise<IpcResult<DisplayOption[]>>
+  /** Omit `displayId` to use the one stored in network.json, or auto-resolve. */
+  openQueueDisplay(displayId?: number | null): Promise<IpcResult<{ displayId: number }>>
+  closeQueueDisplay(): Promise<IpcResult>
+  getQueueDisplayStatus(): Promise<IpcResult<{ open: boolean; displayId: number | null }>>
 
   // gestion des statistiques
   getFinancialStatistics(startDate: string, endDate: string, appointmentPrice: number): Promise<{ total_completed: number; total_revenue: number }>
