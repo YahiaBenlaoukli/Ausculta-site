@@ -12,7 +12,7 @@ three things, and all three must agree or a customer ends up with the wrong app:
 |---|---|---|
 | `licenses.product` | `ausculta` (the default) | `dentura` |
 | Key prefix | `AUSC-…` | `DENT-…` |
-| Update feed | `/api/updates/<file>` | `/api/updates/dentura/<file>` |
+| Update feed | `/api/updates/<file>` | `/api/updates-dentura/<file>` |
 | R2 bucket | `R2_BUCKET` | `R2_BUCKET_DENTURA` |
 
 The default matters: every Ausculta build already installed predates the
@@ -168,14 +168,15 @@ of expiry, every license sold now would be permanently un-expirable.
 ## App updates
 
 The same deployment serves auto-updates. Installers live in a **private** R2
-bucket; `/api/updates/<file>` (Ausculta) and `/api/updates/<product>/<file>`
-(everything else) mint a 1-hour signed URL and 302-redirect to it, so nothing in
+bucket; `/api/updates/<file>` (Ausculta) and `/api/updates-dentura/<file>` mint a 1-hour signed URL and 302-redirect to it, so nothing in
 the bucket is publicly readable and no storage credentials ever reach the
 desktop app.
 
-The un-prefixed route exists only because shipped Ausculta builds have that URL
-compiled into them and cannot be told a new one. New products get a path
-segment, which selects the bucket their releases live in.
+Each product gets its own top-level route with a single `[file]` segment --
+the shape that has served Ausculta in production for months. Putting the
+product in the path instead (a second dynamic segment, or a catch-all) was
+tried twice and broke Ausculta's feed both times: this runtime is not Next.js
+and routes neither the way you would expect. See api/updates-dentura/.
 
 ```
 Desktop app       api.ausculta.site            Cloudflare R2
@@ -226,7 +227,7 @@ Verify, then check from inside the app via Settings → Updates:
 
 ```bash
 curl -I https://api.ausculta.site/api/updates/latest.yml           # Ausculta, expect 302
-curl -I https://api.ausculta.site/api/updates/dentura/latest.yml   # Dentura,  expect 302
+curl -I https://api.ausculta.site/api/updates-dentura/latest.yml  # Dentura,  expect 302
 ```
 
 ### Things to know
