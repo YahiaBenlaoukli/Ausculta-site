@@ -1,8 +1,24 @@
-# Ausculta activation server
+# Ausculta / Dentura activation server
 
 Makes a license key usable on a limited number of machines instead of infinitely
-many. Ausculta itself stays offline-first: the app talks to this server **once**,
-at activation, and never again for a perpetual license.
+many. Both apps stay offline-first: each talks to this server **once**, at
+activation, and never again for a perpetual license.
+
+**One server, two products.** Ausculta (medical) and Dentura (dental) share this
+deployment, this Supabase instance and this R2 bucket. They are separated by
+three things, and all three must agree or a customer ends up with the wrong app:
+
+| | Ausculta | Dentura |
+|---|---|---|
+| `licenses.product` | `ausculta` (the default) | `dentura` |
+| Key prefix | `AUSC-…` | `DENT-…` |
+| Update feed | `/api/updates/<file>` | `/api/updates/dentura/<file>` |
+| R2 bucket | `R2_BUCKET` | `R2_BUCKET_DENTURA` |
+
+The default matters: every Ausculta build already installed predates the
+`product` field and sends no product at all, so a request without one is treated
+as Ausculta. Removing that default would break activation for existing
+customers, who cannot be updated retroactively to send it.
 
 ```
 Desktop app                    This server                Supabase
@@ -26,7 +42,8 @@ but they cannot produce a signature the app accepts.
 |---|---|
 | Key used on a 2nd and 3rd machine | Allowed (default `max_activations = 3`) |
 | Key used on a 4th machine | `limit_reached` |
-| Reinstalling Ausculta on the same PC | Free — same fingerprint, no slot consumed |
+| Reinstalling the app on the same PC | Free — same fingerprint, no slot consumed |
+| A Dentura install using an `AUSC-…` key (or vice versa) | Rejected as an unknown key |
 | Reinstalling **Windows** | New fingerprint, consumes a slot |
 | Copying `trial.enc` to another PC | `device_mismatch` — token is fingerprint-bound |
 | Key revoked after a refund | Perpetual: no effect. Subscription: dead within 30 days |
@@ -151,12 +168,17 @@ of expiry, every license sold now would be permanently un-expirable.
 ## App updates
 
 The same deployment serves auto-updates. Installers live in a **private** R2
-bucket; `/api/updates/<file>` mints a 1-hour signed URL and 302-redirects to it,
-so nothing in the bucket is publicly readable and no storage credentials ever
-reach the desktop app.
+bucket; `/api/updates/<file>` (Ausculta) and `/api/updates/<product>/<file>`
+(everything else) mint a 1-hour signed URL and 302-redirect to it, so nothing in
+the bucket is publicly readable and no storage credentials ever reach the
+desktop app.
+
+The un-prefixed route exists only because shipped Ausculta builds have that URL
+compiled into them and cannot be told a new one. New products get a path
+segment, which selects the bucket their releases live in.
 
 ```
-Ausculta          api.ausculta.site            Cloudflare R2
+Desktop app       api.ausculta.site            Cloudflare R2
    |                     |                          |
    |-- GET latest.yml -->|-- sign (1h) ------------>|
    |<-- 302 signed URL --|                          |
@@ -171,11 +193,18 @@ rejected regardless of how it arrived.
 
 ### One-time setup
 
-1. Create a **private** R2 bucket (`ausculta-updates`).
-2. R2 → Manage API tokens → token with **Object Read & Write** on it.
+1. Create a **private** R2 bucket per product (`ausculta`, and one for Dentura).
+2. R2 → Manage API tokens → token with **Object Read & Write**. If you scope it
+   to specific buckets, it must cover *both*, or Dentura needs its own token.
 3. Add `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
-   to Vercel **and** to `license-server/.env.local` (the publish script reads
-   the same file).
+   and `R2_BUCKET_DENTURA` to Vercel **and** to `license-server/.env.local` (the
+   publish script reads the same file).
+
+   The unsuffixed names are Ausculta's; a `_DENTURA` suffix overrides any one of
+   them for Dentura and anything unset is inherited, so a shared account and
+   token needs only `R2_BUCKET_DENTURA` added. `R2_BUCKET_DENTURA` itself never
+   falls back — inheriting Ausculta's bucket would publish the dental app over
+   its `latest.yml`.
 
 `GET /api/health` reports `"updates": true` once all four are set. The licence
 server runs fine without them; only the update endpoint is affected.
@@ -196,7 +225,8 @@ it names would send clinics chasing a file that is not there yet.
 Verify, then check from inside the app via Settings → Updates:
 
 ```bash
-curl -I https://api.ausculta.site/api/updates/latest.yml   # expect 302
+curl -I https://api.ausculta.site/api/updates/latest.yml           # Ausculta, expect 302
+curl -I https://api.ausculta.site/api/updates/dentura/latest.yml   # Dentura,  expect 302
 ```
 
 ### Things to know
@@ -221,5 +251,6 @@ cp .env.example .env.local     # fill in the four values
 npx vercel dev
 ```
 
-Point the desktop app at it with `AUSCULTA_API_URL=http://localhost:3000`
+Point the desktop app at it with `DENTURA_API_URL=http://localhost:3000`
+(`AUSCULTA_API_URL` in the Ausculta repo)
 before `npm run dev`.

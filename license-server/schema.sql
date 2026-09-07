@@ -1,4 +1,6 @@
--- Ausculta license/activation schema.
+-- Ausculta / Dentura license/activation schema.
+--
+-- One server serves both products; `licenses.product` is what separates them.
 --
 -- Run this ONCE in the Supabase SQL editor (Dashboard -> SQL Editor -> New query).
 -- It is idempotent, so re-running it after a schema change is safe.
@@ -20,9 +22,16 @@ create table if not exists licenses (
 
   -- sha256(normalized key), hex. Normalization = uppercase, dashes stripped.
   key_hash         text not null unique,
-  -- First group of the key ("AUSC-7K3M"), stored in clear so you can find a
-  -- customer's row from the fragment they read out over the phone.
+  -- First group of the key ("AUSC-7K3M" / "DENT-7K3M"), stored in clear so you
+  -- can find a customer's row from the fragment they read out over the phone.
   key_prefix       text not null,
+
+  -- Which product this key unlocks. Defaults to 'ausculta' because every key
+  -- issued before Dentura existed is an Ausculta key, and every Ausculta build
+  -- in the field activates without sending a product at all -- the default is
+  -- what keeps those installs working, so do not drop it.
+  product          text not null default 'ausculta'
+                   check (product in ('ausculta', 'dentura')),
 
   customer_name    text,
   customer_email   text,
@@ -48,8 +57,33 @@ create table if not exists licenses (
   created_at       timestamptz not null default now()
 );
 
+-- ── Retrofit `product` onto a database created before Dentura ────────────
+--
+-- MUST run before any index or constraint that names the column. The
+-- `create table if not exists` above is a no-op on an existing database, so
+-- its `product` definition never reaches one -- this is the only statement
+-- that adds the column there, and anything referencing `product` earlier
+-- fails with 42703 on exactly the databases this block exists to fix.
+--
+-- Both statements are no-ops on a fresh schema, which is what keeps this file
+-- re-runnable. Postgres 11+ applies the default without rewriting the table,
+-- so this is fast regardless of how many licences exist.
+alter table licenses add column if not exists product text not null default 'ausculta';
+
+-- `add constraint` has no `if not exists`, and a fresh schema already carries
+-- this check inline from the create table above -- under the same generated
+-- name, so re-running raises duplicate_object rather than duplicating it.
+do $$
+begin
+  alter table licenses add constraint licenses_product_check
+    check (product in ('ausculta', 'dentura'));
+exception
+  when duplicate_object then null;
+end $$;
+
 create index if not exists licenses_key_prefix_idx on licenses (key_prefix);
 create index if not exists licenses_customer_email_idx on licenses (customer_email);
+create index if not exists licenses_product_idx on licenses (product);
 
 -- ─── Activations ─────────────────────────────────────────────────────────
 -- One row per (license, device). `released_at` is a soft delete: releasing a
@@ -122,10 +156,18 @@ grant usage, select on sequence activation_attempts_id_seq to service_role;
 -- What you actually want to look at in the dashboard: who owns each key and
 -- how many device slots they have left.
 
-create or replace view license_overview as
+-- Dropped and recreated rather than `create or replace`: replacing a view can
+-- only APPEND columns, and `product` is inserted in the middle of the list --
+-- on a database that already has this view, `create or replace` fails with
+-- 42P16 ("cannot change name of view column"). Nothing reads this view except
+-- a human in the dashboard, so dropping it costs nothing.
+drop view if exists license_overview;
+
+create view license_overview as
 select
   l.id,
   l.key_prefix,
+  l.product,
   l.customer_name,
   l.customer_email,
   l.plan,

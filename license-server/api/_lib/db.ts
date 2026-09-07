@@ -48,6 +48,8 @@ export function db(): SupabaseClient {
 export type LicenseRow = {
   id: string;
   key_prefix: string;
+  /** 'ausculta' | 'dentura'. Defaulted in the schema, so never null. */
+  product: string;
   customer_name: string | null;
   plan: string;
   status: string;

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { db, isLicenseExpired, type ActivationRow, type LicenseRow } from "./_lib/db.js";
-import { hashKey, isPlausibleKey, keyPrefixOf } from "./_lib/keys.js";
+import { DEFAULT_PRODUCT, hashKey, isPlausibleKey, isProduct, keyPrefixOf } from "./_lib/keys.js";
 import { buildToken } from "./_lib/token.js";
 import { isRateLimited, recordAttempt } from "./_lib/throttle.js";
 import { clientIp, fail, ok, readJsonBody, requireMethod, str } from "./_lib/http.js";
@@ -8,7 +8,7 @@ import { clientIp, fail, ok, readJsonBody, requireMethod, str } from "./_lib/htt
 /**
  * POST /api/activate
  *
- * Body: { licenseKey, fingerprint, appVersion?, os? }
+ * Body: { licenseKey, fingerprint, product?, appVersion?, os? }
  * 200:  { ok: true, token, plan, expiresAt, customerName, devicesInUse, maxActivations }
  *
  * This is the ONE moment the desktop app needs the internet. It trades a key
@@ -30,6 +30,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const fingerprint = str(body, "fingerprint", 128);
   const appVersion = str(body, "appVersion", 32);
   const os = str(body, "os", 64);
+
+  // Which app is asking. Absent means Ausculta: every Ausculta build shipped
+  // before Dentura existed omits the field, and those installs must keep
+  // activating. An unrecognised value is rejected rather than defaulted --
+  // silently treating a typo as Ausculta would hand out the wrong licence.
+  const rawProduct = str(body, "product", 32);
+  if (rawProduct && !isProduct(rawProduct)) {
+    return fail(res, 400, "bad_request", "Unknown product.");
+  }
+  const product = rawProduct || DEFAULT_PRODUCT;
 
   if (!licenseKey || !fingerprint) {
     return fail(res, 400, "bad_request", "licenseKey and fingerprint are required.");
@@ -56,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Look the license up by hash; the plaintext key is never stored ──
     const { data: license, error: lookupError } = await db()
       .from("licenses")
-      .select("id, key_prefix, customer_name, plan, status, max_activations, expires_at, features")
+      .select("id, key_prefix, product, customer_name, plan, status, max_activations, expires_at, features")
       .eq("key_hash", hashKey(licenseKey))
       .maybeSingle<LicenseRow>();
 
@@ -64,6 +74,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!license) {
       await recordAttempt(ip, prefix, "invalid_key");
+      return fail(res, 404, "invalid_key", "No such license key.");
+    }
+
+    // A key belongs to exactly one product. Answering 404 rather than naming
+    // the mismatch keeps this endpoint from confirming that a key exists to
+    // someone probing with the other app -- the message is deliberately the
+    // same one an unknown key gets, while the logged outcome distinguishes
+    // them so support can see what really happened.
+    if ((license.product || DEFAULT_PRODUCT) !== product) {
+      await recordAttempt(ip, prefix, "wrong_product");
       return fail(res, 404, "invalid_key", "No such license key.");
     }
 

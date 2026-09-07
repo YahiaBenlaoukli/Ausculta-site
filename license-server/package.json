@@ -1,8 +1,8 @@
 {
-  "name": "ausculta-license-server",
+  "name": "ausculta-dentura-license-server",
   "private": true,
   "version": "1.0.0",
-  "description": "Activation server for Ausculta license keys (Vercel functions + Supabase Postgres).",
+  "description": "Activation server for Ausculta and Dentura license keys (Vercel functions + Supabase Postgres).",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
